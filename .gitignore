@@ -1,0 +1,10 @@
+# Ignore Cargo build directory  
+/target/  
+
+# Ignore compiled binaries  
+*.rs.bk  
+*.rs.bk2  
+
+# Ignore OS-specific files  
+.DS_Store  
+Thumbs.db  
