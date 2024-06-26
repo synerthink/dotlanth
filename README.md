@@ -23,3 +23,8 @@ Dotlanth's Virtual Machine for executing contracts.
    ```sh  
    git clone https://github.com/synerthink-organization/dotvm.git  
    cd dotVM  
+
+## Branch Strategy  
+- `main`: Stable production branch.  
+- `develop`: Integration branch for new features.  
+- `feature/*`: Feature-specific branches.  
