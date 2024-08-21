@@ -18,13 +18,18 @@ fn main() {
     // Test Execution Engine
     let contract = SimpleAdditionContract { a: 5, b: 3 };
     let result = ExecutionEngine::execute_contract(&contract);
-    info!("SimpleAdditionContract result: {}", result);
+
+    match result {
+        Ok(_) => println!("res: {:?}", result),
+        Err(_) => (),
+    }
 
     // Test Protocol Manager
     let protocol = ExpenseApprovalProtocol {
         amount: 1200,
         limit: 1000,
     };
+
     let approval_required = ProtocolManager::enforce_protocol(&protocol);
     info!(
         "ExpenseApprovalProtocol approval required: {}",
