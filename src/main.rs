@@ -1,13 +1,12 @@
 mod contracts;
 mod core;
 mod logging;
-mod protocols;
 
 use contracts::SimpleAdditionContract;
-use core::execution_engine::ExecutionEngine;
-use core::protocol_manager::ProtocolManager;
+use core::{
+    execution_engine::ExecutionEngine, protocol_manager::protocol_manager::ProtocolManager,
+};
 use logging::setup_logging;
-use protocols::ExpenseApprovalProtocol;
 
 use log::info;
 
@@ -20,19 +19,16 @@ fn main() {
     let result = ExecutionEngine::execute_contract(&contract);
 
     match result {
-        Ok(_) => println!("res: {:?}", result),
-        Err(_) => (),
+        Ok(res) => println!("Execution result: {:?}", res),
+        Err(err) => println!("Execution error: {:?}", err),
     }
 
     // Test Protocol Manager
-    let protocol = ExpenseApprovalProtocol {
-        amount: 1200,
-        limit: 1000,
-    };
-
-    let approval_required = ProtocolManager::enforce_protocol(&protocol);
-    info!(
-        "ExpenseApprovalProtocol approval required: {}",
-        approval_required
+    let mut protocol_manager = ProtocolManager::new();
+    let protocol = protocol_manager.create_protocol(
+        "ExpenseApproval".to_string(),
+        "Protocol for approving expenses".to_string(),
     );
+
+    println!("{:?}", protocol)
 }
