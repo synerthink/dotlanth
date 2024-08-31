@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_single_char_tokens() {
-        let input = "+ - * / ; ( ) { } =";
+        let input = "+ - * / ; ( ) { } . =";
         let tokens = tokenize(input);
         assert_eq!(
             tokens,
@@ -32,6 +32,7 @@ mod tests {
                 Token::RightParen,
                 Token::LeftBrace,
                 Token::RightBrace,
+                Token::Comma,
                 Token::Equal,
                 Token::EOF
             ]
@@ -70,9 +71,9 @@ mod tests {
 
     #[test]
     fn test_tokenize_keywords() {
-        let input = "let fn";
+        let input = "let fn if else while";
         let tokens = tokenize(input);
-        assert_eq!(tokens, vec![Token::Let, Token::Fn, Token::EOF]);
+        assert_eq!(tokens, vec![Token::Let, Token::Fn, Token::If, Token::Else, Token::While, Token::EOF]);
     }
 
     #[test]

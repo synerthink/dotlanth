@@ -2,6 +2,9 @@
 pub enum Token {
     Let,
     Fn,
+    If,
+    Else,
+    While,
     Identifier(String),
     Number(i64),
     Plus,
@@ -13,6 +16,7 @@ pub enum Token {
     RightParen,
     LeftBrace,
     RightBrace,
+    Comma,
     Equal,
     EOF,
 }
@@ -62,6 +66,10 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 tokens.push(Token::RightBrace);
                 chars.next();
             }
+            '.' => {
+                tokens.push(Token::Comma);
+                chars.next();
+            }
             '=' => {
                 tokens.push(Token::Equal);
                 chars.next();
@@ -91,6 +99,9 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 match identifier.as_str() {
                     "let" => tokens.push(Token::Let),
                     "fn" => tokens.push(Token::Fn),
+                    "if" => tokens.push(Token::If),
+                    "else" => tokens.push(Token::Else),
+                    "while" => tokens.push(Token::While),
                     _ => tokens.push(Token::Identifier(identifier)),
                 }
             }
