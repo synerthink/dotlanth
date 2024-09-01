@@ -1,20 +1,30 @@
 use crate::core::dotlang::{ast::ast::AstNode, lexer::lexer::Token};
 
-pub fn parse_expression(tokens: &[Token], current: &mut usize) -> AstNode {
-    parse_binary_op(tokens, current, 0)
+use super::errors::parser_error::ParserError;
+
+pub fn parse_expression(tokens: &[Token], current: &mut usize) -> Result<AstNode, ParserError> {
+    match tokens.get(*current) {
+        Some(Token::Number(_)) | Some(Token::Identifier(_)) | Some(Token::LeftParen) => {
+            parse_binary_op(tokens, current, 0)
+        }
+        Some(_) => Err(ParserError::UnexpectedToken),
+        None => Err(ParserError::ExpectedExpression),
+    }
 }
 
-fn parse_binary_op(tokens: &[Token], current: &mut usize, precedence: u8) -> AstNode {
-    let mut left = parse_primary(tokens, current);
-
+fn parse_binary_op(
+    tokens: &[Token],
+    current: &mut usize,
+    precedence: u8,
+) -> Result<AstNode, ParserError> {
+    let mut left = parse_primary(tokens, current)?;
     while let Some(op_prec) = get_precedence(tokens.get(*current)) {
         if op_prec < precedence {
             break;
         }
-
         if let Some(op) = get_binary_op(tokens.get(*current)) {
             *current += 1;
-            let right = parse_binary_op(tokens, current, op_prec + 1);
+            let right = parse_binary_op(tokens, current, op_prec + 1)?;
             left = AstNode::BinaryOp {
                 left: Box::new(left),
                 op,
@@ -22,36 +32,44 @@ fn parse_binary_op(tokens: &[Token], current: &mut usize, precedence: u8) -> Ast
             };
         }
     }
-
-    left
+    Ok(left)
 }
 
-fn parse_primary(tokens: &[Token], current: &mut usize) -> AstNode {
+fn parse_primary(tokens: &[Token], current: &mut usize) -> Result<AstNode, ParserError> {
     match tokens.get(*current) {
         Some(Token::Number(value)) => {
             *current += 1;
-            AstNode::Number(*value)
+            Ok(AstNode::Number(*value))
         }
         Some(Token::Identifier(name)) => {
             *current += 1;
             if let Some(Token::LeftParen) = tokens.get(*current) {
                 parse_function_call(tokens, current, name.clone())
             } else {
-                AstNode::Identifier(name.clone())
+                Ok(AstNode::Identifier(name.clone()))
             }
         }
         Some(Token::LeftParen) => {
             *current += 1;
-            let expr = parse_expression(tokens, current);
-            *current += 1;
-            expr
+            let expr = parse_expression(tokens, current)?;
+            if let Some(Token::RightParen) = tokens.get(*current) {
+                *current += 1;
+                Ok(expr)
+            } else {
+                Err(ParserError::ExpectedRightParen)
+            }
         }
-        _ => AstNode::Number(0),
+        Some(_) => Err(ParserError::UnexpectedToken),
+        None => Err(ParserError::ExpectedExpression),
     }
 }
 
-fn parse_function_call(tokens: &[Token], current: &mut usize, name: String) -> AstNode {
-    *current += 1;
+fn parse_function_call(
+    tokens: &[Token],
+    current: &mut usize,
+    name: String,
+) -> Result<AstNode, ParserError> {
+    *current += 1; // Consume the LeftParen
     let mut args = Vec::new();
     while let Some(token) = tokens.get(*current) {
         if let Token::RightParen = token {
@@ -61,10 +79,14 @@ fn parse_function_call(tokens: &[Token], current: &mut usize, name: String) -> A
             *current += 1;
             continue;
         }
-        args.push(parse_expression(tokens, current));
+        args.push(parse_expression(tokens, current)?);
     }
-    *current += 1;
-    AstNode::FunctionCall { name, args }
+    if let Some(Token::RightParen) = tokens.get(*current) {
+        *current += 1;
+        Ok(AstNode::FunctionCall { name, args })
+    } else {
+        Err(ParserError::ExpectedRightParen)
+    }
 }
 
 fn get_precedence(token: Option<&Token>) -> Option<u8> {

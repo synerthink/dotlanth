@@ -1,131 +1,164 @@
 use crate::core::dotlang::{ast::ast::AstNode, lexer::lexer::Token};
 
-use super::expression::parse_expression;
+use super::{errors::parser_error::ParserError, expression::parse_expression};
 
-pub fn parse_statement(tokens: &[Token], current: &mut usize) -> AstNode {
+pub fn parse_statement(tokens: &[Token], current: &mut usize) -> Result<AstNode, ParserError> {
     match tokens.get(*current) {
         Some(Token::Let) => parse_variable_declaration(tokens, current),
-        Some(Token::Fn) => parse_function(tokens, current),
         Some(Token::If) => parse_if(tokens, current),
         Some(Token::While) => parse_while(tokens, current),
-        Some(Token::LeftBrace) => {
-            *current += 1;
-            parse_block(tokens, current)
-        }
-        _ => parse_expression(tokens, current),
-    }
-}
-
-fn parse_variable_declaration(tokens: &[Token], current: &mut usize) -> AstNode {
-    if let Token::Let = tokens[*current] {
-        *current += 1;
-        if let Token::Identifier(name) = &tokens[*current] {
-            *current += 1;
-            if let Token::Equal = tokens[*current] {
-                *current += 1;
-                let value = parse_expression(tokens, current);
-                if let Token::Semicolon = tokens[*current] {
-                    *current += 1;
-                    return AstNode::VariableDeclaration {
-                        name: name.clone(),
-                        value: Box::new(value),
-                    };
-                }
-            }
-        }
-    }
-    AstNode::Number(0) // Fallback
-}
-
-fn parse_function(tokens: &[Token], current: &mut usize) -> AstNode {
-    if let Token::Fn = tokens[*current] {
-        *current += 1;
-        if let Token::Identifier(name) = &tokens[*current] {
-            *current += 1;
-            if let Token::LeftParen = tokens[*current] {
-                *current += 1;
-                let mut params = Vec::new();
-                while let Some(token) = tokens.get(*current) {
-                    if let Token::RightParen = token {
-                        break;
-                    }
-                    if let Token::Comma = token {
-                        *current += 1;
-                        continue;
-                    }
-                    if let Token::Identifier(param) = token {
-                        params.push(param.clone());
-                        *current += 1;
-                    }
-                }
-                *current += 1; // Consume the RightParen
-                if let Token::LeftBrace = tokens[*current] {
-                    *current += 1;
-                    let body = parse_block(tokens, current);
-                    return AstNode::Function {
-                        name: name.clone(),
-                        params,
-                        body: Box::new(body),
-                    };
-                }
-            }
-        }
-    }
-    AstNode::Number(0) // Fallback
-}
-
-fn parse_if(tokens: &[Token], current: &mut usize) -> AstNode {
-    if let Token::If = tokens[*current] {
-        *current += 1;
-        let condition = parse_expression(tokens, current);
-        if let Token::LeftBrace = tokens[*current] {
-            *current += 1;
-            let then_branch = parse_block(tokens, current);
-            let else_branch = if let Some(Token::Else) = tokens.get(*current) {
-                *current += 1;
-                if let Token::LeftBrace = tokens[*current] {
-                    *current += 1;
-                    Some(parse_block(tokens, current))
-                } else {
-                    None
-                }
+        Some(Token::Fn) => parse_function(tokens, current),
+        Some(Token::Identifier(_)) => {
+            // Check if it's a function call or assignment
+            if tokens.get(*current + 1) == Some(&Token::LeftParen)
+                || tokens.get(*current + 1) == Some(&Token::Equal)
+            {
+                parse_expression_statement(tokens, current)
             } else {
-                None
-            };
-            return AstNode::If {
-                condition: Box::new(condition),
-                then_branch: Box::new(then_branch),
-                else_branch: else_branch.map(Box::new),
-            };
+                Err(ParserError::UnknownStatementType)
+            }
         }
+        Some(Token::Number(_)) => parse_expression_statement(tokens, current),
+        Some(_) => Err(ParserError::UnknownStatementType),
+        None => Err(ParserError::UnexpectedEndOfInput),
     }
-    AstNode::Number(0) // Fallback
 }
 
-fn parse_while(tokens: &[Token], current: &mut usize) -> AstNode {
-    if let Token::While = tokens[*current] {
-        *current += 1;
-        let condition = parse_expression(tokens, current);
-        if let Token::LeftBrace = tokens[*current] {
+fn parse_expression_statement(
+    tokens: &[Token],
+    current: &mut usize,
+) -> Result<AstNode, ParserError> {
+    let expr = parse_expression(tokens, current)?;
+    match tokens.get(*current) {
+        Some(Token::Semicolon) => {
             *current += 1;
-            let body = parse_block(tokens, current);
-            return AstNode::While {
-                condition: Box::new(condition),
-                body: Box::new(body),
-            };
+            Ok(expr)
         }
+        _ => Err(ParserError::ExpectedSemicolon),
     }
-    AstNode::Number(0) // Fallback
 }
 
-fn parse_block(tokens: &[Token], current: &mut usize) -> AstNode {
+fn parse_variable_declaration(
+    tokens: &[Token],
+    current: &mut usize,
+) -> Result<AstNode, ParserError> {
+    *current += 1; // Consume 'let'
+    if let Some(Token::Identifier(name)) = tokens.get(*current) {
+        *current += 1;
+        expect_token(tokens, current, Token::Equal)?;
+
+        // Check if there's an expression after the equals sign
+        if tokens.get(*current) == Some(&Token::Semicolon) {
+            return Err(ParserError::ExpectedExpression);
+        }
+
+        let value = parse_expression(tokens, current)?;
+        expect_token(tokens, current, Token::Semicolon)?;
+        Ok(AstNode::VariableDeclaration {
+            name: name.clone(),
+            value: Box::new(value),
+        })
+    } else {
+        Err(ParserError::ExpectedVariableName)
+    }
+}
+
+fn expect_token(tokens: &[Token], current: &mut usize, expected: Token) -> Result<(), ParserError> {
+    if let Some(token) = tokens.get(*current) {
+        if *token == expected {
+            *current += 1;
+            Ok(())
+        } else {
+            Err(ParserError::UnexpectedToken)
+        }
+    } else {
+        Err(ParserError::UnexpectedEndOfInput)
+    }
+}
+
+fn parse_function(tokens: &[Token], current: &mut usize) -> Result<AstNode, ParserError> {
+    *current += 1; // Consume 'fn'
+    if let Some(Token::Identifier(name)) = tokens.get(*current) {
+        *current += 1;
+        expect_token(tokens, current, Token::LeftParen)?;
+        let mut params = Vec::new();
+        while let Some(token) = tokens.get(*current) {
+            match token {
+                Token::RightParen => break,
+                Token::Comma => *current += 1,
+                Token::Identifier(param) => {
+                    params.push(param.clone());
+                    *current += 1;
+                }
+                _ => return Err(ParserError::ExpectedParameterName),
+            }
+        }
+        expect_token(tokens, current, Token::RightParen)?;
+        let body = parse_block(tokens, current)?;
+        Ok(AstNode::Function {
+            name: name.clone(),
+            params,
+            body: Box::new(body),
+        })
+    } else {
+        Err(ParserError::ExpectedFunctionName)
+    }
+}
+
+fn parse_if(tokens: &[Token], current: &mut usize) -> Result<AstNode, ParserError> {
+    *current += 1; // Consume 'if'
+    expect_token(tokens, current, Token::LeftParen)?;
+    let condition = parse_expression(tokens, current)?;
+    expect_token(tokens, current, Token::RightParen)?;
+    let then_branch = parse_block(tokens, current)?;
+    let else_branch = if let Some(Token::Else) = tokens.get(*current) {
+        *current += 1;
+        Some(Box::new(parse_block(tokens, current)?))
+    } else {
+        None
+    };
+    Ok(AstNode::If {
+        condition: Box::new(condition),
+        then_branch: Box::new(then_branch),
+        else_branch,
+    })
+}
+
+fn parse_while(tokens: &[Token], current: &mut usize) -> Result<AstNode, ParserError> {
+    *current += 1; // Consume 'while'
+    expect_token(tokens, current, Token::LeftParen)?;
+    let condition = parse_expression(tokens, current)?;
+    expect_token(tokens, current, Token::RightParen)?;
+    let body = parse_block(tokens, current)?;
+    Ok(AstNode::While {
+        condition: Box::new(condition),
+        body: Box::new(body),
+    })
+}
+
+fn parse_block(tokens: &[Token], current: &mut usize) -> Result<AstNode, ParserError> {
+    expect_token(tokens, current, Token::LeftBrace)?;
     let mut nodes = Vec::new();
     while let Some(token) = tokens.get(*current) {
         if let Token::RightBrace = token {
+            *current += 1;
             break;
         }
-        nodes.push(parse_statement(tokens, current));
+        match parse_statement(tokens, current) {
+            Ok(node) => nodes.push(node),
+            Err(ParserError::UnknownStatementType) => {
+                // Skip the unknown statement and continue parsing
+                *current += 1;
+                while let Some(token) = tokens.get(*current) {
+                    if let Token::Semicolon = token {
+                        *current += 1;
+                        break;
+                    }
+                    *current += 1;
+                }
+            }
+            Err(e) => return Err(e),
+        }
     }
-    *current += 1; // Consume the RightBrace
-    AstNode::Block(nodes)
+    Ok(AstNode::Block(nodes))
 }
