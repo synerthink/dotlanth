@@ -1,9 +1,11 @@
 pub mod add;
 pub mod div;
+pub mod mul;
 pub mod sub;
 
 pub use add::Add;
 pub use div::Div;
+pub use mul::Mul;
 pub use sub::Sub;
 
 use crate::core::execution_engine::errors::InstructionError;
@@ -13,9 +15,9 @@ use super::InstructionProcessor;
 /// # ArithmeticInstruction
 ///
 /// This enum represents the various arithmetic instructions available.
-/// 
+///
 /// ## Variants
-/// 
+///
 /// - `Add`: Represents the addition operation.
 /// - `Sub`: Represents the subtraction operation.
 /// - `Div`: Represents the division operation.
@@ -24,6 +26,7 @@ pub enum ArithmeticInstruction {
     Add,
     Sub,
     Div,
+    Mul,
 }
 
 impl ArithmeticInstruction {
@@ -45,6 +48,7 @@ impl ArithmeticInstruction {
             ArithmeticInstruction::Add => Add::execute(processor).map_err(Into::into),
             ArithmeticInstruction::Sub => Sub::execute(processor).map_err(Into::into),
             ArithmeticInstruction::Div => Div::execute(processor).map_err(Into::into),
+            ArithmeticInstruction::Mul => Mul::execute(processor).map_err(Into::into),
         }
     }
 }
@@ -52,6 +56,6 @@ impl ArithmeticInstruction {
 #[cfg(test)]
 mod tests {
     mod add_tests;
-    mod sub_tests;
     mod div_tests;
+    mod sub_tests;
 }

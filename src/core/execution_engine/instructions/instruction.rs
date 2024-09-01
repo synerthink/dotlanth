@@ -1,4 +1,4 @@
-use crate::core::execution_engine::errors::InstructionError;
+use crate::core::execution_engine::{errors::InstructionError, opcodes::opcode::Opcode};
 
 use super::{
     ArithmeticInstruction, ControlFlowInstruction, InstructionProcessor, MemoryInstruction,
@@ -39,6 +39,20 @@ impl Instruction {
             Instruction::Arithmetic(instr) => instr.execute(processor),
             Instruction::Memory(instr) => instr.execute(processor),
             Instruction::ControlFlow(instr) => instr.execute(processor),
+        }
+    }
+
+    pub fn from_opcode(opcode: Opcode) -> Result<Self, InstructionError> {
+        match opcode {
+            Opcode::Add => Ok(Instruction::Arithmetic(ArithmeticInstruction::Add)),
+            Opcode::Sub => Ok(Instruction::Arithmetic(ArithmeticInstruction::Sub)),
+            Opcode::Mul => Ok(Instruction::Arithmetic(ArithmeticInstruction::Mul)),
+            Opcode::Div => Ok(Instruction::Arithmetic(ArithmeticInstruction::Div)),
+            Opcode::LoadFromMemory => Ok(Instruction::Memory(MemoryInstruction::Load)),
+            Opcode::StoreToMemory => Ok(Instruction::Memory(MemoryInstruction::Store)),
+            Opcode::Jump => Ok(Instruction::ControlFlow(ControlFlowInstruction::Jump)),
+            Opcode::JumpIf => Ok(Instruction::ControlFlow(ControlFlowInstruction::JumpIf)),
+            Opcode::LoadNumber | Opcode::CallFunction => Err(InstructionError::InvalidOpcode),
         }
     }
 }
