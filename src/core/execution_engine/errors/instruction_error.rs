@@ -18,6 +18,8 @@ pub enum InstructionError {
     StackUnderflow,
     InvalidMemoryAddress,
     Other(String),
+    FunctionNotFound(String),
+    InvalidFunctionIndex,
 }
 
 impl fmt::Display for InstructionError {
@@ -37,6 +39,8 @@ impl fmt::Display for InstructionError {
             InstructionError::StackUnderflow => write!(f, "Stack underflow"),
             InstructionError::InvalidMemoryAddress => write!(f, "Invalid memory address"),
             InstructionError::Other(msg) => write!(f, "Other error: {}", msg),
+            InstructionError::FunctionNotFound(msg) => write!(f, "Function not found: {}", msg),
+            InstructionError::InvalidFunctionIndex => write!(f, "Invalid function index"),
         }
     }
 }

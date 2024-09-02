@@ -1,13 +1,15 @@
 use crate::{
     contracts::SimpleAdditionContract,
-    core::execution_engine::{
-        errors::InstructionError,
-        instructions::{
-            ArithmeticInstruction, ControlFlowInstruction, InstructionProcessor, MemoryInstruction,
+    core::{
+        dotlang::compiler::compiler::DotLangCompiler,
+        execution_engine::{
+            errors::InstructionError,
+            instructions::{Instruction, InstructionProcessor},
+            opcodes::opcode::Opcode,
         },
     },
 };
-use log::{debug, info};
+use log::{debug, error, info};
 
 use super::errors::VMError;
 
@@ -15,58 +17,61 @@ pub struct ExecutionEngine;
 
 impl ExecutionEngine {
     pub fn execute_contract(contract: &SimpleAdditionContract) -> Result<i32, VMError> {
-        debug!("Input parameters: a={}, b={}", contract.a, contract.b);
+        debug!("Compiling and executing contract source code...");
+        let compiler = DotLangCompiler;
+        let bytecode = compiler
+            .compile(&contract.source_code)
+            .map_err(|e| VMError::CompilationError(e.to_string()))?;
+
+        info!("Compiled bytecode: {:?}", bytecode);
 
         let mut processor = InstructionProcessor::new();
 
-        processor.stack.push(contract.a);
-        processor.stack.push(contract.b);
-        ArithmeticInstruction::Add.execute(&mut processor)?;
-        let add_result = processor.stack.pop().unwrap();
-        info!("Executing instruction: ADD, result = {}", add_result);
-
-        processor.stack.push(contract.a);
-        processor.stack.push(contract.b);
-        ArithmeticInstruction::Sub.execute(&mut processor)?;
-        let sub_result = processor.stack.pop().unwrap();
-        info!("Executing instruction: SUB, result = {}", sub_result);
-
-        processor.stack.push(contract.a);
-        processor.stack.push(0); // This should trigger DivisionByZero
-        match ArithmeticInstruction::Div.execute(&mut processor) {
-            Ok(_) => {
-                let div_result = processor.stack.pop().unwrap();
-                info!("Executing instruction: DIV, result = {}", div_result);
-            }
-            Err(InstructionError::DivisionByZero) => {
-                info!("Executing instruction: DIV, result = Division by zero error");
-            }
-            Err(e) => return Err(e.into()),
+        // Load bytecode into memory
+        for (i, &byte) in bytecode.iter().enumerate() {
+            processor.memory.insert(i, byte as i32);
         }
 
-        processor.stack.push(10);
-        ControlFlowInstruction::Jump.execute(&mut processor)?;
-        info!("Executing instruction: JUMP to address 10");
+        while processor.program_counter < bytecode.len() {
+            let byte =
+                *processor
+                    .memory
+                    .get(&processor.program_counter)
+                    .ok_or(VMError::ExecutionError(
+                        "Invalid program counter".to_owned(),
+                    ))? as u8;
+            info!(
+                "Processing byte: {:02x} at position {}",
+                byte, processor.program_counter
+            );
 
-        processor.stack.push(1);
-        processor.stack.push(20);
-        ControlFlowInstruction::JumpIf.execute(&mut processor)?;
-        info!("Executing instruction: JUMPIF to address 20");
+            let opcode = match Opcode::try_from(byte) {
+                Ok(op) => op,
+                Err(_) => {
+                    error!(
+                        "Invalid opcode: {:02x} at position {}",
+                        byte, processor.program_counter
+                    );
+                    return Err(VMError::ExecutionError("Invalid opcode".to_owned()));
+                }
+            };
+            info!("Decoded opcode: {:?}", opcode);
 
-        processor.memory.insert(30, 999);
-        processor.stack.push(30);
-        MemoryInstruction::Load.execute(&mut processor)?;
-        let load_result = processor.stack.pop().unwrap();
-        info!(
-            "Executing instruction: LOAD from address 30, result = {}",
-            load_result
-        );
+            let instruction = Instruction::from_opcode(opcode)
+                .map_err(|e| VMError::ExecutionError(e.to_string()))?;
 
-        processor.stack.push(42);
-        processor.stack.push(40);
-        MemoryInstruction::Store.execute(&mut processor)?;
-        info!("Executing instruction: STORE value 42 at address 40");
+            info!("Created instruction: {:?}", instruction);
 
-        Ok(add_result)
+            instruction
+                .execute(&mut processor)
+                .map_err(|e| VMError::ExecutionError(e.to_string()))?;
+
+            processor.program_counter += 1;
+        }
+
+        processor
+            .stack
+            .pop()
+            .ok_or(VMError::ExecutionError("Stack is empty".to_owned()))
     }
 }

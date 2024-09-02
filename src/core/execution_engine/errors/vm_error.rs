@@ -1,3 +1,5 @@
+use crate::core::execution_engine::instructions::instruction;
+
 use super::instruction_error::InstructionError;
 use std::fmt;
 
@@ -14,6 +16,8 @@ use std::fmt;
 pub enum VMError {
     InstructionError(InstructionError),
     UnknownInstruction(String),
+    CompilationError(String),
+    ExecutionError(String),
     Other(String),
 }
 
@@ -31,6 +35,8 @@ impl fmt::Display for VMError {
         match self {
             VMError::InstructionError(err) => write!(f, "Instruction error: {}", err),
             VMError::UnknownInstruction(inst) => write!(f, "Unknown instruction: {}", inst),
+            VMError::CompilationError(msg) => write!(f, "Compilation error: {}", msg),
+            VMError::ExecutionError(msg) => write!(f, "Execution error: {}", msg),
             VMError::Other(msg) => write!(f, "Other error: {}", msg),
         }
     }
