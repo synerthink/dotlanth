@@ -1,7 +1,7 @@
-use crate::core::execution_engine::errors::VMError;
+use crate::core::execution_engine::errors::{InstructionError, VMError};
 use std::collections::HashMap;
 
-use super::Instruction;
+use super::{function::function::Function, Instruction};
 
 /// # InstructionProcessor
 ///
@@ -12,6 +12,8 @@ pub struct InstructionProcessor {
     pub memory: HashMap<usize, i32>,
     pub program_counter: usize,
     pub instructions: HashMap<String, Instruction>,
+    pub functions: Vec<Function>,
+    pub call_stack: Vec<usize>,
 }
 
 impl InstructionProcessor {
@@ -27,6 +29,8 @@ impl InstructionProcessor {
             memory: HashMap::new(),
             program_counter: 0,
             instructions: HashMap::new(),
+            functions: Vec::new(),
+            call_stack: Vec::new(),
         }
     }
 

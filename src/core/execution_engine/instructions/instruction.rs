@@ -1,6 +1,7 @@
-use crate::core::execution_engine::errors::InstructionError;
+use crate::core::execution_engine::{errors::InstructionError, opcodes::opcode::Opcode};
 
 use super::{
+    function::FunctionInstruction, immediate_value::ImmediateValueInstruction,
     ArithmeticInstruction, ControlFlowInstruction, InstructionProcessor, MemoryInstruction,
 };
 
@@ -18,6 +19,8 @@ pub enum Instruction {
     Arithmetic(ArithmeticInstruction),
     Memory(MemoryInstruction),
     ControlFlow(ControlFlowInstruction),
+    ImmediateValue(ImmediateValueInstruction),
+    Function(FunctionInstruction),
 }
 
 impl Instruction {
@@ -39,6 +42,23 @@ impl Instruction {
             Instruction::Arithmetic(instr) => instr.execute(processor),
             Instruction::Memory(instr) => instr.execute(processor),
             Instruction::ControlFlow(instr) => instr.execute(processor),
+            Instruction::ImmediateValue(instr) => instr.execute(processor),
+            Instruction::Function(instr) => instr.execute(processor),
+        }
+    }
+
+    pub fn from_opcode(opcode: Opcode) -> Result<Self, InstructionError> {
+        match opcode {
+            Opcode::Add => Ok(Instruction::Arithmetic(ArithmeticInstruction::Add)),
+            Opcode::Sub => Ok(Instruction::Arithmetic(ArithmeticInstruction::Sub)),
+            Opcode::Mul => Ok(Instruction::Arithmetic(ArithmeticInstruction::Mul)),
+            Opcode::Div => Ok(Instruction::Arithmetic(ArithmeticInstruction::Div)),
+            Opcode::LoadFromMemory => Ok(Instruction::Memory(MemoryInstruction::Load)),
+            Opcode::StoreToMemory => Ok(Instruction::Memory(MemoryInstruction::Store)),
+            Opcode::Jump => Ok(Instruction::ControlFlow(ControlFlowInstruction::Jump)),
+            Opcode::JumpIf => Ok(Instruction::ControlFlow(ControlFlowInstruction::JumpIf)),
+            Opcode::LoadNumber => Ok(Instruction::ImmediateValue(ImmediateValueInstruction::LoadNumber)),
+            Opcode::CallFunction => Ok(Instruction::Function(FunctionInstruction::CallFunction)),
         }
     }
 }
