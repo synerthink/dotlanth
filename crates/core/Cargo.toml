@@ -1,0 +1,18 @@
+[package]
+name = "dotvm-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dotvm-common = { path = "../common" }
+tokio.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+metrics.workspace= true
+
+[dev-dependencies]
+criterion.workspace = true
+mockall.workspace = true
+proptest.workspace = true

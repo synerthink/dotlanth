@@ -1,0 +1,12 @@
+[package]
+name = "dotvm-tools"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dotvm-common = { path = "../common" }
+dotvm-core = { path = "../core" }
+dotvm-compiler = { path = "../compiler" }
+clap.workspace = true
+tokio.workspace = true
+tracing.workspace = true

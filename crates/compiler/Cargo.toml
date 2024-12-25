@@ -1,0 +1,11 @@
+[package]
+name = "dotvm-compiler"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dotvm-common = { path = "../common" }
+tokio.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

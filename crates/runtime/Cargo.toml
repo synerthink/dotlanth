@@ -1,0 +1,13 @@
+[package]
+name = "dotvm-runtime"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dotvm-common = { path = "../common" }
+dotvm-core = { path = "../core" }
+tokio.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+tracing.workspace = true
