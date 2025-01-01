@@ -8,5 +8,6 @@ dotvm-common = { path = "../common" }
 dotvm-core = { path = "../core" }
 dotvm-compiler = { path = "../compiler" }
 clap.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true
+tracing-subscriber = { workspace = true }
