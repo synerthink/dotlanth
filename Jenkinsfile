@@ -1,9 +1,14 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'rust:latest'
+            args '-v cargo-cache:/usr/local/cargo/registry'
+        }
+    }
     
     environment {
-        CARGO_HOME = '/var/jenkins_home/.cargo'
-        RUSTUP_HOME = '/var/jenkins_home/.rustup'
+        CARGO_HOME = '/usr/local/cargo'
+        RUSTUP_HOME = '/usr/local/rustup'
         PATH = "$CARGO_HOME/bin:$PATH"
         RUST_BACKTRACE = '1'
         RUST_LOG = 'debug'
@@ -15,24 +20,11 @@ pipeline {
     }
     
     stages {
-        stage('Setup Dependencies') {
-            steps {
-                sh '''#!/bin/bash
-                    # Install build essentials and other dependencies
-                    apt-get update
-                    apt-get install -y build-essential pkg-config git clang
-                '''
-            }
-        }
-        
         stage('Setup Rust') {
             steps {
                 sh '''#!/bin/bash
-                    # Install rustup
-                    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
-                    
-                    # Load the cargo environment
-                    . "$CARGO_HOME/env"
+                    # Switch to nightly
+                    rustup default nightly
                     
                     # Install components
                     rustup component add rustfmt clippy rust-src
@@ -42,46 +34,31 @@ pipeline {
         
         stage('Check Format') {
             steps {
-                sh '''#!/bin/bash
-                    . "$CARGO_HOME/env"
-                    cargo fmt --all -- --check
-                '''
+                sh 'cargo fmt --all -- --check'
             }
         }
         
         stage('Lint') {
             steps {
-                sh '''#!/bin/bash
-                    . "$CARGO_HOME/env"
-                    cargo clippy --workspace -- -D warnings
-                '''
+                sh 'cargo clippy --workspace -- -D warnings'
             }
         }
         
         stage('Build') {
             steps {
-                sh '''#!/bin/bash
-                    . "$CARGO_HOME/env"
-                    cargo build --workspace
-                '''
+                sh 'cargo build --workspace'
             }
         }
         
         stage('Test') {
             steps {
-                sh '''#!/bin/bash
-                    . "$CARGO_HOME/env"
-                    cargo test --workspace
-                '''
+                sh 'cargo test --workspace'
             }
         }
         
         stage('Documentation') {
             steps {
-                sh '''#!/bin/bash
-                    . "$CARGO_HOME/env"
-                    cargo doc --workspace --no-deps
-                '''
+                sh 'cargo doc --workspace --no-deps'
             }
         }
         
@@ -90,10 +67,7 @@ pipeline {
                 branch 'main'
             }
             steps {
-                sh '''#!/bin/bash
-                    . "$CARGO_HOME/env"
-                    cargo build --workspace --release
-                '''
+                sh 'cargo build --workspace --release'
             }
         }
     }
