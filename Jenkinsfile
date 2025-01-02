@@ -4,15 +4,11 @@ pipeline {
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         durabilityHint('PERFORMANCE_OPTIMIZED')
-    }
-    
-    // Define properties including GitHub project
-    properties([
         githubProjectProperty(
             displayName: 'dotVM',
             projectUrlStr: 'https://github.com/synerthink-organization/dotVM/'
         )
-    ])
+    }
     
     stages {
         stage('Matrix Build') {
@@ -34,7 +30,6 @@ pipeline {
                         }
                         
                         steps {
-                            // Set pending status using GitHub API
                             withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                                 sh """
                                     curl -H "Authorization: token ${GITHUB_TOKEN}" \
@@ -89,7 +84,6 @@ pipeline {
                                 }
                             }
                             failure {
-                                // Set failure status using GitHub API
                                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                                     sh """
                                         curl -H "Authorization: token ${GITHUB_TOKEN}" \
