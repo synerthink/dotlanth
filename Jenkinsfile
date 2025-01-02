@@ -15,6 +15,16 @@ pipeline {
     }
     
     stages {
+        stage('Setup Dependencies') {
+            steps {
+                sh '''#!/bin/bash
+                    # Install build essentials and other dependencies
+                    apt-get update
+                    apt-get install -y build-essential pkg-config git clang
+                '''
+            }
+        }
+        
         stage('Setup Rust') {
             steps {
                 sh '''#!/bin/bash
