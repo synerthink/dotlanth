@@ -1,15 +1,23 @@
 pipeline {
     agent any
     
-    // Define platforms to build on
+    // Define build platforms
     environment {
-        PLATFORMS = ['linux', 'windows', 'macos']
-        GITHUB_TOKEN = credentials('github-token')
+        REPO_OWNER = 'synerthink-organization'
+        REPO_NAME = 'dotVM'
+        BUILD_PLATFORMS = 'linux,windows,macos'  // Comma-separated string for environment variable
     }
     
     stages {
-        stage('Build and Test Matrix') {
+        stage('Matrix Build') {
             matrix {
+                agent {
+                    docker {
+                        image 'rust:latest'
+                        args '-v cargo-cache:/usr/local/cargo/registry --user root'
+                    }
+                }
+                
                 axes {
                     axis {
                         name 'PLATFORM'
@@ -18,69 +26,137 @@ pipeline {
                 }
                 
                 stages {
-                    stage('Build and Test') {
-                        agent {
-                            docker {
-                                image 'rust:latest'
-                                args '-v cargo-cache:/usr/local/cargo/registry --user root'
+                    stage('Set Pending Status') {
+                        steps {
+                            sshagent(['jenkinssh']) {
+                                sh """
+                                    curl -i -H "Accept: application/vnd.github.v3+json" \
+                                        --user "${REPO_OWNER}:${SSH_KEY}" \
+                                        -X POST \
+                                        -d '{"state": "pending", "target_url": "${env.BUILD_URL}", "description": "Build is pending", "context": "ci/jenkins/${PLATFORM}"}' \
+                                        https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT}
+                                """
                             }
                         }
-                        
+                    }
+                    
+                    stage('Setup Rust') {
+                        steps {
+                            sh '''#!/bin/bash
+                                mkdir -p /usr/local/cargo/registry
+                                chmod -R 777 /usr/local/cargo/registry
+                                rustup default nightly
+                                rustup component add rustfmt clippy rust-src
+                                rustup target add x86_64-unknown-linux-gnu
+                                rustup target add x86_64-pc-windows-gnu
+                                rustup target add x86_64-apple-darwin
+                            '''
+                        }
+                    }
+                    
+                    stage('Check Format') {
+                        steps {
+                            sh 'cargo fmt --all -- --check'
+                        }
+                    }
+                    
+                    stage('Lint') {
+                        steps {
+                            sh 'cargo clippy --workspace -- -D warnings'
+                        }
+                    }
+                    
+                    stage('Platform Build') {
                         steps {
                             script {
-                                // Set build status to pending
-                                setBuildStatus("${PLATFORM} build/test in progress", "PENDING")
-                                
-                                try {
-                                    // Setup stage
-                                    stage('Setup Rust') {
-                                        sh '''#!/bin/bash
-                                            mkdir -p /usr/local/cargo/registry
-                                            chmod -R 777 /usr/local/cargo/registry
-                                            rustup default nightly
-                                            rustup component add rustfmt clippy rust-src
-                                        '''
-                                    }
-
-                                    // Format check stage
-                                    stage('Check Format') {
-                                        sh 'cargo fmt --all -- --check'
-                                    }
-
-                                    // Lint stage
-                                    stage('Lint') {
-                                        sh 'cargo clippy --workspace -- -D warnings'
-                                    }
-
-                                    // Build stage
-                                    stage('Build') {
-                                        sh 'cargo build --workspace'
-                                    }
-
-                                    // Test stage
-                                    stage('Test') {
-                                        sh 'cargo test --workspace'
-                                    }
-
-                                    // Documentation stage
-                                    stage('Documentation') {
-                                        sh 'cargo doc --workspace --no-deps'
-                                    }
-
-                                    // Release build for main branch
-                                    if (env.BRANCH_NAME == 'main') {
-                                        stage('Build Release') {
-                                            sh 'cargo build --workspace --release'
-                                        }
-                                    }
-
-                                    // Set success status
-                                    setBuildStatus("${PLATFORM} build/test succeeded", "SUCCESS")
-                                } catch (Exception e) {
-                                    setBuildStatus("${PLATFORM} build/test failed", "FAILURE")
-                                    throw e
+                                def target
+                                switch(PLATFORM) {
+                                    case 'linux':
+                                        target = 'x86_64-unknown-linux-gnu'
+                                        break
+                                    case 'windows':
+                                        target = 'x86_64-pc-windows-gnu'
+                                        break
+                                    case 'macos':
+                                        target = 'x86_64-apple-darwin'
+                                        break
                                 }
+                                sh "cargo build --workspace --target ${target}"
                             }
+                        }
+                    }
+                    
+                    stage('Test') {
+                        steps {
+                            script {
+                                def target
+                                switch(PLATFORM) {
+                                    case 'linux':
+                                        target = 'x86_64-unknown-linux-gnu'
+                                        break
+                                    case 'windows':
+                                        target = 'x86_64-pc-windows-gnu'
+                                        break
+                                    case 'macos':
+                                        target = 'x86_64-apple-darwin'
+                                        break
+                                }
+                                sh "cargo test --workspace --target ${target}"
+                            }
+                        }
+                    }
+                    
+                    stage('Documentation') {
+                        steps {
+                            sh 'cargo doc --workspace --no-deps'
+                        }
+                    }
+                    
+                    stage('Build Release') {
+                        when {
+                            branch 'main'
+                        }
+                        steps {
+                            script {
+                                def target
+                                switch(PLATFORM) {
+                                    case 'linux':
+                                        target = 'x86_64-unknown-linux-gnu'
+                                        break
+                                    case 'windows':
+                                        target = 'x86_64-pc-windows-gnu'
+                                        break
+                                    case 'macos':
+                                        target = 'x86_64-apple-darwin'
+                                        break
+                                }
+                                sh "cargo build --workspace --release --target ${target}"
+                            }
+                        }
+                    }
+                }
+                
+                post {
+                    success {
+                        sshagent(['jenkinssh']) {
+                            sh """
+                                curl -i -H "Accept: application/vnd.github.v3+json" \
+                                    --user "${REPO_OWNER}:${SSH_KEY}" \
+                                    -X POST \
+                                    -d '{"state": "success", "target_url": "${env.BUILD_URL}", "description": "Build succeeded", "context": "ci/jenkins/${PLATFORM}"}' \
+                                    https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT}
+                            """
+                        }
+                    }
+                    failure {
+                        sshagent(['jenkinssh']) {
+                            sh """
+                                curl -i -H "Accept: application/vnd.github.v3+json" \
+                                    --user "${REPO_OWNER}:${SSH_KEY}" \
+                                    -X POST \
+                                    -d '{"state": "failure", "target_url": "${env.BUILD_URL}", "description": "Build failed", "context": "ci/jenkins/${PLATFORM}"}' \
+                                    https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/statuses/${GIT_COMMIT}
+                            """
                         }
                     }
                 }
@@ -93,52 +169,10 @@ pipeline {
             cleanWs()
         }
         success {
-            script {
-                setBuildStatus("All builds succeeded", "SUCCESS")
-                echo 'Build succeeded!'
-            }
+            echo 'All builds succeeded!'
         }
         failure {
-            script {
-                setBuildStatus("Build failed", "FAILURE")
-                echo 'Build failed!'
-            }
+            echo 'Some builds failed!'
         }
     }
-}
-
-// Function to set GitHub commit status
-void setBuildStatus(String message, String state) {
-    // Using curl to update GitHub status
-    sh """
-        curl -H "Authorization: token ${GITHUB_TOKEN}" \
-             -X POST \
-             -H "Accept: application/vnd.github.v3+json" \
-             https://api.github.com/repos/${env.GITHUB_REPO}/statuses/${env.GIT_COMMIT} \
-             -d '{
-                 "state": "${state.toLowerCase()}", 
-                 "target_url": "${env.BUILD_URL}", 
-                 "description": "${message}", 
-                 "context": "continuous-integration/jenkins"
-             }'
-    """
-}
-
-// Platform-specific configurations
-def getPlatformConfig(platform) {
-    def configs = [
-        'linux': [
-            image: 'rust:latest',
-            shell: 'bash'
-        ],
-        'windows': [
-            image: 'rust:latest-windowsservercore',
-            shell: 'powershell'
-        ],
-        'macos': [
-            image: 'rust:latest',
-            shell: 'bash'
-        ]
-    ]
-    return configs[platform]
 }
