@@ -1,5 +1,7 @@
 pipeline {
-    agent none
+    agent {
+        label 'linux'
+    }
     
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -30,19 +32,25 @@ pipeline {
                         }
                         
                         steps {
-                            withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                                sh """
-                                    curl -H "Authorization: token ${GITHUB_TOKEN}" \
-                                    -X POST \
-                                    -H "Accept: application/vnd.github.v3+json" \
-                                    https://api.github.com/repos/synerthink-organization/dotVM/statuses/\${GIT_COMMIT} \
-                                    -d '{
-                                        "state": "pending",
-                                        "target_url": "${BUILD_URL}",
-                                        "description": "Build started on ${PLATFORM}",
-                                        "context": "ci/jenkins/${PLATFORM}"
-                                    }'
-                                """
+                            script {
+                                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                                    try {
+                                        sh """
+                                            curl -H "Authorization: token ${GITHUB_TOKEN}" \
+                                            -X POST \
+                                            -H "Accept: application/vnd.github.v3+json" \
+                                            https://api.github.com/repos/synerthink-organization/dotVM/statuses/\${GIT_COMMIT} \
+                                            -d '{
+                                                "state": "pending",
+                                                "target_url": "${BUILD_URL}",
+                                                "description": "Build started on ${PLATFORM}",
+                                                "context": "ci/jenkins/${PLATFORM}"
+                                            }'
+                                        """
+                                    } catch (Exception e) {
+                                        echo "Failed to update GitHub status: ${e.message}"
+                                    }
+                                }
                             }
                             
                             sh '''#!/bin/bash
@@ -67,36 +75,47 @@ pipeline {
                         
                         post {
                             success {
-                                // Set success status using GitHub API
-                                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                                    sh """
-                                        curl -H "Authorization: token ${GITHUB_TOKEN}" \
-                                        -X POST \
-                                        -H "Accept: application/vnd.github.v3+json" \
-                                        https://api.github.com/repos/synerthink-organization/dotVM/statuses/\${GIT_COMMIT} \
-                                        -d '{
-                                            "state": "success",
-                                            "target_url": "${BUILD_URL}",
-                                            "description": "Build succeeded on ${PLATFORM}",
-                                            "context": "ci/jenkins/${PLATFORM}"
-                                        }'
-                                    """
+                                script {
+                                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                                        try {
+                                            sh """
+                                                curl -H "Authorization: token ${GITHUB_TOKEN}" \
+                                                -X POST \
+                                                -H "Accept: application/vnd.github.v3+json" \
+                                                https://api.github.com/repos/synerthink-organization/dotVM/statuses/\${GIT_COMMIT} \
+                                                -d '{
+                                                    "state": "success",
+                                                    "target_url": "${BUILD_URL}",
+                                                    "description": "Build succeeded on ${PLATFORM}",
+                                                    "context": "ci/jenkins/${PLATFORM}"
+                                                }'
+                                            """
+                                        } catch (Exception e) {
+                                            echo "Failed to update GitHub status: ${e.message}"
+                                        }
+                                    }
                                 }
                             }
                             failure {
-                                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                                    sh """
-                                        curl -H "Authorization: token ${GITHUB_TOKEN}" \
-                                        -X POST \
-                                        -H "Accept: application/vnd.github.v3+json" \
-                                        https://api.github.com/repos/synerthink-organization/dotVM/statuses/\${GIT_COMMIT} \
-                                        -d '{
-                                            "state": "failure",
-                                            "target_url": "${BUILD_URL}",
-                                            "description": "Build failed on ${PLATFORM}",
-                                            "context": "ci/jenkins/${PLATFORM}"
-                                        }'
-                                    """
+                                script {
+                                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                                        try {
+                                            sh """
+                                                curl -H "Authorization: token ${GITHUB_TOKEN}" \
+                                                -X POST \
+                                                -H "Accept: application/vnd.github.v3+json" \
+                                                https://api.github.com/repos/synerthink-organization/dotVM/statuses/\${GIT_COMMIT} \
+                                                -d '{
+                                                    "state": "failure",
+                                                    "target_url": "${BUILD_URL}",
+                                                    "description": "Build failed on ${PLATFORM}",
+                                                    "context": "ci/jenkins/${PLATFORM}"
+                                                }'
+                                            """
+                                        } catch (Exception e) {
+                                            echo "Failed to update GitHub status: ${e.message}"
+                                        }
+                                    }
                                 }
                             }
                         }
