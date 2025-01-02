@@ -31,7 +31,7 @@ pipeline {
                         
                         steps {
                             script {
-                                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                                withCredentials([string(credentialsId: 'GIT_TOKEN', variable: 'GITHUB_TOKEN')]) {
                                     try {
                                         sh """
                                             curl -H "Authorization: token ${GITHUB_TOKEN}" \
@@ -74,7 +74,7 @@ pipeline {
                         post {
                             success {
                                 script {
-                                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                                    withCredentials([string(credentialsId: 'GIT_TOKEN', variable: 'GITHUB_TOKEN')]) {
                                         try {
                                             sh """
                                                 curl -H "Authorization: token ${GITHUB_TOKEN}" \
@@ -96,7 +96,7 @@ pipeline {
                             }
                             failure {
                                 script {
-                                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                                    withCredentials([string(credentialsId: 'GIT_TOKEN', variable: 'GITHUB_TOKEN')]) {
                                         try {
                                             sh """
                                                 curl -H "Authorization: token ${GITHUB_TOKEN}" \
