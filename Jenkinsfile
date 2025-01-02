@@ -1,6 +1,6 @@
 pipeline {
     agent any
-
+    
     environment {
         CARGO_HOME = '/var/jenkins_home/.cargo'
         RUSTUP_HOME = '/var/jenkins_home/.rustup'
@@ -8,63 +8,86 @@ pipeline {
         RUST_BACKTRACE = '1'
         RUST_LOG = 'debug'
     }
-
+    
     options {
         timeout(time: 1, unit: 'HOURS')
         disableConcurrentBuilds()
     }
-
+    
     stages {
         stage('Setup Rust') {
             steps {
-                sh '''
+                sh '''#!/bin/bash
+                    # Install rustup
                     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
-                    source "$CARGO_HOME/env"
+                    
+                    # Load the cargo environment
+                    . "$CARGO_HOME/env"
+                    
+                    # Install components
                     rustup component add rustfmt clippy rust-src
                 '''
             }
         }
-
+        
         stage('Check Format') {
             steps {
-                sh 'cargo fmt --all -- --check'
+                sh '''#!/bin/bash
+                    . "$CARGO_HOME/env"
+                    cargo fmt --all -- --check
+                '''
             }
         }
-
+        
         stage('Lint') {
             steps {
-                sh 'cargo clippy --workspace -- -D warnings'
+                sh '''#!/bin/bash
+                    . "$CARGO_HOME/env"
+                    cargo clippy --workspace -- -D warnings
+                '''
             }
         }
-
+        
         stage('Build') {
             steps {
-                sh 'cargo build --workspace'
+                sh '''#!/bin/bash
+                    . "$CARGO_HOME/env"
+                    cargo build --workspace
+                '''
             }
         }
-
+        
         stage('Test') {
             steps {
-                sh 'cargo test --workspace'
+                sh '''#!/bin/bash
+                    . "$CARGO_HOME/env"
+                    cargo test --workspace
+                '''
             }
         }
-
+        
         stage('Documentation') {
             steps {
-                sh 'cargo doc --workspace --no-deps'
+                sh '''#!/bin/bash
+                    . "$CARGO_HOME/env"
+                    cargo doc --workspace --no-deps
+                '''
             }
         }
-
+        
         stage('Build Release') {
-            when { 
-                branch 'main' 
+            when {
+                branch 'main'
             }
             steps {
-                sh 'cargo build --workspace --release'
+                sh '''#!/bin/bash
+                    . "$CARGO_HOME/env"
+                    cargo build --workspace --release
+                '''
             }
         }
     }
-
+    
     post {
         always {
             cleanWs()
