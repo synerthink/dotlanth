@@ -7,4 +7,8 @@
 
 # Ignore OS-specific files  
 .DS_Store  
-Thumbs.db  
+Thumbs.db
+
+# Ignore IDE files
+.idea
+.vscode
