@@ -45,10 +45,16 @@ pipeline {
                 }
                 
                 stages {
+                    stage('Verify Docker Image') {
+                        steps {
+                            sh 'docker pull rust:nightly-slim'
+                        }
+                    }
+                    
                     stage('Build and Test') {
                         agent {
                             docker {
-                                image 'rust:nightly'
+                                image 'rust:nightly-slim'
                                 args '-v cargo-cache:/usr/local/cargo/registry'
                                 reuseNode true
                             }
