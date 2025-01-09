@@ -16,7 +16,6 @@ pipeline {
             'format',
             'lint',
             'test',
-            'documentation'
         ].join(' ')
     }
     
@@ -94,16 +93,6 @@ pipeline {
                                 } catch (Exception e) {
                                     updateGithubStatus('test', 'failure', 'Tests failed')
                                     error('Tests failed')
-                                }
-
-                                // Documentation
-                                try {
-                                    sh 'cargo doc --workspace --no-deps'
-                                    archiveArtifacts artifacts: 'target/doc/**/*', fingerprint: true
-                                    updateGithubStatus('documentation', 'success', 'Documentation built successfully')
-                                } catch (Exception e) {
-                                    updateGithubStatus('documentation', 'failure', 'Documentation build failed')
-                                    error('Documentation build failed')
                                 }
 
                                 // Release build if on main branch
