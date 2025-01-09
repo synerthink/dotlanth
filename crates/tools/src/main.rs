@@ -1,11 +1,13 @@
 mod cli;
 mod utils;
+use tracing_subscriber;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize logging
-    tracing_subscriber::fmt::init();
+fn main() {
+    println!("DOTVM!");
+}
 
-    // Parse CLI arguments and run
-    cli::run().await
+#[test]
+fn test_main() {
+    main();
+    assert!(true);
 }

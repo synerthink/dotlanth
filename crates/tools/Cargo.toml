@@ -11,3 +11,12 @@ clap.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["async_tokio"] }
+tokio-test = "0.4"
+test-case = "3.0"
+
+[[bench]]
+name = "benchmarks"
+harness = false
