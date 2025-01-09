@@ -47,13 +47,23 @@ pipeline {
                 stages {
                     stage('Setup') {
                         steps {
-                            sh '''#!/bin/bash
-                                mkdir -p /usr/local/cargo/registry
-                                chmod -R 777 /usr/local/cargo/registry
-                                rustup default nightly
-                                rustup component add rustfmt clippy rust-src
-                                cargo install cargo-tarpaulin
-                            '''
+                            script {
+                                sh '''#!/bin/bash
+                                    mkdir -p $HOME/.cargo/registry
+                                    chmod -R 777 $HOME/.cargo/registry
+                                    
+                                    # Install Rust if not present
+                                    if ! command -v rustup &> /dev/null; then
+                                        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+                                        source $HOME/.cargo/env
+                                    fi
+                                    
+                                    # Set up toolchain
+                                    $HOME/.cargo/bin/rustup default nightly
+                                    $HOME/.cargo/bin/rustup component add rustfmt clippy rust-src
+                                    $HOME/.cargo/bin/cargo install cargo-tarpaulin
+                                '''
+                            }
                         }
                     }
 
