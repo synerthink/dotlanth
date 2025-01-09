@@ -63,7 +63,7 @@ pipeline {
                         steps {
                             // Install required packages
                             sh '''
-                                apt-get update && apt-get install -y curl
+                                apt-get update && apt-get install -y curl pkg-config libssl-dev
                                 rustup default nightly
                                 rustup component add rustfmt clippy rust-src
                             '''
