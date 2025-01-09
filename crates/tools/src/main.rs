@@ -1,6 +1,5 @@
 mod cli;
 mod utils;
-use tracing_subscriber;
 
 fn main() {
     println!("DOTVM!");
