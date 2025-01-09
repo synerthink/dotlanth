@@ -47,20 +47,24 @@ pipeline {
                 stages {
                     stage('Verify Docker Image') {
                         steps {
-                            sh 'docker pull rust:nightly-slim'
+                            sh 'docker pull rust:slim'
                         }
                     }
                     
                     stage('Build and Test') {
                         agent {
                             docker {
-                                image 'rust:nightly-slim'
+                                image 'rust:slim'
                                 args '-v cargo-cache:/usr/local/cargo/registry'
                                 reuseNode true
                             }
                         }
                         
                         steps {
+                            // Switch to nightly
+                            sh 'rustup default nightly'
+                            sh 'rustup component add rustfmt clippy rust-src'
+                            
                             script {
                                 // Format check
                                 try {
