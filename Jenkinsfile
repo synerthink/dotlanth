@@ -20,7 +20,7 @@ pipeline {
             'documentation'
         ].join(' ')
     }
-
+    
     stages {
         stage('Initialization') {
             steps {
@@ -40,37 +40,23 @@ pipeline {
                 axes {
                     axis {
                         name 'PLATFORM'
-                        values 'linux', 'windows', 'macos'
+                        values 'linux' // Temporarily only Linux until cross-platform is needed
                     }
                 }
-
+                
                 stages {
-                    stage('Setup') {
-                        steps {
-                            script {
-                                sh '''#!/bin/bash
-                                    mkdir -p $HOME/.cargo/registry
-                                    chmod -R 777 $HOME/.cargo/registry
-                                    
-                                    # Install Rust if not present
-                                    if ! command -v rustup &> /dev/null; then
-                                        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-                                        source $HOME/.cargo/env
-                                    fi
-                                    
-                                    # Set up toolchain
-                                    $HOME/.cargo/bin/rustup default nightly
-                                    $HOME/.cargo/bin/rustup component add rustfmt clippy rust-src
-                                    $HOME/.cargo/bin/cargo install cargo-tarpaulin
-                                '''
+                    stage('Build and Test') {
+                        agent {
+                            docker {
+                                image 'rust:nightly'
+                                args '-v cargo-cache:/usr/local/cargo/registry'
+                                reuseNode true
                             }
                         }
-                    }
-
-                    stage('Format Check') {
-                        when { equals expected: 'linux', actual: env.PLATFORM }
+                        
                         steps {
                             script {
+                                // Format check
                                 try {
                                     sh 'cargo fmt --all -- --check'
                                     updateGithubStatus('format', 'success', 'Format check passed')
@@ -78,14 +64,8 @@ pipeline {
                                     updateGithubStatus('format', 'failure', 'Format check failed')
                                     error('Format check failed')
                                 }
-                            }
-                        }
-                    }
 
-                    stage('Lint') {
-                        when { equals expected: 'linux', actual: env.PLATFORM }
-                        steps {
-                            script {
+                                // Lint check
                                 try {
                                     sh 'cargo clippy --workspace -- -D warnings'
                                     updateGithubStatus('lint', 'success', 'Lint check passed')
@@ -93,31 +73,21 @@ pipeline {
                                     updateGithubStatus('lint', 'failure', 'Lint check failed')
                                     error('Lint check failed')
                                 }
-                            }
-                        }
-                    }
 
-                    stage('Build and Test') {
-                        steps {
-                            script {
+                                // Build and test
                                 try {
                                     sh 'cargo build --workspace'
                                     sh 'cargo test --workspace'
-                                    updateGithubStatus('test', "success", "Tests passed on ${PLATFORM}")
+                                    updateGithubStatus('test', 'success', 'Tests passed')
                                 } catch (Exception e) {
-                                    updateGithubStatus('test', 'failure', "Tests failed on ${PLATFORM}")
-                                    error("Tests failed on ${PLATFORM}")
+                                    updateGithubStatus('test', 'failure', 'Tests failed')
+                                    error('Tests failed')
                                 }
-                            }
-                        }
-                    }
 
-                    stage('Coverage') {
-                        when { equals expected: 'linux', actual: env.PLATFORM }
-                        steps {
-                            script {
+                                // Coverage
                                 try {
                                     sh '''
+                                        cargo install cargo-tarpaulin
                                         cargo tarpaulin --workspace --coverage-threshold 80 \
                                             --out Xml --out Html --output-dir coverage
                                     '''
@@ -127,14 +97,8 @@ pipeline {
                                     updateGithubStatus('coverage', 'failure', 'Coverage check failed')
                                     error('Coverage check failed')
                                 }
-                            }
-                        }
-                    }
 
-                    stage('Documentation') {
-                        when { equals expected: 'linux', actual: env.PLATFORM }
-                        steps {
-                            script {
+                                // Documentation
                                 try {
                                     sh 'cargo doc --workspace --no-deps'
                                     archiveArtifacts artifacts: 'target/doc/**/*', fingerprint: true
@@ -143,19 +107,12 @@ pipeline {
                                     updateGithubStatus('documentation', 'failure', 'Documentation build failed')
                                     error('Documentation build failed')
                                 }
-                            }
-                        }
-                    }
 
-                    stage('Release Build') {
-                        when {
-                            allOf {
-                                equals expected: 'linux', actual: env.PLATFORM
-                                branch 'main'
+                                // Release build if on main branch
+                                if (env.BRANCH_NAME == 'main') {
+                                    sh 'cargo build --workspace --release'
+                                }
                             }
-                        }
-                        steps {
-                            sh 'cargo build --workspace --release'
                         }
                     }
                 }
@@ -187,7 +144,7 @@ pipeline {
             }
         }
     }
-
+    
     post {
         always {
             cleanWs()
