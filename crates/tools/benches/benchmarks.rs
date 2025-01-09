@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 fn benchmark_main_initialization(c: &mut Criterion) {
     c.bench_function("main_init", |b| {
