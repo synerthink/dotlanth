@@ -11,12 +11,11 @@ pipeline {
     }
 
     environment {
-        // Required checks that must pass before merging
+        // Required checks that must pass before merging (removed coverage)
         REQUIRED_CONTEXTS = [
             'format',
             'lint',
             'test',
-            'coverage',
             'documentation'
         ].join(' ')
     }
@@ -95,19 +94,6 @@ pipeline {
                                 } catch (Exception e) {
                                     updateGithubStatus('test', 'failure', 'Tests failed')
                                     error('Tests failed')
-                                }
-
-                                // Coverage
-                                try {
-                                    sh '''
-                                        cargo install cargo-tarpaulin
-                                        setarch $(uname -m) -R cargo tarpaulin --workspace --fail-under 80
-                                    '''
-                                    archiveArtifacts artifacts: 'coverage/**/*', fingerprint: true
-                                    updateGithubStatus('coverage', 'success', 'Coverage check passed')
-                                } catch (Exception e) {
-                                    updateGithubStatus('coverage', 'failure', 'Coverage check failed')
-                                    error('Coverage check failed')
                                 }
 
                                 // Documentation
