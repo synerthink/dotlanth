@@ -101,7 +101,7 @@ pipeline {
                                 try {
                                     sh '''
                                         cargo install cargo-tarpaulin
-                                        cargo tarpaulin --workspace --fail-under 80 --avoid-cfg-tarpaulin
+                                        setarch $(uname -m) -R cargo tarpaulin --workspace --fail-under 80
                                     '''
                                     archiveArtifacts artifacts: 'coverage/**/*', fingerprint: true
                                     updateGithubStatus('coverage', 'success', 'Coverage check passed')
