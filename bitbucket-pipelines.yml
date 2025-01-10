@@ -1,0 +1,65 @@
+image: rust:slim
+
+definitions:
+  caches:
+    cargo: ~/.cargo/registry
+
+  steps:
+    - step: &format-check
+        name: Format Check
+        script:
+          - apt-get update && apt-get install -y curl pkg-config libssl-dev
+          - rustup default nightly
+          - rustup component add rustfmt
+          - cargo fmt --all -- --check
+        caches:
+          - cargo
+
+    - step: &lint-check
+        name: Lint Check
+        script:
+          - apt-get update && apt-get install -y curl pkg-config libssl-dev
+          - rustup default nightly
+          - rustup component add clippy rust-src
+          - cargo clippy --workspace -- -D warnings
+        caches:
+          - cargo
+
+    - step: &test
+        name: Build and Test
+        script:
+          - apt-get update && apt-get install -y curl pkg-config libssl-dev
+          - rustup default nightly
+          - cargo build --workspace
+          - cargo test --workspace
+        caches:
+          - cargo
+
+pipelines:
+  default:
+    - parallel:
+        - step: *format-check
+        - step: *lint-check
+        - step: *test
+
+  pull-requests:
+    '**':
+      - parallel:
+          - step: *format-check
+          - step: *lint-check
+          - step: *test
+
+  branches:
+    main:
+      - parallel:
+          - step: *format-check
+          - step: *lint-check
+          - step: *test
+      - step:
+          name: Release Build
+          script:
+            - apt-get update && apt-get install -y curl pkg-config libssl-dev
+            - rustup default nightly
+            - cargo build --workspace --release
+          caches:
+            - cargo

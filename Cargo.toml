@@ -2,11 +2,11 @@
 resolver = "2"
 
 members = [
-    "crates/common",
-    "crates/compiler",
-    "crates/core",
-    "crates/runtime",
-    "crates/tools",
+    "crates/dotvm/common",
+    "crates/dotvm/compiler",
+    "crates/dotvm/core",
+    "crates/dotvm/runtime",
+    "crates/dotvm/tools",
 ]
 
 [workspace.package]
@@ -40,3 +40,26 @@ proptest = "1.4"
 
 # Development
 clap = { version = "4.5", features = ["derive"] }
+
+# Database specific
+rocksdb = "0.21"
+blake3 = "1.5"
+parking_lot = "0.12"
+
+# VM specific
+num-bigint = "0.4"
+rand = "0.8"
+rayon = "1.8"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.bench]
+lto = true
+codegen-units = 1
