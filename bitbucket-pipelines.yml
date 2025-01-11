@@ -42,9 +42,9 @@ definitions:
           - chmod 600 ~/.ssh/id_rsa
           - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
           - ssh azureuser@$DEV_SERVER 'cd /opt/dotvm && mkdir -p monitoring/prometheus && git pull origin develop && sudo docker-compose -f docker-compose.dev.yml up -d --build'
-          - echo "Development Environment Dashboards:"
-          - echo "Prometheus: http://$DEV_SERVER:9090"
-          - echo "Application: http://$DEV_SERVER:8080"
+          - 'echo "Development Environment Dashboards"'
+          - 'echo "Prometheus: http://\${DEV_SERVER}:9090"'
+          - 'echo "Application: http://\${DEV_SERVER}:8080"'
     - step: &deploy-prod
         name: Deploy to Production
         deployment: production
@@ -57,11 +57,11 @@ definitions:
           - chmod 600 ~/.ssh/id_rsa
           - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
           - ssh azureuser@$PROD_SERVER 'cd /opt/dotvm && mkdir -p monitoring/prometheus && git pull origin main && sudo docker-compose -f docker-compose.prod.yml up -d --build'
-          - echo "Production Environment Dashboards:"
-          - echo "Application: http://$PROD_SERVER:8080"
-          - echo "Prometheus: http://$PROD_SERVER:9090"
-          - echo "Grafana: http://$PROD_SERVER:3000"
-          - echo "  (default credentials -> username:admin, password: admin)"
+          - 'echo "Production Environment Dashboards"'
+          - 'echo "Application: http://\${PROD_SERVER}:8080"'
+          - 'echo "Prometheus: http://\${PROD_SERVER}:9090"'
+          - 'echo "Grafana: http://\${PROD_SERVER}:3000"'
+          - 'echo "(default credentials -> username:admin, password: admin)"'
 
 pipelines:
   default:
@@ -87,7 +87,7 @@ pipelines:
           - step: *format-check
           - step: *lint-check
           - step: *test
-      - step:
+      - step: 
           name: Release Build
           script:
             - apt-get update && apt-get install -y curl pkg-config libssl-dev
