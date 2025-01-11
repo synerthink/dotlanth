@@ -46,40 +46,24 @@ definitions:
           - echo "$SSH_PRIVATE_KEY_DEV" > ~/.ssh/id_rsa
           - chmod 600 ~/.ssh/id_rsa
           - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-          - ssh azureuser@$DEV_SERVER '
-            # Update package list
-            sudo apt-get update
-            
-            # Install prerequisites
-            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-            
-            # Add Docker GPG key
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            
-            # Add Docker repository
-            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-            
-            # Update package list again
-            sudo apt-get update
-            
-            # Install Docker
-            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-            
-            # Install Docker Compose
-            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
-            
-            # Add current user to docker group
-            sudo usermod -aG docker $USER
-            
-            # Pull project and deploy
-            cd /opt/dotvm &&
-            mkdir -p monitoring/prometheus &&
-            git pull origin develop &&
-            sudo docker-compose -f docker-compose.dev.yml up -d --build'
+          - |
+            ssh azureuser@$DEV_SERVER '
+              sudo apt-get update &&
+              sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common &&
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+              sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" &&
+              sudo apt-get update &&
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io &&
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &&
+              sudo chmod +x /usr/local/bin/docker-compose &&
+              sudo usermod -aG docker $USER &&
+              cd /opt/dotvm &&
+              mkdir -p monitoring/prometheus &&
+              git pull origin develop &&
+              sudo docker-compose -f docker-compose.dev.yml up -d --build'
           - 'echo "Development Environment Dashboards"'
-          - 'echo "Prometheus: http://\${DEV_SERVER}:9090"'
-          - 'echo "Application: http://\${DEV_SERVER}:8080"'
+          - 'echo "Prometheus: http://${DEV_SERVER}:9090"'
+          - 'echo "Application: http://${DEV_SERVER}:8080"'
     - step: &deploy-prod
         name: Deploy to Production
         deployment: production
@@ -91,41 +75,25 @@ definitions:
           - echo "$SSH_PRIVATE_KEY_PROD" > ~/.ssh/id_rsa
           - chmod 600 ~/.ssh/id_rsa
           - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-          - ssh azureuser@$PROD_SERVER '
-            # Update package list
-            sudo apt-get update
-            
-            # Install prerequisites
-            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-            
-            # Add Docker GPG key
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            
-            # Add Docker repository
-            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-            
-            # Update package list again
-            sudo apt-get update
-            
-            # Install Docker
-            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-            
-            # Install Docker Compose
-            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
-            
-            # Add current user to docker group
-            sudo usermod -aG docker $USER
-            
-            # Pull project and deploy
-            cd /opt/dotvm &&
-            mkdir -p monitoring/prometheus &&
-            git pull origin main &&
-            sudo docker-compose -f docker-compose.prod.yml up -d --build'
+          - |
+            ssh azureuser@$PROD_SERVER '
+              sudo apt-get update &&
+              sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common &&
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+              sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" &&
+              sudo apt-get update &&
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io &&
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &&
+              sudo chmod +x /usr/local/bin/docker-compose &&
+              sudo usermod -aG docker $USER &&
+              cd /opt/dotvm &&
+              mkdir -p monitoring/prometheus &&
+              git pull origin main &&
+              sudo docker-compose -f docker-compose.prod.yml up -d --build'
           - 'echo "Production Environment Dashboards"'
-          - 'echo "Application: http://\${PROD_SERVER}:8080"'
-          - 'echo "Prometheus: http://\${PROD_SERVER}:9090"'
-          - 'echo "Grafana: http://\${PROD_SERVER}:3000"'
+          - 'echo "Application: http://${PROD_SERVER}:8080"'
+          - 'echo "Prometheus: http://${PROD_SERVER}:9090"'
+          - 'echo "Grafana: http://${PROD_SERVER}:3000"'
           - 'echo "(default credentials -> username:admin, password: admin)"'
 
 pipelines:
