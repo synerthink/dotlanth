@@ -3,7 +3,6 @@ image: rust:nightly-slim
 definitions:
   caches:
     cargo: ~/.cargo/registry
-
   steps:
     - step: &format-check
         name: Format Check
@@ -14,7 +13,6 @@ definitions:
           - cargo fmt --all -- --check
         caches:
           - cargo
-
     - step: &lint-check
         name: Lint Check
         script:
@@ -24,7 +22,6 @@ definitions:
           - cargo clippy --workspace -- -D warnings
         caches:
           - cargo
-
     - step: &test
         name: Build and Test
         script:
@@ -34,7 +31,6 @@ definitions:
           - cargo test --workspace
         caches:
           - cargo
-
     - step: &deploy-dev
         name: Deploy to Development
         deployment: development
@@ -45,17 +41,10 @@ definitions:
           - echo "$SSH_PRIVATE_KEY_DEV" > ~/.ssh/id_rsa
           - chmod 600 ~/.ssh/id_rsa
           - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-          - |
-            ssh azureuser@$DEV_SERVER '
-              cd /opt/dotvm &&
-              mkdir -p monitoring/prometheus &&
-              git pull origin develop &&
-              sudo docker-compose -f docker-compose.dev.yml up -d --build
-            '
+          - ssh azureuser@$DEV_SERVER 'cd /opt/dotvm && mkdir -p monitoring/prometheus && git pull origin develop && sudo docker-compose -f docker-compose.dev.yml up -d --build'
           - echo "Development Environment Dashboards:"
           - echo "Prometheus: http://$DEV_SERVER:9090"
           - echo "Application: http://$DEV_SERVER:8080"
-
     - step: &deploy-prod
         name: Deploy to Production
         deployment: production
@@ -67,13 +56,7 @@ definitions:
           - echo "$SSH_PRIVATE_KEY_PROD" > ~/.ssh/id_rsa
           - chmod 600 ~/.ssh/id_rsa
           - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-          - |
-            ssh azureuser@$PROD_SERVER '
-              cd /opt/dotvm &&
-              mkdir -p monitoring/prometheus &&
-              git pull origin main &&
-              sudo docker-compose -f docker-compose.prod.yml up -d --build
-            '
+          - ssh azureuser@$PROD_SERVER 'cd /opt/dotvm && mkdir -p monitoring/prometheus && git pull origin main && sudo docker-compose -f docker-compose.prod.yml up -d --build'
           - echo "Production Environment Dashboards:"
           - echo "Application: http://$PROD_SERVER:8080"
           - echo "Prometheus: http://$PROD_SERVER:9090"
@@ -86,14 +69,12 @@ pipelines:
         - step: *format-check
         - step: *lint-check
         - step: *test
-
   pull-requests:
     '**':
       - parallel:
           - step: *format-check
           - step: *lint-check
           - step: *test
-
   branches:
     develop:
       - parallel:
@@ -101,7 +82,6 @@ pipelines:
           - step: *lint-check
           - step: *test
       - step: *deploy-dev
-
     main:
       - parallel:
           - step: *format-check
