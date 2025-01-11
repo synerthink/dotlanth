@@ -1,14 +1,19 @@
-image: rust:latest
+image: rust:1.76-slim
 
 definitions:
   caches:
     cargo: ~/.cargo/registry
+  deployments:
+    development:
+      - development
+    production:
+      - production
   steps:
     - step: &format-check
         name: Format Check
         script:
           - apt-get update && apt-get install -y curl pkg-config libssl-dev
-          - rustup default nightly
+          - rustup update stable
           - rustup component add rustfmt
           - cargo fmt --all -- --check
         caches:
@@ -87,7 +92,7 @@ pipelines:
           - step: *format-check
           - step: *lint-check
           - step: *test
-      - step: 
+      - step:
           name: Release Build
           script:
             - apt-get update && apt-get install -y curl pkg-config libssl-dev
