@@ -1,4 +1,4 @@
-image: rust:slim
+image: rust:nightly-slim
 
 definitions:
   caches:
@@ -35,6 +35,56 @@ definitions:
         caches:
           - cargo
 
+    - step: &deploy-dev
+        name: Deploy to Development
+        deployment: development
+        script:
+          # Setup SSH
+          - apt-get update && apt-get install -y openssh-client
+          - mkdir -p ~/.ssh
+          - chmod 700 ~/.ssh
+          - echo "$SSH_PRIVATE_KEY_DEV" > ~/.ssh/id_rsa
+          - chmod 600 ~/.ssh/id_rsa
+          - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+          # Deploy
+          - |
+            ssh azureuser@$DEV_SERVER '
+              cd /opt/dotvm &&
+              mkdir -p monitoring/prometheus &&
+              git pull origin develop &&
+              sudo docker-compose -f docker-compose.dev.yml up -d --build
+            '
+          # Print dashboard links
+          - echo "Development Environment Dashboards:"
+          - echo "Prometheus: http://$DEV_SERVER:9090"
+          - echo "Application: http://$DEV_SERVER:8080"
+
+    - step: &deploy-prod
+        name: Deploy to Production
+        deployment: production
+        trigger: manual
+        script:
+          # Setup SSH
+          - apt-get update && apt-get install -y openssh-client
+          - mkdir -p ~/.ssh
+          - chmod 700 ~/.ssh
+          - echo "$SSH_PRIVATE_KEY_PROD" > ~/.ssh/id_rsa
+          - chmod 600 ~/.ssh/id_rsa
+          - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+          # Deploy
+          - |
+            ssh azureuser@$PROD_SERVER '
+              cd /opt/dotvm &&
+              mkdir -p monitoring/prometheus &&
+              git pull origin main &&
+              sudo docker-compose -f docker-compose.prod.yml up -d --build
+            '
+          # Print dashboard links
+          - echo "Production Environment Dashboards:"
+          - echo "Application: http://$PROD_SERVER:8080"
+          - echo "Prometheus: http://$PROD_SERVER:9090"
+          - echo "Grafana: http://$PROD_SERVER:3000"
+          - echo "  (default credentials -> username:admin, password: admin)"
 pipelines:
   default:
     - parallel:
@@ -50,6 +100,13 @@ pipelines:
           - step: *test
 
   branches:
+    develop:
+      - parallel:
+          - step: *format-check
+          - step: *lint-check
+          - step: *test
+      - step: *deploy-dev
+
     main:
       - parallel:
           - step: *format-check
@@ -63,3 +120,10 @@ pipelines:
             - cargo build --workspace --release
           caches:
             - cargo
+      - step: *deploy-prod
+
+  custom:
+    manual-deploy-dev:
+      - step: *deploy-dev
+    manual-deploy-prod:
+      - step: *deploy-prod

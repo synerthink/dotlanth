@@ -1,21 +1,33 @@
-FROM rust:latest
+FROM rust:nightly-slim
 
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     git \
+    libssl-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Rust edition 2024
 ENV RUSTFLAGS="--edition 2024"
 
-# Install nightly for 2024 edition support
+# Install nightly components
 RUN rustup default nightly && \
     rustup component add rustfmt clippy rust-src
 
+# Set working directory
 WORKDIR /app
-COPY . .
 
+# Copy Cargo files
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+
+# Build dependencies
 RUN cargo build --workspace
 
+# Copy source code
+COPY . .
+
+# Run in development mode
 CMD ["cargo", "run"]

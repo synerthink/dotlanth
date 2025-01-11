@@ -1,0 +1,41 @@
+FROM rust:nightly-slim as builder
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
+    git \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Rust edition 2024
+ENV RUSTFLAGS="--edition 2024"
+
+# Install nightly components
+RUN rustup default nightly && \
+    rustup component add rust-src
+
+# Set working directory
+WORKDIR /app
+
+# Copy Cargo files
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+
+# Build for release
+RUN cargo build --workspace --release
+
+# Runtime stage
+FROM debian:bullseye-slim
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy binary from builder
+COPY --from=builder /app/target/release/dotvm /usr/local/bin/
+COPY --from=builder /app/target/release/deps /usr/local/bin/deps
+
+# Run in production mode
+CMD ["dotvm"]
