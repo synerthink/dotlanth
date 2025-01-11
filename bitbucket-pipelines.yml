@@ -104,11 +104,6 @@ definitions:
                   sleep 5; \
                 done' || (echo "Health check failed" && exit 1)'
 
-          # Print access information
-          - echo "Development Environment Dashboards"
-          - echo "Prometheus: http://${DEV_SERVER}:9090"
-          - echo "Application: http://${DEV_SERVER}:8080"
-
     - step: &deploy-prod
         name: Deploy to Production
         trigger: manual
@@ -179,13 +174,6 @@ definitions:
                   echo "Waiting for service to be healthy..."; \
                   sleep 5; \
                 done' || (echo "Health check failed" && exit 1)'
-
-          # Print access information
-          - echo "Production Environment Dashboards"
-          - echo "Application: http://${PROD_SERVER}:8080"
-          - echo "Prometheus: http://${PROD_SERVER}:9090"
-          - echo "Grafana: http://${PROD_SERVER}:3000"
-          - echo "(default credentials -> username:admin, password: admin)"
 
 pipelines:
   default:
