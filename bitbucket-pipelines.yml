@@ -3,11 +3,6 @@ image: rust:latest
 definitions:
   caches:
     cargo: ~/.cargo/registry
-  deployments:
-    development:
-      - development
-    production:
-      - production
   steps:
     - step: &format-check
         name: Format Check
@@ -18,6 +13,7 @@ definitions:
           - cargo fmt --all -- --check
         caches:
           - cargo
+
     - step: &lint-check
         name: Lint Check
         script:
@@ -27,6 +23,7 @@ definitions:
           - cargo clippy --workspace -- -D warnings
         caches:
           - cargo
+
     - step: &test
         name: Build and Test
         script:
@@ -36,65 +33,159 @@ definitions:
           - cargo test --workspace
         caches:
           - cargo
+
     - step: &deploy-dev
         name: Deploy to Development
-        deployment: development
         script:
+          # Setup SSH
           - apt-get update && apt-get install -y openssh-client
           - mkdir -p ~/.ssh
           - chmod 700 ~/.ssh
           - echo "$SSH_PRIVATE_KEY_DEV" > ~/.ssh/id_rsa
-          - chmod 600 ~/.ssh/id_rsa
-          - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+          - chmod 400 ~/.ssh/id_rsa
+          - ssh-keyscan -H $DEV_SERVER >> ~/.ssh/known_hosts
+
+          # Deploy using SSH
           - |
             ssh dotlanth-dev@$DEV_SERVER '
-              sudo apt-get update &&
-              sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common &&
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
-              sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" &&
-              sudo apt-get update &&
-              sudo apt-get install -y docker-ce docker-ce-cli containerd.io &&
+              # Install required packages if not present
+              if ! command -v docker &> /dev/null; then
+                echo "Installing Docker and dependencies..."
+                sudo apt-get update &&
+                sudo apt-get install -y \
+                  apt-transport-https \
+                  ca-certificates \
+                  curl \
+                  software-properties-common &&
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+                sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" &&
+                sudo apt-get update &&
+                sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+              fi
+
+              # Install or update Docker Compose
               sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &&
               sudo chmod +x /usr/local/bin/docker-compose &&
-              sudo usermod -aG docker $USER &&
+            
+              # Ensure user is in docker group
+              if ! groups | grep -q docker; then
+                sudo usermod -aG docker $USER
+              fi
+            
+              # Setup application directory
+              sudo mkdir -p /opt/dotvm &&
+              sudo chown -R $USER:$USER /opt/dotvm &&
               cd /opt/dotvm &&
+            
+              # Stop and remove existing containers if they exist
+              if [ -f "docker-compose.dev.yml" ]; then
+                docker-compose -f docker-compose.dev.yml down
+              fi
+            
+              # Cleanup old images (optional)
+              docker system prune -f &&
+            
+              # Pull latest code and deploy
+              if [ -d ".git" ]; then
+                git pull origin develop
+              else
+                git clone -b develop $BITBUCKET_GIT_SSH_ORIGIN .
+              fi
+            
               mkdir -p monitoring/prometheus &&
-              git pull origin develop &&
-              sudo docker-compose -f docker-compose.dev.yml up -d --build'
-          - 'echo "Development Environment Dashboards"'
-          - 'echo "Prometheus: http://${DEV_SERVER}:9090"'
-          - 'echo "Application: http://${DEV_SERVER}:8080"'
+            
+              # Start new containers
+              docker-compose -f docker-compose.dev.yml up -d --build --force-recreate &&
+            
+              # Wait for health check
+              timeout 300 bash -c '\
+                while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' localhost:8080/health)" != "200" ]]; do \
+                  echo "Waiting for service to be healthy..."; \
+                  sleep 5; \
+                done' || (echo "Health check failed" && exit 1)'
+
+          # Print access information
+          - echo "Development Environment Dashboards"
+          - echo "Prometheus: http://${DEV_SERVER}:9090"
+          - echo "Application: http://${DEV_SERVER}:8080"
+
     - step: &deploy-prod
         name: Deploy to Production
-        deployment: production
         trigger: manual
         script:
+          # Setup SSH
           - apt-get update && apt-get install -y openssh-client
           - mkdir -p ~/.ssh
           - chmod 700 ~/.ssh
           - echo "$SSH_PRIVATE_KEY_PROD" > ~/.ssh/id_rsa
-          - chmod 600 ~/.ssh/id_rsa
-          - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+          - chmod 400 ~/.ssh/id_rsa
+          - ssh-keyscan -H $PROD_SERVER >> ~/.ssh/known_hosts
+
+          # Deploy using SSH
           - |
             ssh dotlanth-pro@$PROD_SERVER '
-              sudo apt-get update &&
-              sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common &&
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
-              sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" &&
-              sudo apt-get update &&
-              sudo apt-get install -y docker-ce docker-ce-cli containerd.io &&
+              # Install required packages if not present
+              if ! command -v docker &> /dev/null; then
+                echo "Installing Docker and dependencies..."
+                sudo apt-get update &&
+                sudo apt-get install -y \
+                  apt-transport-https \
+                  ca-certificates \
+                  curl \
+                  software-properties-common &&
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+                sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" &&
+                sudo apt-get update &&
+                sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+              fi
+
+              # Install or update Docker Compose
               sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &&
               sudo chmod +x /usr/local/bin/docker-compose &&
-              sudo usermod -aG docker $USER &&
+            
+              # Ensure user is in docker group
+              if ! groups | grep -q docker; then
+                sudo usermod -aG docker $USER
+              fi
+            
+              # Setup application directory
+              sudo mkdir -p /opt/dotvm &&
+              sudo chown -R $USER:$USER /opt/dotvm &&
               cd /opt/dotvm &&
+            
+              # Stop and remove existing containers if they exist
+              if [ -f "docker-compose.prod.yml" ]; then
+                docker-compose -f docker-compose.prod.yml down
+              fi
+            
+              # Cleanup old images (optional)
+              docker system prune -f &&
+            
+              # Pull latest code and deploy
+              if [ -d ".git" ]; then
+                git pull origin main
+              else
+                git clone -b main $BITBUCKET_GIT_SSH_ORIGIN .
+              fi
+            
               mkdir -p monitoring/prometheus &&
-              git pull origin main &&
-              sudo docker-compose -f docker-compose.prod.yml up -d --build'
-          - 'echo "Production Environment Dashboards"'
-          - 'echo "Application: http://${PROD_SERVER}:8080"'
-          - 'echo "Prometheus: http://${PROD_SERVER}:9090"'
-          - 'echo "Grafana: http://${PROD_SERVER}:3000"'
-          - 'echo "(default credentials -> username:admin, password: admin)"'
+            
+              # Start new containers
+              docker-compose -f docker-compose.prod.yml up -d --build --force-recreate &&
+            
+              # Wait for health check
+              timeout 300 bash -c '\
+                while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' localhost:8080/health)" != "200" ]]; do \
+                  echo "Waiting for service to be healthy..."; \
+                  sleep 5; \
+                done' || (echo "Health check failed" && exit 1)'
+
+          # Print access information
+          - echo "Production Environment Dashboards"
+          - echo "Application: http://${PROD_SERVER}:8080"
+          - echo "Prometheus: http://${PROD_SERVER}:9090"
+          - echo "Grafana: http://${PROD_SERVER}:3000"
+          - echo "(default credentials -> username:admin, password: admin)"
 
 pipelines:
   default:
@@ -102,12 +193,14 @@ pipelines:
         - step: *format-check
         - step: *lint-check
         - step: *test
+
   pull-requests:
     '**':
       - parallel:
           - step: *format-check
           - step: *lint-check
           - step: *test
+
   branches:
     develop:
       - parallel:
@@ -115,6 +208,7 @@ pipelines:
           - step: *lint-check
           - step: *test
       - step: *deploy-dev
+
     main:
       - parallel:
           - step: *format-check
