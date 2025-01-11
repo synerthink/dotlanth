@@ -47,7 +47,7 @@ definitions:
           - chmod 600 ~/.ssh/id_rsa
           - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
           - |
-            ssh azureuser@$DEV_SERVER '
+            ssh dotlanth-dev@$DEV_SERVER '
               sudo apt-get update &&
               sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common &&
               curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
@@ -76,7 +76,7 @@ definitions:
           - chmod 600 ~/.ssh/id_rsa
           - echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
           - |
-            ssh azureuser@$PROD_SERVER '
+            ssh dotlanth-pro@$PROD_SERVER '
               sudo apt-get update &&
               sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common &&
               curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
