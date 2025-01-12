@@ -21,6 +21,9 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 
 # Build dependencies
+RUN cargo install mdbook
+
+# Build dependencies
 RUN cargo build --workspace
 
 # Copy source code

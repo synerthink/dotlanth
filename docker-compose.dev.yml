@@ -20,6 +20,16 @@ services:
       timeout: 10s
       retries: 3
 
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    volumes:
+      - ./docs:/app/docs
+    ports:
+      - "3002:3000"
+    command: [ "mdbook", "serve", "--hostname", "0.0.0.0", "--port", "3000" ]
+
   prometheus:
     image: prom/prometheus:latest
     volumes:

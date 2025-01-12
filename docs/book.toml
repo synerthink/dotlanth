@@ -1,0 +1,20 @@
+[book]
+authors = ["Synerthink"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Dotlanth Documentation"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+curly-quotes = true
+mathjax-support = true
+copy-fonts = true
+additional-css = ["theme/custom.css"]
+git-repository-url = "https://github.com/synerthink-organization/dotVM"
+edit-url-template = "https://github.com/synerthink-organization/dotVM/edit/main/docs/{path}"
+
+[preprocessor.index]
+
+[preprocessor.links]
