@@ -1,0 +1,115 @@
+/* Custom font sizes and colors */
+:root {
+    --content-max-width: 850px;
+    --sidebar-width: 300px;
+    --page-padding: 30px;
+}
+
+/* Main content styling */
+.content {
+    font-size: 16px;
+    line-height: 1.7;
+    max-width: var(--content-max-width);
+}
+
+/* Headers */
+.content h1 {
+    font-size: 2.4em;
+    border-bottom: 2px solid var(--icons);
+    margin-bottom: 1.2em;
+}
+
+.content h2 {
+    font-size: 1.8em;
+    border-bottom: 1px solid var(--icons);
+    margin: 1.6em 0 0.8em;
+}
+
+.content h3 {
+    font-size: 1.4em;
+    margin: 1.4em 0 0.7em;
+}
+
+/* Code blocks */
+.content pre {
+    border-radius: 6px;
+    padding: 1em;
+    margin: 1em 0;
+}
+
+.content code {
+    font-size: 0.9em;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+
+/* Lists and paragraphs */
+.content ul, .content ol {
+    margin: 1em 0;
+    padding-left: 2em;
+}
+
+.content p {
+    margin: 1em 0;
+}
+
+/* Links */
+.content a {
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.content a:hover {
+    text-decoration: underline;
+}
+
+/* Tables */
+.content table {
+    width: 100%;
+    margin: 1em 0;
+    border-collapse: collapse;
+}
+
+.content table th,
+.content table td {
+    padding: 0.8em;
+    border: 1px solid var(--table-border-color);
+}
+
+/* Blockquotes */
+.content blockquote {
+    margin: 1em 0;
+    padding: 0.5em 1em;
+    border-left: 4px solid var(--icons);
+    background-color: var(--quote-bg);
+}
+
+/* Navigation sidebar */
+.sidebar {
+    font-size: 15px;
+    width: var(--sidebar-width);
+}
+
+.chapter {
+    padding: 0.5em var(--page-padding);
+}
+
+/* Search functionality */
+#searchbar {
+    width: calc(100% - 20px);
+    margin: 10px;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+/* Print-friendly styles */
+@media print {
+    .sidebar {
+        display: none;
+    }
+
+    .content {
+        margin-left: 0;
+        width: 100%;
+    }
+}
