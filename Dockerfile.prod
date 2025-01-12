@@ -8,9 +8,6 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set Rust edition 2024
-ENV RUSTFLAGS="--edition 2024"
-
 # Install nightly components
 RUN rustup default nightly && \
     rustup component add rust-src
