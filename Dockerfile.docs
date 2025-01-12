@@ -6,15 +6,9 @@ RUN cargo install mdbook
 # Set working directory
 WORKDIR /app
 
-# Create docs directory
-RUN mkdir -p docs
-
 # Expose port
 EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000 || exit 1
-
-# Default command to run mdBook server
-CMD ["mdbook", "serve", "--hostname", "0.0.0.0", "--port", "3000", "docs"]
