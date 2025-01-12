@@ -19,9 +19,6 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 
-# Build dependencies
-RUN cargo install mdbook
-
 # Build for release
 RUN cargo build --workspace --release
 
