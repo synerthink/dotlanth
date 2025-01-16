@@ -154,7 +154,10 @@ mod pool_tests {
             // Try to allocate one more block
             assert!(matches!(
                 pool.allocate(),
-                Err(MemoryError::OutOfMemory { requested: 64, available: 0 })
+                Err(MemoryError::OutOfMemory {
+                    requested: 64,
+                    available: 0
+                })
             ));
         }
 
@@ -229,9 +232,15 @@ mod pool_tests {
             let mut manager = PoolManager::new();
 
             // Create pools with different size classes
-            manager.create_pool(32, 1024).expect("Failed to create 32-byte pool");
-            manager.create_pool(64, 1024).expect("Failed to create 64-byte pool");
-            manager.create_pool(128, 1024).expect("Failed to create 128-byte pool");
+            manager
+                .create_pool(32, 1024)
+                .expect("Failed to create 32-byte pool");
+            manager
+                .create_pool(64, 1024)
+                .expect("Failed to create 64-byte pool");
+            manager
+                .create_pool(128, 1024)
+                .expect("Failed to create 128-byte pool");
 
             // Test each pool size separately to avoid multiple mutable borrows
             {
@@ -279,7 +288,9 @@ mod pool_tests {
         #[test]
         fn test_allocation_deallocation_cycle() {
             let mut manager = PoolManager::new();
-            manager.create_pool(64, 1024).expect("Failed to create pool");
+            manager
+                .create_pool(64, 1024)
+                .expect("Failed to create pool");
 
             let mut blocks = Vec::new();
 
@@ -316,8 +327,12 @@ mod pool_tests {
             let mut manager = PoolManager::new();
 
             // Create pools for different sizes
-            manager.create_pool(32, 1024).expect("Failed to create 32-byte pool");
-            manager.create_pool(64, 1024).expect("Failed to create 64-byte pool");
+            manager
+                .create_pool(32, 1024)
+                .expect("Failed to create 32-byte pool");
+            manager
+                .create_pool(64, 1024)
+                .expect("Failed to create 64-byte pool");
 
             // Use separate scopes for different pool operations
             let block1 = {

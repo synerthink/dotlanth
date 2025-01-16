@@ -8,7 +8,7 @@ pub struct PageFlags {
     pub writable: bool,
     pub executable: bool,
     pub user_accessible: bool,
-    pub cached: bool
+    pub cached: bool,
 }
 
 /// Page table entry
@@ -21,7 +21,7 @@ pub struct PageTableEntry {
 pub struct PageTable<A: Architecture> {
     entries: HashMap<VirtualAddress, PageTableEntry>,
     free_pages: Vec<PhysicalAddress>,
-    _phantom: PhantomData<A>
+    _phantom: PhantomData<A>,
 }
 
 impl<A: Architecture> PageTable<A> {
@@ -30,7 +30,12 @@ impl<A: Architecture> PageTable<A> {
         todo!()
     }
 
-    pub fn map(&mut self, virtual_addr: VirtualAddress, physical_addr: PhysicalAddress, flags: PageFlags) -> Result<(), MemoryError> {
+    pub fn map(
+        &mut self,
+        virtual_addr: VirtualAddress,
+        physical_addr: PhysicalAddress,
+        flags: PageFlags,
+    ) -> Result<(), MemoryError> {
         // To be implemented
         todo!()
     }
@@ -45,7 +50,11 @@ impl<A: Architecture> PageTable<A> {
         todo!()
     }
 
-    pub fn update_flags(&mut self, virtual_addr: VirtualAddress, flags: PageFlags) -> Result<(), MemoryError> {
+    pub fn update_flags(
+        &mut self,
+        virtual_addr: VirtualAddress,
+        flags: PageFlags,
+    ) -> Result<(), MemoryError> {
         // To be implemented
         todo!()
     }
@@ -69,7 +78,12 @@ impl<A: Architecture> TLB<A> {
         todo!()
     }
 
-    pub fn insert(&mut self, virtual_addr: VirtualAddress, physical_addr: PhysicalAddress, flags: PageFlags) {
+    pub fn insert(
+        &mut self,
+        virtual_addr: VirtualAddress,
+        physical_addr: PhysicalAddress,
+        flags: PageFlags,
+    ) {
         // To be implemented
         todo!()
     }
@@ -357,7 +371,9 @@ mod page_table_tests {
                 writable: false,
                 ..flags
             };
-            table.update_flags(vaddr, new_flags).expect("Failed to update flags");
+            table
+                .update_flags(vaddr, new_flags)
+                .expect("Failed to update flags");
 
             // TLB should be flushed and updated
             tlb.flush();

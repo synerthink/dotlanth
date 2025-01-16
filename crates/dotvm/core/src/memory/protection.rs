@@ -14,7 +14,11 @@ impl ProtectionContext {
         }
     }
 
-    pub fn set_protection(&mut self, handle: MemoryHandle, protection: Protection) -> Result<(), MemoryError> {
+    pub fn set_protection(
+        &mut self,
+        handle: MemoryHandle,
+        protection: Protection,
+    ) -> Result<(), MemoryError> {
         self.regions.insert(handle, protection);
         Ok(())
     }
@@ -27,7 +31,11 @@ impl ProtectionContext {
         self.regions.remove(handle)
     }
 
-    pub fn check_access(&self, handle: &MemoryHandle, requested: Protection) -> Result<(), MemoryError> {
+    pub fn check_access(
+        &self,
+        handle: &MemoryHandle,
+        requested: Protection,
+    ) -> Result<(), MemoryError> {
         match self.get_protection(handle) {
             Some(current) => {
                 if Self::is_compatible(current, requested) {
@@ -83,7 +91,12 @@ impl HardwareProtection {
         false
     }
 
-    pub fn protect_region(&self, addr: VirtualAddress, size: usize, protection: Protection) -> Result<(), MemoryError> {
+    pub fn protect_region(
+        &self,
+        addr: VirtualAddress,
+        size: usize,
+        protection: Protection,
+    ) -> Result<(), MemoryError> {
         // Implementation would use hardware protection mechanisms if available
         Ok(())
     }
@@ -208,13 +221,17 @@ mod protection_tests {
             let mut ctx = ProtectionContext::new();
             let handle = MemoryHandle(1);
 
-            ctx.set_protection(handle, Protection::ReadWriteExecute).unwrap();
+            ctx.set_protection(handle, Protection::ReadWriteExecute)
+                .unwrap();
 
             // ReadWriteExecute should be compatible with all modes
             assert!(ctx.check_access(&handle, Protection::ReadOnly).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadWrite).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadExecute).is_ok());
-            assert!(ctx.check_access(&handle, Protection::ReadWriteExecute).is_ok());
+            assert!(
+                ctx.check_access(&handle, Protection::ReadWriteExecute)
+                    .is_ok()
+            );
         }
 
         #[test]
@@ -261,7 +278,11 @@ mod protection_tests {
             let hw_protection = HardwareProtection::new();
             let addr = VirtualAddress(0x1000);
 
-            assert!(hw_protection.protect_region(addr, 4096, Protection::ReadWrite).is_ok());
+            assert!(
+                hw_protection
+                    .protect_region(addr, 4096, Protection::ReadWrite)
+                    .is_ok()
+            );
         }
 
         #[test]
@@ -301,7 +322,9 @@ mod protection_tests {
 
             // Set up protection in both software and hardware
             ctx.set_protection(handle, Protection::ReadWrite).unwrap();
-            hw_protection.protect_region(addr, 4096, Protection::ReadWrite).unwrap();
+            hw_protection
+                .protect_region(addr, 4096, Protection::ReadWrite)
+                .unwrap();
 
             // Verify software protection
             assert!(ctx.check_access(&handle, Protection::ReadWrite).is_ok());
@@ -316,11 +339,15 @@ mod protection_tests {
 
             // Start with ReadWrite protection
             ctx.set_protection(handle, Protection::ReadWrite).unwrap();
-            hw_protection.protect_region(addr, 4096, Protection::ReadWrite).unwrap();
+            hw_protection
+                .protect_region(addr, 4096, Protection::ReadWrite)
+                .unwrap();
 
             // Downgrade to ReadOnly
             ctx.set_protection(handle, Protection::ReadOnly).unwrap();
-            hw_protection.protect_region(addr, 4096, Protection::ReadOnly).unwrap();
+            hw_protection
+                .protect_region(addr, 4096, Protection::ReadOnly)
+                .unwrap();
 
             // Verify new protection level
             assert!(ctx.check_access(&handle, Protection::ReadOnly).is_ok());

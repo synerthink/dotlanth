@@ -1,18 +1,18 @@
 mod allocator;
+mod error;
 mod page_table;
 mod pool;
-mod error;
 mod protection;
 
 pub use allocator::*;
-pub use page_table::*;
-pub use protection::*;
-pub use pool::*;
 pub use error::*;
+pub use page_table::*;
+pub use pool::*;
+pub use protection::*;
 
+use num_bigint::BigUint;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use num_bigint::BigUint;
 
 /// Trait defining architecture-specific memory behaviour
 pub trait Architecture: Send + Sync + 'static {
@@ -104,7 +104,7 @@ pub enum Protection {
     ReadOnly,
     ReadWrite,
     ReadExecute,
-    ReadWriteExecute
+    ReadWriteExecute,
 }
 
 /// Virtual memory address
@@ -132,7 +132,7 @@ pub struct MemoryManager<A: Architecture> {
     allocator: Allocator<A>,
     page_table: PageTable<A>,
     pools: Vec<MemoryPool>,
-    _phantom: PhantomData<A>
+    _phantom: PhantomData<A>,
 }
 
 /// Core memory management trait
@@ -246,10 +246,13 @@ mod memory_tests {
         fn test_max_size_allocation() {
             let mut mm = create_memory_manager::<Arch32>();
             let result = mm.allocate(Arch32::MAX_MEMORY + 1);
-            assert!(matches!(result, Err(MemoryError::AllocationTooLarge {
-                requested: _,
-                maximum: _
-            })));
+            assert!(matches!(
+                result,
+                Err(MemoryError::AllocationTooLarge {
+                    requested: _,
+                    maximum: _
+                })
+            ));
         }
 
         #[test]
@@ -279,14 +282,19 @@ mod memory_tests {
             let mut mm = create_memory_manager::<Arch64>();
             let handle = mm.allocate(1024).expect("Failed to allocate memory");
             assert!(mm.deallocate(handle).is_ok());
-            assert!(matches!(mm.deallocate(handle), Err(MemoryError::AlreadyDeallocated)));
+            assert!(matches!(
+                mm.deallocate(handle),
+                Err(MemoryError::AlreadyDeallocated)
+            ));
         }
 
         #[test]
         fn test_invalid_handle_deallocation() {
             let mut mm = create_memory_manager::<Arch64>();
-            assert!(matches!(mm.deallocate(MemoryHandle(0xDEADBEEF)),
-                           Err(MemoryError::InvalidHandle)));
+            assert!(matches!(
+                mm.deallocate(MemoryHandle(0xDEADBEEF)),
+                Err(MemoryError::InvalidHandle)
+            ));
         }
     }
 
@@ -306,8 +314,10 @@ mod memory_tests {
         #[test]
         fn test_invalid_handle_protection() {
             let mut mm = create_memory_manager::<Arch64>();
-            assert!(matches!(mm.protect(MemoryHandle(0xDEADBEEF), Protection::ReadOnly),
-                           Err(MemoryError::InvalidHandle)));
+            assert!(matches!(
+                mm.protect(MemoryHandle(0xDEADBEEF), Protection::ReadOnly),
+                Err(MemoryError::InvalidHandle)
+            ));
         }
 
         #[test]
@@ -315,10 +325,13 @@ mod memory_tests {
             let mut mm = create_memory_manager::<Arch64>();
             let handle = mm.allocate(1024).expect("Failed to allocate memory");
 
-            mm.protect(handle, Protection::ReadOnly).expect("Failed to set protection");
+            mm.protect(handle, Protection::ReadOnly)
+                .expect("Failed to set protection");
             assert!(mm.check_permission(&handle, Protection::ReadOnly).is_ok());
-            assert!(matches!(mm.check_permission(&handle, Protection::ReadWrite),
-                           Err(MemoryError::PermissionDenied(_))));
+            assert!(matches!(
+                mm.check_permission(&handle, Protection::ReadWrite),
+                Err(MemoryError::PermissionDenied(_))
+            ));
         }
     }
 
@@ -344,8 +357,10 @@ mod memory_tests {
         #[test]
         fn test_invalid_unmap() {
             let mut mm = create_memory_manager::<Arch64>();
-            assert!(matches!(mm.unmap(VirtualAddress(0xDEADBEEF)),
-                           Err(MemoryError::InvalidAddress(_))));
+            assert!(matches!(
+                mm.unmap(VirtualAddress(0xDEADBEEF)),
+                Err(MemoryError::InvalidAddress(_))
+            ));
         }
 
         #[test]
@@ -378,11 +393,12 @@ mod memory_tests {
             }
 
             // Try to allocate larger blocks
-            let large_handles: Result<Vec<_>, _> = (0..10)
-                .map(|_| mm.allocate(4096))
-                .collect();
+            let large_handles: Result<Vec<_>, _> = (0..10).map(|_| mm.allocate(4096)).collect();
 
-            assert!(large_handles.is_ok(), "Failed to allocate after fragmentation");
+            assert!(
+                large_handles.is_ok(),
+                "Failed to allocate after fragmentation"
+            );
         }
 
         #[test]
@@ -392,10 +408,14 @@ mod memory_tests {
 
             // Keep allocating until we run out of memory
             loop {
-                match mm.allocate(1024 * 1024) { // 1MB blocks
+                match mm.allocate(1024 * 1024) {
+                    // 1MB blocks
                     Ok(handle) => handles.push(handle),
-                    Err(MemoryError::OutOfMemory { requested: _, available: _ }) => break,
-                    Err(e) => panic!("Unexpected error: {:?}", e)
+                    Err(MemoryError::OutOfMemory {
+                        requested: _,
+                        available: _,
+                    }) => break,
+                    Err(e) => panic!("Unexpected error: {:?}", e),
                 }
             }
 
@@ -456,7 +476,7 @@ mod memory_tests {
                 match mm.allocate(64) {
                     Ok(handle) => handles.push(handle),
                     Err(MemoryError::PoolError(_)) => break,
-                    Err(e) => panic!("Unexpected error: {:?}", e)
+                    Err(e) => panic!("Unexpected error: {:?}", e),
                 }
             }
         }

@@ -6,10 +6,7 @@ pub enum MemoryError {
     AllocationFailed(String),
 
     #[error("Memory allocation too large: requested {requested}, maximum {maximum}")]
-    AllocationTooLarge {
-        requested: usize,
-        maximum: usize,
-    },
+    AllocationTooLarge { requested: usize, maximum: usize },
 
     #[error("Invalid memory alignment: {0}")]
     InvalidAlignment(usize),
@@ -27,10 +24,7 @@ pub enum MemoryError {
     PoolError(String),
 
     #[error("Out of memory: requested {requested} bytes, available {available}")]
-    OutOfMemory {
-        requested: usize,
-        available: usize,
-    },
+    OutOfMemory { requested: usize, available: usize },
 
     #[error("Memory mapping error: {0}")]
     MappingError(String),

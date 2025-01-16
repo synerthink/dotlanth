@@ -15,7 +15,7 @@ struct Block {
 pub enum AllocationStrategy {
     FirstFit,
     BestFit,
-    NextFit
+    NextFit,
 }
 
 /// Core allocator structure
@@ -25,7 +25,7 @@ pub struct Allocator<A: Architecture> {
     total_memory: usize,
     used_memory: AtomicUsize,
     last_address: PhysicalAddress,
-    _phantom: PhantomData<A>
+    _phantom: PhantomData<A>,
 }
 
 impl<A: Architecture> Allocator<A> {
@@ -88,8 +88,10 @@ mod allocator_tests {
         #[test]
         fn test_invalid_memory_size() {
             let result = Allocator::<Arch64>::new(0);
-            assert!(matches!(result.get_stats(),
-                AllocatorStats { total_memory: 0, .. }));
+            assert!(matches!(result.get_stats(), AllocatorStats {
+                total_memory: 0,
+                ..
+            }));
         }
     }
 
@@ -138,9 +140,13 @@ mod allocator_tests {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::NextFit);
 
             // Create several blocks
-            let handles: Vec<_> = (0..5).map(|i| {
-                allocator.allocate(1024).expect(&format!("Allocation {} failed", i))
-            }).collect();
+            let handles: Vec<_> = (0..5)
+                .map(|i| {
+                    allocator
+                        .allocate(1024)
+                        .expect(&format!("Allocation {} failed", i))
+                })
+                .collect();
 
             // Free alternate blocks
             for (i, handle) in handles.iter().enumerate() {
@@ -174,7 +180,8 @@ mod allocator_tests {
         fn test_aligned_allocation() {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::FirstFit);
 
-            let handle = allocator.allocate(Arch64::WORD_SIZE * 3)
+            let handle = allocator
+                .allocate(Arch64::WORD_SIZE * 3)
                 .expect("Aligned allocation failed");
 
             // Address should be aligned to word size
@@ -186,10 +193,13 @@ mod allocator_tests {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::FirstFit);
 
             let result = allocator.allocate(TEST_MEMORY_SIZE + 1);
-            assert!(matches!(result, Err(MemoryError::OutOfMemory {
-                requested: _,
-                available: _
-            })));
+            assert!(matches!(
+                result,
+                Err(MemoryError::OutOfMemory {
+                    requested: _,
+                    available: _
+                })
+            ));
         }
 
         #[test]
@@ -204,12 +214,17 @@ mod allocator_tests {
 
             // Free every other block
             for i in (0..handles.len()).step_by(2) {
-                allocator.deallocate(handles[i]).expect("Deallocation failed");
+                allocator
+                    .deallocate(handles[i])
+                    .expect("Deallocation failed");
             }
 
             // Attempt to allocate a large block
             let large_allocation = allocator.allocate(TEST_MEMORY_SIZE / 2);
-            assert!(matches!(large_allocation, Err(MemoryError::FragmentationError(_))));
+            assert!(matches!(
+                large_allocation,
+                Err(MemoryError::FragmentationError(_))
+            ));
         }
     }
 
@@ -233,7 +248,9 @@ mod allocator_tests {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::FirstFit);
 
             let handle = allocator.allocate(1024).expect("Allocation failed");
-            allocator.deallocate(handle).expect("First deallocation failed");
+            allocator
+                .deallocate(handle)
+                .expect("First deallocation failed");
             let result = allocator.deallocate(handle);
 
             assert!(matches!(result, Err(MemoryError::AlreadyDeallocated)));
@@ -275,7 +292,9 @@ mod allocator_tests {
             }
 
             for i in (0..handles.len()).step_by(2) {
-                allocator.deallocate(handles[i]).expect("Deallocation failed");
+                allocator
+                    .deallocate(handles[i])
+                    .expect("Deallocation failed");
             }
 
             let stats = allocator.get_stats();

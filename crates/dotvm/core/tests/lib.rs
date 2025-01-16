@@ -1,7 +1,6 @@
 use dotvm_core::memory::{
-    Allocator, MemoryManager, MemoryPool, PageTable, Protection,
-    Arch32, Arch64, Architecture, MemoryHandle, VirtualAddress, PhysicalAddress,
-    MemoryError, MemoryManagement
+    Allocator, Arch32, Arch64, Architecture, MemoryError, MemoryHandle, MemoryManagement,
+    MemoryManager, MemoryPool, PageTable, PhysicalAddress, Protection, VirtualAddress,
 };
 
 // Common test configurations
@@ -71,7 +70,10 @@ pub mod fixtures {
             })
         }
 
-        pub fn allocate_test_pages(&mut self, count: usize) -> Result<Vec<MemoryHandle>, MemoryError> {
+        pub fn allocate_test_pages(
+            &mut self,
+            count: usize,
+        ) -> Result<Vec<MemoryHandle>, MemoryError> {
             let mut handles = Vec::new();
             for _ in 0..count {
                 handles.push(self.manager.allocate(A::PAGE_SIZE)?);
@@ -88,5 +90,5 @@ pub mod fixtures {
 }
 
 // Re-export commonly used test utilities
-pub use test_utils::*;
 pub use fixtures::*;
+pub use test_utils::*;
