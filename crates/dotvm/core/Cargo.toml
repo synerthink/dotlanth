@@ -11,6 +11,9 @@ async-trait.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 metrics.workspace= true
+num-bigint.workspace = true
+parking_lot = "0.12.3"
+rand = "0.8.5"
 
 [dev-dependencies]
 criterion.workspace = true
