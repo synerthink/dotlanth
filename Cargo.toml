@@ -47,7 +47,7 @@ blake3 = "1.5"
 parking_lot = "0.12"
 
 # VM specific
-num-bigint = "0.4"
+num-bigint = "0.4.6"
 rand = "0.8"
 rayon = "1.8"
 
