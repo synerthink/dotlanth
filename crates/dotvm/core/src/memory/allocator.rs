@@ -1,9 +1,12 @@
+use crate::memory;
+
 use super::*;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::sync::atomic::AtomicUsize;
 
 /// Memory block metadata
+#[derive(Clone)]
 struct Block {
     size: usize,
     address: PhysicalAddress,
@@ -29,24 +32,155 @@ pub struct Allocator<A: Architecture> {
 }
 
 impl<A: Architecture> Allocator<A> {
+    /// Constructor to create a new Allocator instance
     pub fn new(total_memory: usize) -> Self {
-        // To be implemented
-        todo!()
+        assert!(total_memory > 0, "Memory size must be greater than 0");
+
+        // Create a map to store memory blocks.
+        let mut blocks = BTreeMap::new();
+
+        // The initial block represents the entire memory as one large free block
+        let initial_block = Block {
+            size: total_memory,
+            address: memory::PhysicalAddress(0),
+            is_free: true,
+        };
+        blocks.insert(memory::PhysicalAddress(0), initial_block);
+
+        // Return an instance of the Allocator with the initial state
+        Self {
+            blocks,
+            strategy: AllocationStrategy::FirstFit, // Default allocation strategy
+            total_memory,
+            used_memory: AtomicUsize::new(0), // No memory is used yet
+            last_address: memory::PhysicalAddress(0),
+            _phantom: PhantomData,
+        }
     }
 
+    /// Function to allocate a block of memory
     pub fn allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
-        // To be implemented
-        todo!()
+        if size == 0 {
+            return Err(MemoryError::InvalidSize { available: size });
+        }
+
+        let mut split_info = None; // Temporary holder for split block info
+        for (&address, block) in self.blocks.iter_mut() {
+            // Check if the block is free and can accommodate the requested size
+            if block.is_free && block.size >= size {
+                if block.size > size {
+                    // If the block is larger than needed, calculate the remainder and prepare to split
+                    let remaining_size = block.size - size;
+                    let new_block_address = address.as_usize() + size;
+                    split_info = Some((
+                        memory::PhysicalAddress(new_block_address),
+                        Block {
+                            size: remaining_size,
+                            address: memory::PhysicalAddress(new_block_address),
+                            is_free: true,
+                        },
+                    ));
+                    block.size = size; // Resize the current block
+                }
+                block.is_free = false; // Mark the block as not free
+                self.used_memory
+                    .fetch_add(size, std::sync::atomic::Ordering::SeqCst);
+
+                if let Some((new_block_address, new_block)) = split_info {
+                    // Insert the new split block into the map
+                    self.blocks.insert(new_block_address, new_block);
+                }
+                return Ok(MemoryHandle(address.as_usize())); // Return the memory handle
+            }
+        }
+
+        // If no suitable block is found, return an OutOfMemory error
+        Err(MemoryError::OutOfMemory {
+            requested: size,
+            available: self.total_memory
+                - self.used_memory.load(std::sync::atomic::Ordering::SeqCst),
+        })
     }
 
+    /// Function to deallocate a previously allocated block of memory
     pub fn deallocate(&mut self, handle: MemoryHandle) -> Result<(), MemoryError> {
-        // To be implemented
-        todo!()
+        let address = memory::PhysicalAddress(handle.0);
+
+        // Step 1: Retrieve a mutable reference to the block and check if it exists
+        if let Some(mut block) = self.blocks.get_mut(&address) {
+            if block.is_free {
+                return Err(MemoryError::AlreadyDeallocated); // Memory block is already free
+            }
+
+            // Mark the block as free
+            block.is_free = true;
+
+            // Decrease the used memory counter
+            self.used_memory
+                .fetch_sub(block.size, std::sync::atomic::Ordering::SeqCst);
+
+            // Save current block address and size into temporary variables
+            let current_block_size = block.size;
+            let current_block_address = block.address;
+
+            // End the mutable borrow so we can take new mutable references later
+            let _ = block;
+
+            // Coalescing: Merge with the next (right) block if it is free
+            let next_address =
+                memory::PhysicalAddress::new(current_block_address.as_usize() + current_block_size);
+            if let Some(next_block) = self.blocks.get(&next_address).cloned() {
+                if next_block.is_free {
+                    // Re-borrow the block to update its size
+                    if let Some(mut block) = self.blocks.get_mut(&address) {
+                        block.size += next_block.size; // Add the size of the next block
+                    }
+                    self.blocks.remove(&next_address); // Remove the next block from the map
+                }
+            }
+
+            // Coalescing: Merge with the previous (left) block if it is free
+            if let Some((&previous_address, mut previous_block)) =
+                self.blocks.range_mut(..current_block_address).rev().next()
+            {
+                if previous_block.is_free {
+                    // Merge the current block with the previous block
+                    previous_block.size += current_block_size;
+                    self.blocks.remove(&current_block_address); // Remove the current block
+                }
+            }
+
+            Ok(())
+        } else {
+            // If the block is not found, return an InvalidHandle error
+            Err(MemoryError::InvalidHandle)
+        }
     }
 
+    /// Function to retrieve allocator statistics
     pub fn get_stats(&self) -> AllocatorStats {
-        // To be implemented
-        todo!()
+        let used_memory = self.used_memory.load(std::sync::atomic::Ordering::SeqCst);
+        let free_memory = self.total_memory - used_memory;
+
+        // Number of allocated blocks
+        let allocation_count = self.blocks.values().filter(|b| !b.is_free).count();
+
+        // Compute fragmentation ratio: sum of sizes of free blocks divided by total free memory
+        let fragmentation_ratio = self
+            .blocks
+            .values()
+            .filter(|b| b.is_free)
+            .map(|b| b.size as f64 / free_memory as f64)
+            .sum::<f64>();
+
+        // Return statistics in an AllocatorStats struct
+        AllocatorStats {
+            total_memory: self.total_memory,
+            used_memory,
+            free_memory,
+            allocation_count,
+            fragmentation_ratio,
+        }
     }
 }
 
@@ -88,10 +222,13 @@ mod allocator_tests {
         #[test]
         fn test_invalid_memory_size() {
             let result = Allocator::<Arch64>::new(0);
-            assert!(matches!(result.get_stats(), AllocatorStats {
-                total_memory: 0,
-                ..
-            }));
+            assert!(matches!(
+                result.get_stats(),
+                AllocatorStats {
+                    total_memory: 0,
+                    ..
+                }
+            ));
         }
     }
 
