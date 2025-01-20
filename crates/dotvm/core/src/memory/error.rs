@@ -43,6 +43,9 @@ pub enum MemoryError {
 
     #[error("TLB error: {0}")]
     TLBError(String),
+
+    #[error("Invalid size: available {available} bytes, size cannot be zero")]
+    InvalidSize { available: usize },
 }
 
 pub type MemoryResult<T> = Result<T, MemoryError>;
