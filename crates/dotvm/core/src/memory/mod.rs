@@ -118,12 +118,16 @@ impl VirtualAddress {
 }
 
 /// Physical memory address
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PhysicalAddress(usize);
 
 impl PhysicalAddress {
     pub fn new(p0: usize) -> PhysicalAddress {
-        todo!()
+        PhysicalAddress(p0)
+    }
+
+    pub fn as_usize(self) -> usize {
+        self.0
     }
 }
 
