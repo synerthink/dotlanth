@@ -34,7 +34,17 @@ pub struct Allocator<A: Architecture> {
 impl<A: Architecture> Allocator<A> {
     /// Constructor to create a new Allocator instance
     pub fn new(total_memory: usize) -> Self {
-        assert!(total_memory > 0, "Memory size must be greater than 0");
+        if total_memory == 0 {
+            // Special case for zero-sized memory
+            return Self {
+                blocks: BTreeMap::new(),
+                strategy: AllocationStrategy::FirstFit,
+                total_memory: 0,
+                used_memory: AtomicUsize::new(0),
+                last_address: memory::PhysicalAddress(0),
+                _phantom: PhantomData,
+            };
+        }
 
         // Create a map to store memory blocks.
         let mut blocks = BTreeMap::new();
@@ -64,42 +74,178 @@ impl<A: Architecture> Allocator<A> {
             return Err(MemoryError::InvalidSize { available: size });
         }
 
-        let mut split_info = None; // Temporary holder for split block info
-        for (&address, block) in self.blocks.iter_mut() {
-            // Check if the block is free and can accommodate the requested size
-            if block.is_free && block.size >= size {
-                if block.size > size {
-                    // If the block is larger than needed, calculate the remainder and prepare to split
-                    let remaining_size = block.size - size;
-                    let new_block_address = address.as_usize() + size;
-                    split_info = Some((
-                        memory::PhysicalAddress(new_block_address),
-                        Block {
-                            size: remaining_size,
-                            address: memory::PhysicalAddress(new_block_address),
-                            is_free: true,
-                        },
-                    ));
-                    block.size = size; // Resize the current block
-                }
-                block.is_free = false; // Mark the block as not free
-                self.used_memory
-                    .fetch_add(size, std::sync::atomic::Ordering::SeqCst);
+        // Check total memory first
+        let available_memory = self.total_memory - self.used_memory.load(Ordering::SeqCst);
+        if size > available_memory {
+            return Err(self.create_out_of_memory_error(size));
+        }
 
-                if let Some((new_block_address, new_block)) = split_info {
-                    // Insert the new split block into the map
-                    self.blocks.insert(new_block_address, new_block);
-                }
-                return Ok(MemoryHandle(address.as_usize())); // Return the memory handle
+        // Then perform fragmentation check
+        let max_contiguous = self.get_max_contiguous_free_block();
+        if max_contiguous < size {
+            return Err(MemoryError::FragmentationError(format!(
+                "Maximum contiguous block size: {}",
+                max_contiguous
+            )));
+        }
+
+        match self.strategy {
+            AllocationStrategy::FirstFit => self.first_fit_allocate(size),
+            AllocationStrategy::BestFit => self.best_fit_allocate(size),
+            AllocationStrategy::NextFit => self.next_fit_allocate(size),
+        }
+    }
+
+    // New helper method
+    fn get_max_contiguous_free_block(&self) -> usize {
+        self.blocks
+            .values()
+            .filter(|b| b.is_free)
+            .map(|b| b.size)
+            .max()
+            .unwrap_or(0)
+    }
+
+    fn first_fit_allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
+        let mut allocation_info = None;
+
+        // Find the first suitable block
+        for (&address, block) in self.blocks.iter() {
+            if block.is_free && block.size >= size {
+                allocation_info = Some((address, block.size));
+                break;
             }
         }
 
-        // If no suitable block is found, return an OutOfMemory error
-        Err(MemoryError::OutOfMemory {
-            requested: size,
+        if let Some((address, block_size)) = allocation_info {
+            self.allocate_block(address, block_size, size)
+        } else {
+            Err(self.create_out_of_memory_error(size))
+        }
+    }
+
+    fn best_fit_allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
+        let mut best_fit = None;
+        let mut smallest_difference = usize::MAX;
+
+        // Find the best fit
+        for (&address, block) in self.blocks.iter() {
+            if block.is_free && block.size >= size {
+                let difference = block.size - size;
+                if difference < smallest_difference {
+                    smallest_difference = difference;
+                    best_fit = Some((address, block.size));
+                }
+            }
+        }
+
+        if let Some((address, block_size)) = best_fit {
+            self.allocate_block(address, block_size, size)
+        } else {
+            Err(self.create_out_of_memory_error(size))
+        }
+    }
+
+    fn next_fit_allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
+        let mut allocation_info = None;
+
+        // Check blocks after the last address
+        for (&address, block) in self.blocks.range(self.last_address..) {
+            if block.is_free && block.size >= size {
+                allocation_info = Some((address, block.size));
+                break;
+            }
+        }
+
+        // If not found, start from the beginning
+        if allocation_info.is_none() {
+            for (&address, block) in self.blocks.range(..self.last_address) {
+                if block.is_free && block.size >= size {
+                    allocation_info = Some((address, block.size));
+                    break;
+                }
+            }
+        }
+
+        if let Some((address, block_size)) = allocation_info {
+            self.last_address = address;
+            self.allocate_block(address, block_size, size)
+        } else {
+            Err(self.create_out_of_memory_error(size))
+        }
+    }
+
+    fn allocate_block(
+        &mut self,
+        address: PhysicalAddress,
+        block_size: usize,
+        requested_size: usize,
+    ) -> Result<MemoryHandle, MemoryError> {
+        // Split and allocate the block
+        if block_size > requested_size {
+            let remaining_size = block_size - requested_size;
+            let new_block_address = memory::PhysicalAddress(address.as_usize() + requested_size);
+
+            let new_block = Block {
+                size: remaining_size,
+                address: new_block_address,
+                is_free: true,
+            };
+
+            if let Some(block) = self.blocks.get_mut(&address) {
+                block.size = requested_size;
+                block.is_free = false;
+            }
+
+            self.blocks.insert(new_block_address, new_block);
+        } else if let Some(block) = self.blocks.get_mut(&address) {
+            block.is_free = false;
+        }
+
+        self.used_memory
+            .fetch_add(requested_size, std::sync::atomic::Ordering::SeqCst);
+        Ok(MemoryHandle(address.as_usize()))
+    }
+
+    fn create_out_of_memory_error(&self, requested: usize) -> MemoryError {
+        MemoryError::OutOfMemory {
+            requested,
             available: self.total_memory
                 - self.used_memory.load(std::sync::atomic::Ordering::SeqCst),
-        })
+        }
+    }
+
+    /// Function to get allocator statistics
+    pub fn get_stats(&self) -> AllocatorStats {
+        let used_memory = self.used_memory.load(std::sync::atomic::Ordering::SeqCst);
+        let free_memory = self.total_memory - used_memory;
+
+        // Allocated blocks count
+        let allocation_count = self.blocks.values().filter(|b| !b.is_free).count();
+
+        // Calculate fragmentation ratio
+        // If no memory is used (new allocator), fragmentation ratio should be 0.0
+        let fragmentation_ratio = if used_memory == 0 {
+            0.0
+        } else {
+            let free_blocks: Vec<_> = self.blocks.values().filter(|b| b.is_free).collect();
+            if free_memory > 0 && !free_blocks.is_empty() {
+                // Find the largest free block size
+                let largest_free_block = free_blocks.iter().map(|b| b.size).max().unwrap_or(0);
+                // Fragmentation ratio = 1 - (largest free block / total free space)
+                1.0 - (largest_free_block as f64 / free_memory as f64)
+            } else {
+                0.0
+            }
+        };
+
+        AllocatorStats {
+            total_memory: self.total_memory,
+            used_memory,
+            free_memory,
+            allocation_count,
+            fragmentation_ratio,
+        }
     }
 
     /// Function to deallocate a previously allocated block of memory
@@ -154,32 +300,6 @@ impl<A: Architecture> Allocator<A> {
         } else {
             // If the block is not found, return an InvalidHandle error
             Err(MemoryError::InvalidHandle)
-        }
-    }
-
-    /// Function to retrieve allocator statistics
-    pub fn get_stats(&self) -> AllocatorStats {
-        let used_memory = self.used_memory.load(std::sync::atomic::Ordering::SeqCst);
-        let free_memory = self.total_memory - used_memory;
-
-        // Number of allocated blocks
-        let allocation_count = self.blocks.values().filter(|b| !b.is_free).count();
-
-        // Compute fragmentation ratio: sum of sizes of free blocks divided by total free memory
-        let fragmentation_ratio = self
-            .blocks
-            .values()
-            .filter(|b| b.is_free)
-            .map(|b| b.size as f64 / free_memory as f64)
-            .sum::<f64>();
-
-        // Return statistics in an AllocatorStats struct
-        AllocatorStats {
-            total_memory: self.total_memory,
-            used_memory,
-            free_memory,
-            allocation_count,
-            fragmentation_ratio,
         }
     }
 }
@@ -344,9 +464,15 @@ mod allocator_tests {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::FirstFit);
             let mut handles = Vec::new();
 
-            // Allocate many small blocks
-            for _ in 0..100 {
-                handles.push(allocator.allocate(64).expect("Small allocation failed"));
+            // Fill all memory with small blocks
+            let block_size = 64;
+            let total_blocks = TEST_MEMORY_SIZE / block_size;
+            for _ in 0..total_blocks {
+                handles.push(
+                    allocator
+                        .allocate(block_size)
+                        .expect("Small allocation failed"),
+                );
             }
 
             // Free every other block
