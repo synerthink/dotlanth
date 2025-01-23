@@ -26,8 +26,11 @@ pub struct PageTable<A: Architecture> {
 
 impl<A: Architecture> PageTable<A> {
     pub fn new() -> Self {
-        // To be implemented
-        todo!()
+        Self {
+            entries: HashMap::new(),
+            free_pages: Vec::new(),
+            _phantom: PhantomData,
+        }
     }
 
     pub fn map(
@@ -36,18 +39,45 @@ impl<A: Architecture> PageTable<A> {
         physical_addr: PhysicalAddress,
         flags: PageFlags,
     ) -> Result<(), MemoryError> {
-        // To be implemented
-        todo!()
+        // Check virtual address alignment
+        if virtual_addr.0 % A::PAGE_SIZE != 0 {
+            return Err(MemoryError::InvalidAlignment(virtual_addr.0));
+        }
+
+        // Check for existing mapping
+        if self.entries.contains_key(&virtual_addr) {
+            return Err(MemoryError::PageTableError(
+                "Virtual address already mapped".to_string(),
+            ));
+        }
+
+        // Insert new entry
+        self.entries.insert(
+            virtual_addr,
+            PageTableEntry {
+                physical_address: physical_addr,
+                flags,
+            },
+        );
+
+        Ok(())
     }
 
     pub fn unmap(&mut self, virtual_addr: VirtualAddress) -> Result<(), MemoryError> {
-        // To be implemented
-        todo!()
+        if let Some(entry) = self.entries.remove(&virtual_addr) {
+            self.free_pages.push(entry.physical_address);
+            Ok(())
+        } else {
+            Err(MemoryError::PageTableError(
+                "Virtual address not mapped".to_string(),
+            ))
+        }
     }
 
     pub fn translate(&self, virtual_addr: VirtualAddress) -> Option<(PhysicalAddress, PageFlags)> {
-        // To be implemented
-        todo!()
+        self.entries
+            .get(&virtual_addr)
+            .map(|entry| (entry.physical_address, entry.flags))
     }
 
     pub fn update_flags(
@@ -55,27 +85,37 @@ impl<A: Architecture> PageTable<A> {
         virtual_addr: VirtualAddress,
         flags: PageFlags,
     ) -> Result<(), MemoryError> {
-        // To be implemented
-        todo!()
+        if let Some(entry) = self.entries.get_mut(&virtual_addr) {
+            entry.flags = flags;
+            Ok(())
+        } else {
+            Err(MemoryError::PageTableError(
+                "Virtual address not mapped".to_string(),
+            ))
+        }
     }
 }
 
 /// TLB (Translation Lookaside Buffer) implementation
 pub struct TLB<A: Architecture> {
     entries: HashMap<VirtualAddress, (PhysicalAddress, PageFlags)>,
+    order: Vec<VirtualAddress>,
     capacity: usize,
     _phantom: PhantomData<A>,
 }
 
 impl<A: Architecture> TLB<A> {
     pub fn new(capacity: usize) -> Self {
-        // To be implemented
-        todo!()
+        Self {
+            entries: HashMap::with_capacity(capacity),
+            order: Vec::with_capacity(capacity),
+            capacity,
+            _phantom: PhantomData,
+        }
     }
 
     pub fn lookup(&self, virtual_addr: VirtualAddress) -> Option<(PhysicalAddress, PageFlags)> {
-        // To be implemented
-        todo!()
+        self.entries.get(&virtual_addr).copied()
     }
 
     pub fn insert(
@@ -84,13 +124,27 @@ impl<A: Architecture> TLB<A> {
         physical_addr: PhysicalAddress,
         flags: PageFlags,
     ) {
-        // To be implemented
-        todo!()
+        // Remove the old entry (if it exists)
+        if self.entries.contains_key(&virtual_addr) {
+            if let Some(pos) = self.order.iter().position(|&x| x == virtual_addr) {
+                self.order.remove(pos);
+            }
+        }
+
+        // If capacity is exceeded, remove the oldest entry
+        if self.order.len() >= self.capacity {
+            if let Some(oldest) = self.order.pop() {
+                self.entries.remove(&oldest);
+            }
+        }
+
+        // Insert the new entry
+        self.order.insert(0, virtual_addr); // En yeni başa eklenir
+        self.entries.insert(virtual_addr, (physical_addr, flags));
     }
 
     pub fn flush(&mut self) {
-        // To be implemented
-        todo!()
+        self.entries.clear();
     }
 }
 
