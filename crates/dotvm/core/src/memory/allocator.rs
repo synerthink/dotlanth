@@ -52,7 +52,7 @@ impl<A: Architecture> Allocator<A> {
         // The initial block represents the entire memory as one large free block
         let initial_block = Block {
             size: total_memory,
-            address: memory::PhysicalAddress(0),
+            address: PhysicalAddress(0), // Set the starting address to 0
             is_free: true,
         };
         blocks.insert(memory::PhysicalAddress(0), initial_block);
@@ -68,21 +68,47 @@ impl<A: Architecture> Allocator<A> {
         }
     }
 
+    pub fn get_allocation_size(&self, handle: MemoryHandle) -> Result<usize, MemoryError> {
+        let addr = PhysicalAddress::new(handle.0);
+        self.blocks
+            .get(&addr)
+            .map(|block| block.size)
+            .ok_or(MemoryError::InvalidHandle)
+    }
+
+    fn align_up(size: usize, align: usize) -> usize {
+        (size + align - 1) & !(align - 1)
+    }
+
     /// Function to allocate a block of memory
     pub fn allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
         if size == 0 {
-            return Err(MemoryError::InvalidSize { available: size });
+            return Err(MemoryError::AllocationFailed("Size cannot be zero".into()));
+        }
+
+        if size % A::ALIGNMENT != 0 {
+            return Err(MemoryError::InvalidAlignment(size % A::ALIGNMENT));
+        }
+
+        // Get the maximum size from the Architecture
+        if size > A::MAX_MEMORY {
+            return Err(MemoryError::AllocationTooLarge {
+                requested: size,
+                maximum: A::MAX_MEMORY,
+            });
         }
 
         // Check total memory first
+        let aligned_size = Self::align_up(size, A::ALIGNMENT);
         let available_memory = self.total_memory - self.used_memory.load(Ordering::SeqCst);
-        if size > available_memory {
-            return Err(self.create_out_of_memory_error(size));
+
+        if aligned_size > available_memory {
+            return Err(self.create_out_of_memory_error(aligned_size));
         }
 
         // Then perform fragmentation check
         let max_contiguous = self.get_max_contiguous_free_block();
-        if max_contiguous < size {
+        if max_contiguous < aligned_size {
             return Err(MemoryError::FragmentationError(format!(
                 "Maximum contiguous block size: {}",
                 max_contiguous
@@ -384,8 +410,9 @@ mod allocator_tests {
             // Free middle block to create a gap
             allocator.deallocate(handle2).expect("Deallocation failed");
 
-            // Allocate a block that fits better in the third block's space
-            let handle4 = allocator.allocate(500).expect("Fourth allocation failed");
+            // Allocate a block that fits better in the third block's space, note that
+            // The allocation size must be a multiple of 8 (the alignment size)
+            let handle4 = allocator.allocate(504).expect("Fourth allocation failed");
 
             // Best fit should minimize fragmentation
             let stats = allocator.get_stats();
@@ -448,8 +475,7 @@ mod allocator_tests {
         #[test]
         fn test_out_of_memory() {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::FirstFit);
-
-            let result = allocator.allocate(TEST_MEMORY_SIZE + 1);
+            let result = allocator.allocate(TEST_MEMORY_SIZE + 8); // 8 byte alignment is required
             assert!(matches!(
                 result,
                 Err(MemoryError::OutOfMemory {

@@ -46,6 +46,9 @@ pub enum MemoryError {
 
     #[error("Invalid size: available {available} bytes, size cannot be zero")]
     InvalidSize { available: usize },
+
+    #[error("Out of virtual address space")]
+    OutOfVirtualMemory,
 }
 
 pub type MemoryResult<T> = Result<T, MemoryError>;
