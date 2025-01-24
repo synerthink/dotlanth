@@ -43,6 +43,12 @@ pub enum MemoryError {
 
     #[error("TLB error: {0}")]
     TLBError(String),
+
+    #[error("Invalid size: available {available} bytes, size cannot be zero")]
+    InvalidSize { available: usize },
+
+    #[error("Out of virtual address space")]
+    OutOfVirtualMemory,
 }
 
 pub type MemoryResult<T> = Result<T, MemoryError>;
