@@ -11,6 +11,23 @@ pub struct PageFlags {
     pub cached: bool,
 }
 
+impl PageFlags {
+    pub fn to_protection(&self) -> Protection {
+        match (self.writable, self.executable) {
+            (true, true) => Protection::ReadWriteExecute,
+            (true, false) => Protection::ReadWrite,
+            (false, true) => Protection::ReadExecute,
+            (false, false) if self.present => Protection::ReadOnly,
+            _ => Protection::None,
+        }
+    }
+
+    pub fn check_protection(&self, required: Protection) -> bool {
+        let current = self.to_protection();
+        current >= required
+    }
+}
+
 /// Page table entry
 pub struct PageTableEntry {
     physical_address: PhysicalAddress,
@@ -69,7 +86,7 @@ impl<A: Architecture> PageTable<A> {
             Ok(())
         } else {
             Err(MemoryError::PageTableError(
-                "Virtual address not mapped".to_string(),
+                "Virtual address not mapped".into(),
             ))
         }
     }
@@ -93,6 +110,42 @@ impl<A: Architecture> PageTable<A> {
                 "Virtual address not mapped".to_string(),
             ))
         }
+    }
+
+    pub fn reverse_mapping(
+        &self,
+        phys_addr: PhysicalAddress,
+    ) -> Option<(VirtualAddress, PageFlags)> {
+        self.entries
+            .iter()
+            .find(|(_, entry)| entry.physical_address == phys_addr)
+            .map(|(virt, entry)| (*virt, entry.flags))
+    }
+
+    pub fn find_contiguous_virtual_space(
+        &self,
+        size: usize,
+    ) -> Result<VirtualAddress, MemoryError> {
+        let mut current_addr = VirtualAddress::new(0);
+        let end_addr = VirtualAddress::new(A::MAX_MEMORY);
+        let required_pages = size / A::PAGE_SIZE;
+        let mut found_pages = 0;
+
+        while current_addr < end_addr {
+            if !self.entries.contains_key(&current_addr) {
+                found_pages += 1;
+                if found_pages == required_pages {
+                    return Ok(VirtualAddress::new(
+                        current_addr.0 - (required_pages - 1) * A::PAGE_SIZE,
+                    ));
+                }
+            } else {
+                found_pages = 0;
+            }
+            current_addr = VirtualAddress::new(current_addr.0 + A::PAGE_SIZE);
+        }
+
+        Err(MemoryError::OutOfVirtualMemory)
     }
 }
 
