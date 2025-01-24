@@ -18,23 +18,81 @@ pub struct MemoryPool {
 
 impl MemoryPool {
     pub fn new(block_size: usize, total_size: usize) -> Result<Self, MemoryError> {
-        // To be implemented
-        todo!()
+        if block_size == 0 || total_size == 0 {
+            return Err(MemoryError::AllocationFailed(block_size.to_string()));
+        }
+        if total_size % block_size != 0 {
+            return Err(MemoryError::InvalidAlignment(total_size % block_size));
+        }
+
+        let total_blocks = total_size / block_size;
+        let mut free_blocks = VecDeque::with_capacity(total_blocks);
+
+        // Create addresses starting from 0, incrementing by the block size
+        for i in 0..total_blocks {
+            free_blocks.push_back(PoolBlock {
+                address: PhysicalAddress(i * block_size),
+                size: block_size,
+            });
+        }
+
+        Ok(MemoryPool {
+            block_size,
+            total_blocks,
+            free_blocks,
+            used_blocks: 0,
+        })
     }
 
     pub fn allocate(&mut self) -> Result<PoolBlock, MemoryError> {
-        // To be implemented
-        todo!()
+        match self.free_blocks.pop_front() {
+            Some(block) => {
+                self.used_blocks += 1;
+                Ok(block)
+            }
+            None => Err(MemoryError::OutOfMemory {
+                requested: self.block_size,
+                available: 0,
+            }),
+        }
     }
 
     pub fn deallocate(&mut self, block: PoolBlock) -> Result<(), MemoryError> {
-        // To be implemented
-        todo!()
+        // Change control orders
+        if block.size != self.block_size {
+            return Err(MemoryError::InvalidAddress(block.address.0));
+        }
+        if block.address.0 / self.block_size >= self.total_blocks {
+            return Err(MemoryError::InvalidAddress(block.address.0));
+        }
+        if block.address.0 % self.block_size != 0 {
+            return Err(MemoryError::InvalidAlignment(block.address.0));
+        }
+        if self.free_blocks.iter().any(|b| b.address == block.address) {
+            return Err(MemoryError::InvalidAddress(block.address.0));
+        }
+
+        self.used_blocks -= 1;
+        // Add the block to the front of the queue
+        self.free_blocks.push_front(block);
+        Ok(())
     }
 
     pub fn get_stats(&self) -> PoolStats {
-        // To be implemented
-        todo!()
+        let free_blocks = self.free_blocks.len();
+        let utilization = if self.total_blocks > 0 {
+            self.used_blocks as f64 / self.total_blocks as f64
+        } else {
+            0.0
+        };
+
+        PoolStats {
+            block_size: self.block_size,
+            total_blocks: self.total_blocks,
+            used_blocks: self.used_blocks,
+            free_blocks,
+            utilization,
+        }
     }
 }
 
@@ -56,18 +114,38 @@ pub struct PoolManager {
 
 impl PoolManager {
     pub fn new() -> Self {
-        // To be implemented
-        todo!()
+        Self {
+            pools: Vec::new(),
+            size_classes: Vec::new(),
+        }
     }
 
     pub fn get_pool(&mut self, size: usize) -> Option<&mut MemoryPool> {
-        // To be implemented
-        todo!()
+        let mut best = None;
+        for (i, &class) in self.size_classes.iter().enumerate() {
+            if class >= size {
+                if let Some((current_size, _)) = best {
+                    if class < current_size {
+                        best = Some((class, i));
+                    }
+                } else {
+                    best = Some((class, i));
+                }
+            }
+        }
+        best.and_then(|(_, i)| self.pools.get_mut(i))
     }
 
     pub fn create_pool(&mut self, block_size: usize, total_size: usize) -> Result<(), MemoryError> {
-        // To be implemented
-        todo!()
+        if self.size_classes.contains(&block_size) {
+            return Err(MemoryError::PoolError(
+                "Size class already exists".to_string(),
+            ));
+        }
+        let pool = MemoryPool::new(block_size, total_size)?;
+        self.size_classes.push(block_size);
+        self.pools.push(pool);
+        Ok(())
     }
 }
 

@@ -1,0 +1,27 @@
+{
+    "name": "dotlanth", // set container name
+    "build": {
+        "dockerfile": "Dockerfile" // create custom docker image with Dockerfile
+    },
+    "runArgs": [
+        "--name", "dotlanth", // set container name
+        "--hostname", "dotlanth" // set container hostname
+    ],
+    "mounts": [ // set mount points for dev container (read-write mode)
+        "source=${localEnv:HOME}/.ssh,target=/home/dev/.ssh,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.gnupg,target=/home/dev/.gnupg,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.gitconfig,target=/home/dev/.gitconfig,type=bind,consistency=cached",
+        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+    ],
+    "remoteUser": "dev", //set default user
+    "workspaceFolder": "/workspace", // set default workspace
+    "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,  // Auto format on save
+        "rust-analyzer.rustfmt.enable": true,  // Enable rustfmt via Rust Analyzer
+        "rust-analyzer.rustfmt.overrideCommand": ["rustfmt"]  // Use rustfmt for formatting
+    },
+    "extensions": [
+        "rust-lang.rust-analyzer"
+    ]
+}
