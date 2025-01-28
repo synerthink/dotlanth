@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package runtime;
 
-service RuntimeService {
+service Runtime {
   rpc Ping (PingRequest) returns (PingResponse);
 }
 
