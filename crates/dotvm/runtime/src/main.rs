@@ -3,6 +3,9 @@ use tonic::transport::Server;
 
 mod proto {
     tonic::include_proto!("runtime");
+
+    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
+        tonic::include_file_descriptor_set!("runtime_descriptor");
 }
 
 #[derive(Debug, Default)]
@@ -28,7 +31,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let runtime = RuntimeService::default();
 
+    let service = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
+        .build()?;
+
     Server::builder()
+        .add_service(service)
         .add_service(RuntimeServer::new(runtime))
         .serve(addr)
         .await?;
