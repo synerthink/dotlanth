@@ -85,10 +85,13 @@ impl<A: Architecture> PageTable<A> {
         }
 
         // Insert new entry
-        self.entries.insert(virtual_addr, PageTableEntry {
-            physical_address: physical_addr,
-            flags,
-        });
+        self.entries.insert(
+            virtual_addr,
+            PageTableEntry {
+                physical_address: physical_addr,
+                flags,
+            },
+        );
 
         Ok(())
     }
