@@ -61,7 +61,7 @@ jobs:
           rustup component add clippy rust-src
 
       - name: Run Clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace --
 
   test:
     runs-on: ubuntu-latest

@@ -28,7 +28,7 @@ pub use protection::*;
 
 use num_bigint::BigUint;
 use std::marker::PhantomData;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::Ordering;
 
 /// Trait defining architecture-specific memory behaviour
 pub trait Architecture: Send + Sync + 'static {

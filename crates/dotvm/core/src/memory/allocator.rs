@@ -295,7 +295,7 @@ impl<A: Architecture> Allocator<A> {
         let address = memory::PhysicalAddress(handle.0);
 
         // Step 1: Retrieve a mutable reference to the block and check if it exists
-        if let Some(mut block) = self.blocks.get_mut(&address) {
+        if let Some(block) = self.blocks.get_mut(&address) {
             if block.is_free {
                 return Err(MemoryError::AlreadyDeallocated); // Memory block is already free
             }
@@ -320,7 +320,7 @@ impl<A: Architecture> Allocator<A> {
             if let Some(next_block) = self.blocks.get(&next_address).cloned() {
                 if next_block.is_free {
                     // Re-borrow the block to update its size
-                    if let Some(mut block) = self.blocks.get_mut(&address) {
+                    if let Some(block) = self.blocks.get_mut(&address) {
                         block.size += next_block.size; // Add the size of the next block
                     }
                     self.blocks.remove(&next_address); // Remove the next block from the map
@@ -328,7 +328,7 @@ impl<A: Architecture> Allocator<A> {
             }
 
             // Coalescing: Merge with the previous (left) block if it is free
-            if let Some((&previous_address, mut previous_block)) =
+            if let Some((&previous_address, previous_block)) =
                 self.blocks.range_mut(..current_block_address).rev().next()
             {
                 if previous_block.is_free {
