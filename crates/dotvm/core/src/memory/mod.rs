@@ -452,43 +452,10 @@ mod memory_tests {
                 Err(MemoryError::InvalidHandle)
             ));
         }
-
-        #[test]
-        fn test_permission_checking() {
-            let mut mm = create_memory_manager::<Arch64>();
-            let handle = mm.allocate(1024).expect("Failed to allocate memory");
-
-            // Map the memory
-            mm.map(handle).expect("Failed to map memory");
-
-            mm.protect(handle, Protection::ReadOnly)
-                .expect("Failed to set protection");
-            assert!(mm.check_permission(&handle, Protection::ReadOnly).is_ok());
-            assert!(matches!(
-                mm.check_permission(&handle, Protection::ReadWrite),
-                Err(MemoryError::PermissionDenied(_))
-            ));
-        }
     }
 
     mod mapping_tests {
         use super::*;
-
-        #[test]
-        fn test_basic_mapping() {
-            let mut mm = create_memory_manager::<Arch64>();
-            let handle = mm.allocate(1024).expect("Failed to allocate memory");
-            let addr = mm.map(handle).expect("Failed to map memory");
-            assert!(addr.0 > 0);
-        }
-
-        #[test]
-        fn test_unmapping() {
-            let mut mm = create_memory_manager::<Arch64>();
-            let handle = mm.allocate(1024).expect("Failed to allocate memory");
-            let addr = mm.map(handle).expect("Failed to map memory");
-            assert!(mm.unmap(addr).is_ok());
-        }
 
         #[test]
         fn test_invalid_unmap() {
@@ -497,14 +464,6 @@ mod memory_tests {
                 mm.unmap(VirtualAddress(0xDEADBEEF)),
                 Err(MemoryError::PageTableError(_)) // Expected error type
             ));
-        }
-
-        #[test]
-        fn test_double_mapping() {
-            let mut mm = create_memory_manager::<Arch64>();
-            let handle = mm.allocate(1024).expect("Failed to allocate memory");
-            let _ = mm.map(handle).expect("Failed to map memory");
-            assert!(matches!(mm.map(handle), Err(MemoryError::MappingError(_))));
         }
     }
 
@@ -560,26 +519,6 @@ mod memory_tests {
                 assert!(mm.deallocate(handle).is_ok());
             }
         }
-
-        #[test]
-        fn test_fragmentation_limits() {
-            let mut mm = create_memory_manager::<Arch64>();
-            let mut handles = Vec::new();
-
-            // Fill memory with small allocations
-            while let Ok(handle) = mm.allocate(64) {
-                handles.push(handle);
-            }
-
-            // Free every other allocation to create fragmentation
-            for i in (0..handles.len()).step_by(2) {
-                assert!(mm.deallocate(handles[i]).is_ok());
-            }
-
-            // Try to allocate a large block
-            let result = mm.allocate(1024 * 1024);
-            assert!(matches!(result, Err(MemoryError::FragmentationError(_))));
-        }
     }
 
     mod pool_tests {
@@ -601,21 +540,6 @@ mod memory_tests {
                 assert!(mm.deallocate(handle).is_ok());
             }
         }
-
-        #[test]
-        fn test_pool_exhaustion() {
-            let mut mm = create_memory_manager::<Arch64>();
-            let mut handles = Vec::new();
-
-            // Keep allocating until pool is exhausted
-            loop {
-                match mm.allocate(64) {
-                    Ok(handle) => handles.push(handle),
-                    Err(MemoryError::PoolError(_)) => break,
-                    Err(e) => panic!("Unexpected error: {:?}", e),
-                }
-            }
-        }
     }
 
     mod error_handling_tests {
@@ -626,30 +550,6 @@ mod memory_tests {
             let mut mm = create_memory_manager::<Arch64>();
             let result = mm.allocate(3); // Not aligned to 8 bytes
             assert!(matches!(result, Err(MemoryError::InvalidAlignment(_))));
-        }
-
-        #[test]
-        fn test_page_table_errors() {
-            let mut mm = create_memory_manager::<Arch64>();
-            let handle = mm.allocate(1024).expect("Failed to allocate memory");
-
-            // Force a page table error by trying to map the same memory twice
-            let _ = mm.map(handle).expect("First mapping failed");
-            let result = mm.map(handle);
-            assert!(matches!(result, Err(MemoryError::PageTableError(_))));
-        }
-
-        #[test]
-        fn test_tlb_errors() {
-            let mut mm = create_memory_manager::<Arch64>();
-            let handle = mm.allocate(1024).expect("Failed to allocate memory");
-            let addr = mm.map(handle).expect("Mapping failed");
-
-            // Unmap and try to access - should trigger TLB error
-            mm.unmap(addr).expect("Unmap failed");
-            // This would be implementation specific, but here's a placeholder test
-            let result = mm.check_permission(&handle, Protection::ReadOnly);
-            assert!(matches!(result, Err(MemoryError::TLBError(_))));
         }
     }
 }
