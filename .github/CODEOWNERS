@@ -1,0 +1,10 @@
+# CODEOWNERS
+
+# Define the default code owners for the repository
+* @ademclk
+* @synerthink
+
+# Specify code owners for specific directories or files
+/crates/dotvm/ @dotvm-maintainer
+/crates/dotdb/ @dotdb-maintainer
+/docs/ @documentation-team
