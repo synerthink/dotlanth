@@ -222,14 +222,17 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
     }
 
     fn allocate(&mut self, size: usize) -> Result<MemoryHandle, Self::Error> {
+        // TODO: Implement bounds checking
         self.allocator.allocate(size)
     }
 
     fn deallocate(&mut self, handle: MemoryHandle) -> Result<(), Self::Error> {
+        // TODO: Implement bounds checking
         self.allocator.deallocate(handle)
     }
 
     fn protect(&mut self, handle: MemoryHandle, protection: Protection) -> Result<(), Self::Error> {
+        // TODO: Implement bounds checking
         let phys_addr = PhysicalAddress::new(handle.0);
         let size = self.allocator.get_allocation_size(handle)?;
 
@@ -398,6 +401,13 @@ mod memory_tests {
                 assert!(handles.insert(handle), "Duplicate handle detected");
             }
         }
+
+        #[test]
+        fn test_allocate_bounds() {
+            // TODO: Implement bounds checking test for allocation
+            // Example: Try to allocate more than MAX_MEMORY and expect an error
+        }
+
     }
 
     mod deallocation_tests {
