@@ -90,7 +90,7 @@ pub struct HardwareProtection {
 
 impl HardwareProtection {
     pub fn new() -> Self {
-        // Check CPU features for protection capabilities
+        // TODO: Implement actual CPU feature checks for protection capabilities
         Self {
             pkey_supported: Self::check_pkey_support(),
             mpk_supported: Self::check_mpk_support(),
@@ -98,11 +98,13 @@ impl HardwareProtection {
     }
 
     fn check_pkey_support() -> bool {
+        // TODO: Implement PKEY support check based on CPU features
         // Implementation would check CPU features
         false
     }
 
     fn check_mpk_support() -> bool {
+        // TODO: Implement MPK support check based on CPU features
         // Implementation would check CPU features
         false
     }
@@ -113,6 +115,7 @@ impl HardwareProtection {
         size: usize,
         protection: Protection,
     ) -> Result<(), MemoryError> {
+        // TODO: Implement hardware protection mechanisms if available
         // Implementation would use hardware protection mechanisms if available
         Ok(())
     }
@@ -237,17 +240,13 @@ mod protection_tests {
             let mut ctx = ProtectionContext::new();
             let handle = MemoryHandle(1);
 
-            ctx.set_protection(handle, Protection::ReadWriteExecute)
-                .unwrap();
+            ctx.set_protection(handle, Protection::ReadWriteExecute).unwrap();
 
             // ReadWriteExecute should be compatible with all modes
             assert!(ctx.check_access(&handle, Protection::ReadOnly).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadWrite).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadExecute).is_ok());
-            assert!(
-                ctx.check_access(&handle, Protection::ReadWriteExecute)
-                    .is_ok()
-            );
+            assert!(ctx.check_access(&handle, Protection::ReadWriteExecute).is_ok());
         }
 
         #[test]
@@ -307,9 +306,11 @@ mod protection_tests {
             let unaligned_addr = VirtualAddress(0x1001); // Not page-aligned
 
             // Protection of unaligned addresses should fail
+            // TODO: Implement actual protection logic to enforce alignment
+            // Currently, this passes because the method is not implemented yet
             assert!(matches!(
                 hw_protection.protect_region(unaligned_addr, 4096, Protection::ReadWrite),
-                Ok(()) // Currently OK as per implementation, but might change
+                Ok(())
             ));
         }
 
@@ -319,9 +320,11 @@ mod protection_tests {
             let addr = VirtualAddress(0x1000);
 
             // Test with non-page-sized region
+            // TODO: Implement size checks if required
+            // Currently, this passes because the method is not implemented yet
             assert!(matches!(
                 hw_protection.protect_region(addr, 100, Protection::ReadWrite),
-                Ok(()) // Currently OK as per implementation, but might change
+                Ok(())
             ));
         }
     }
@@ -344,6 +347,8 @@ mod protection_tests {
 
             // Verify software protection
             assert!(ctx.check_access(&handle, Protection::ReadWrite).is_ok());
+
+            // TODO: Extend integration tests to verify hardware-enforced protections
         }
 
         #[test]

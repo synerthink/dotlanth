@@ -111,7 +111,7 @@ impl ExtendedMemory for Arch512 {
 
 /// Memory handle for tracking allocations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MemoryHandle(usize);
+pub struct MemoryHandle(pub usize);
 
 /// Memory protection flags
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
