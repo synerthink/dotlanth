@@ -240,13 +240,17 @@ mod protection_tests {
             let mut ctx = ProtectionContext::new();
             let handle = MemoryHandle(1);
 
-            ctx.set_protection(handle, Protection::ReadWriteExecute).unwrap();
+            ctx.set_protection(handle, Protection::ReadWriteExecute)
+                .unwrap();
 
             // ReadWriteExecute should be compatible with all modes
             assert!(ctx.check_access(&handle, Protection::ReadOnly).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadWrite).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadExecute).is_ok());
-            assert!(ctx.check_access(&handle, Protection::ReadWriteExecute).is_ok());
+            assert!(
+                ctx.check_access(&handle, Protection::ReadWriteExecute)
+                    .is_ok()
+            );
         }
 
         #[test]

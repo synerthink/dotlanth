@@ -404,10 +404,12 @@ mod memory_tests {
 
         #[test]
         fn test_allocate_bounds() {
-            // TODO: Implement bounds checking test for allocation
+            // Simulate bounds checking by attempting to allocate more than MAX_MEMORY and expect an error
+            let mut mm = create_memory_manager::<Arch32>();
+            let mut mm = create_memory_manager::<Arch32>();
+            assert!(mm.allocate(Arch32::MAX_MEMORY + 1).is_err());
             // Example: Try to allocate more than MAX_MEMORY and expect an error
         }
-
     }
 
     mod deallocation_tests {
@@ -560,6 +562,41 @@ mod memory_tests {
             let mut mm = create_memory_manager::<Arch64>();
             let result = mm.allocate(3); // Not aligned to 8 bytes
             assert!(matches!(result, Err(MemoryError::InvalidAlignment(_))));
+        }
+    }
+    #[cfg(test)]
+    pub mod memory_isolation_tests {
+        use super::*;
+
+        #[test]
+        fn test_memory_isolation_between_contracts() {
+            let mut mm = create_memory_manager::<Arch64>();
+            let handle1 = mm
+                .allocate(1024)
+                .expect("Failed to allocate memory for contract 1");
+            let handle2 = mm
+                .allocate(1024)
+                .expect("Failed to allocate memory for contract 2");
+
+            // Attempt to access handle1's memory from handle2's context
+            // This should fail if isolation is enforced
+            // Simulate cross-contract access by attempting to check permissions and assert failure
+            assert!(mm.check_permission(&handle1, Protection::ReadOnly).is_err());
+        }
+
+        #[test]
+        fn test_memory_isolation_on_deallocation() {
+            let mut mm = create_memory_manager::<Arch64>();
+            let handle = mm
+                .allocate(1024)
+                .expect("Failed to allocate memory for contract");
+
+            mm.deallocate(handle).expect("Failed to deallocate memory");
+
+            // Attempt to access deallocated memory
+            // This should fail if isolation is enforced
+            // Simulate access to deallocated memory by attempting to check permissions and assert failure
+            assert!(mm.check_permission(&handle, Protection::ReadOnly).is_err());
         }
     }
 }

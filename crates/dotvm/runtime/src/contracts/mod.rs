@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use dotvm_core::memory::{MemoryHandle, MemoryError};
+use dotvm_core::memory::{MemoryError, MemoryHandle};
 use std::collections::VecDeque;
 
 /// Represents an individual contract within the runtime.
@@ -25,7 +25,6 @@ pub struct Contract {
 
     /// Memory handle associated with the contract.
     pub memory_handle: MemoryHandle,
-
     // TODO: Add additional fields required for contract management and memory isolation.
 }
 
@@ -36,7 +35,7 @@ impl Contract {
         Contract {
             id,
             memory_handle: MemoryHandle(0), // TODO: Assign actual memory handle.
-            // Initialize other fields as necessary.
+                                            // Initialize other fields as necessary.
         }
     }
 
@@ -50,7 +49,6 @@ impl Contract {
 pub struct ContractManager {
     /// Queue of active contracts.
     contracts: VecDeque<Contract>,
-
     // TODO: Add fields necessary for managing memory isolation between contracts.
 }
 
