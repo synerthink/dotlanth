@@ -93,7 +93,10 @@ mod tests {
     fn test_contract_creation() {
         let contract = Contract::new(1);
         assert_eq!(contract.id, 1);
-        // TODO: Assert that memory_handle is correctly assigned.
+        assert!(
+            contract.memory_handle.0 != 0,
+            "Memory handle should be correctly assigned."
+        );
     }
 
     #[test]
@@ -122,6 +125,9 @@ mod tests {
         manager.add_contract(contract1.clone());
         manager.add_contract(contract2.clone());
 
-        // TODO: Implement tests to verify that contract1 and contract2 have isolated memory regions.
+        assert_ne!(
+            contract1.memory_handle.0, contract2.memory_handle.0,
+            "Contracts should have isolated memory regions."
+        );
     }
 }

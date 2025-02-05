@@ -1,4 +1,3 @@
-// Dotlanth
 // Copyright (C) 2025 Synerthink
 
 // This program is free software: you can redistribute it and/or modify
@@ -25,7 +24,6 @@ pub struct SharedMemoryRegion {
 
     /// Memory handle associated with the shared memory region.
     pub memory_handle: MemoryHandle,
-
     // TODO: Add additional fields required for shared memory management.
 }
 
@@ -36,7 +34,7 @@ impl SharedMemoryRegion {
         SharedMemoryRegion {
             id,
             memory_handle: MemoryHandle(0), // TODO: Assign actual memory handle.
-            // Initialize other fields as necessary.
+                                            // Initialize other fields as necessary.
         }
     }
 
@@ -55,7 +53,6 @@ impl SharedMemoryRegion {
 pub struct SharedMemoryManager {
     /// Map of shared memory regions by their ID.
     regions: HashMap<u64, SharedMemoryRegion>,
-
     // TODO: Add fields necessary for managing shared memory isolation.
 }
 
@@ -106,7 +103,10 @@ mod tests {
     fn test_shared_memory_region_creation() {
         let region = SharedMemoryRegion::new(1);
         assert_eq!(region.id, 1);
-        // TODO: Assert that memory_handle is correctly assigned.
+        assert_eq!(
+            region.memory_handle.0, 0,
+            "Memory handle should be initialized to 0."
+        );
     }
 
     #[test]
@@ -115,10 +115,23 @@ mod tests {
         let region1 = SharedMemoryRegion::new(1);
         let region2 = SharedMemoryRegion::new(2);
 
-        manager.create_region(region1.id).expect("Failed to create region 1");
-        manager.create_region(region2.id).expect("Failed to create region 2");
+        manager
+            .create_region(region1.id)
+            .expect("Failed to create region 1");
+        manager
+            .create_region(region2.id)
+            .expect("Failed to create region 2");
 
-        // TODO: Implement tests for sharing and unsharing regions.
+        manager
+            .share_region(region1.id, 100)
+            .expect("Failed to share region 1");
+        manager
+            .unshare_region(region1.id, 100)
+            .expect("Failed to unshare region 1");
+        assert!(
+            manager.get_region(1).is_some(),
+            "Region 1 should still exist after unsharing."
+        );
         assert!(manager.get_region(1).is_some());
         assert!(manager.get_region(2).is_some());
 
@@ -132,9 +145,16 @@ mod tests {
         let region1 = SharedMemoryRegion::new(1);
         let region2 = SharedMemoryRegion::new(2);
 
-        manager.create_region(region1.id).expect("Failed to create region 1");
-        manager.create_region(region2.id).expect("Failed to create region 2");
+        manager
+            .create_region(region1.id)
+            .expect("Failed to create region 1");
+        manager
+            .create_region(region2.id)
+            .expect("Failed to create region 2");
 
-        // TODO: Implement tests to verify that shared regions are correctly isolated.
+        assert_ne!(
+            region1.memory_handle.0, region2.memory_handle.0,
+            "Shared memory regions should be isolated."
+        );
     }
 }

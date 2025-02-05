@@ -19,12 +19,14 @@ mod error;
 mod page_table;
 mod pool;
 mod protection;
+mod shared_memory;
 
 pub use allocator::*;
 pub use error::*;
 pub use page_table::*;
 pub use pool::*;
 pub use protection::*;
+pub use shared_memory::*;
 
 use num_bigint::BigUint;
 use std::marker::PhantomData;
@@ -222,17 +224,17 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
     }
 
     fn allocate(&mut self, size: usize) -> Result<MemoryHandle, Self::Error> {
-        // TODO: Implement bounds checking
+        // TODO: Implement bounds checking to ensure that memory handles are within valid ranges and prevent buffer overflows or underflows.
         self.allocator.allocate(size)
     }
 
     fn deallocate(&mut self, handle: MemoryHandle) -> Result<(), Self::Error> {
-        // TODO: Implement bounds checking
+        // TODO: Implement bounds checking to verify that the memory handle exists and is valid before deallocation.
         self.allocator.deallocate(handle)
     }
 
     fn protect(&mut self, handle: MemoryHandle, protection: Protection) -> Result<(), Self::Error> {
-        // TODO: Implement bounds checking
+        // TODO: Implement bounds checking to ensure that protection levels are correctly enforced for each memory handle.
         let phys_addr = PhysicalAddress::new(handle.0);
         let size = self.allocator.get_allocation_size(handle)?;
 
@@ -405,7 +407,6 @@ mod memory_tests {
         #[test]
         fn test_allocate_bounds() {
             // Simulate bounds checking by attempting to allocate more than MAX_MEMORY and expect an error
-            let mut mm = create_memory_manager::<Arch32>();
             let mut mm = create_memory_manager::<Arch32>();
             assert!(mm.allocate(Arch32::MAX_MEMORY + 1).is_err());
             // Example: Try to allocate more than MAX_MEMORY and expect an error
