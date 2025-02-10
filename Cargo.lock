@@ -432,12 +432,14 @@ dependencies = [
  "criterion",
  "dotvm-common",
  "futures",
+ "libc",
  "metrics",
  "mockall",
  "num-bigint",
  "parking_lot",
  "proptest",
  "rand",
+ "raw-cpuid",
  "thiserror",
  "tokio",
  "tracing",
@@ -1295,6 +1297,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
 dependencies = [
  "rand_core",
+]
+
+[[package]]
+name = "raw-cpuid"
+version = "11.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6928fa44c097620b706542d428957635951bade7143269085389d42c8a4927e"
+dependencies = [
+ "bitflags 2.6.0",
 ]
 
 [[package]]

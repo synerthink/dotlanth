@@ -96,6 +96,14 @@ impl<A: Architecture> Allocator<A> {
         (size + align - 1) & !(align - 1)
     }
 
+    pub fn is_valid_handle(&self, handle: MemoryHandle) -> bool {
+        self.blocks.values().any(|block| {
+            block.address.as_usize() <= handle.0
+                && handle.0 < block.address.as_usize() + block.size
+                && !block.is_free
+        })
+    }
+
     /// Function to allocate a block of memory
     pub fn allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
         if size == 0 {
@@ -297,7 +305,7 @@ impl<A: Architecture> Allocator<A> {
         // Step 1: Retrieve a mutable reference to the block and check if it exists
         if let Some(block) = self.blocks.get_mut(&address) {
             if block.is_free {
-                return Err(MemoryError::AlreadyDeallocated); // Memory block is already free
+                return Err(MemoryError::AlreadyDeallocated);
             }
 
             // Mark the block as free
@@ -384,10 +392,13 @@ mod allocator_tests {
         #[test]
         fn test_invalid_memory_size() {
             let result = Allocator::<Arch64>::new(0);
-            assert!(matches!(result.get_stats(), AllocatorStats {
-                total_memory: 0,
-                ..
-            }));
+            assert!(matches!(
+                result.get_stats(),
+                AllocatorStats {
+                    total_memory: 0,
+                    ..
+                }
+            ));
         }
     }
 
