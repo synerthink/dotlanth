@@ -54,6 +54,15 @@ pub enum MemoryError {
     #[error("Memory already deallocated")]
     AlreadyDeallocated,
 
+    #[error("Unsupported protection mechanism")]
+    UnsupportedProtection,
+
+    #[error("Unsupported operating system")]
+    UnsupportedOS,
+
+    #[error("Unsupported architecture")]
+    UnsupportedArch,
+
     #[error("Memory fragmentation error: {0}")]
     FragmentationError(String),
 
@@ -65,6 +74,12 @@ pub enum MemoryError {
 
     #[error("Out of virtual address space")]
     OutOfVirtualMemory,
+
+    #[error("Invalid memory region: {0}")]
+    InvalidRegion(String),
+
+    #[error("Allocation error: {0}")]
+    AllocationError(String),
 }
 
 pub type MemoryResult<T> = Result<T, MemoryError>;
