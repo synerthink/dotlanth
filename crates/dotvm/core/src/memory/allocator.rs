@@ -392,13 +392,10 @@ mod allocator_tests {
         #[test]
         fn test_invalid_memory_size() {
             let result = Allocator::<Arch64>::new(0);
-            assert!(matches!(
-                result.get_stats(),
-                AllocatorStats {
-                    total_memory: 0,
-                    ..
-                }
-            ));
+            assert!(matches!(result.get_stats(), AllocatorStats {
+                total_memory: 0,
+                ..
+            }));
         }
     }
 
