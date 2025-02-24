@@ -21,20 +21,18 @@ pub enum Instruction {
     Multiply,
     Divide,
     Modulus,
-    SomeInstruction, // New variant added
-    Initialize,      // New variant added
-    Increment,       // New variant added
-                     // ... other instructions goes here
+    SomeInstruction,
+    Initialize,
+    Increment,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operand {
     Integer(i64),
     Float(f64),
 }
 
-/// Enum representing comparison operators used in control flow conditions.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     GreaterThan,
     LessThan,
@@ -44,27 +42,74 @@ pub enum Operator {
     NotEqual,
 }
 
-// TODO: Implement functions for each arithmetic operation
+// Helper: Converts the operand to f64.
+fn operand_to_f64(op: &Operand) -> f64 {
+    match op {
+        Operand::Integer(i) => *i as f64,
+        Operand::Float(f) => *f,
+    }
+}
+
+/// Adds two operands. If both operands are integers, the result is an integer.
+/// Otherwise, the operands are converted to f64 and the result is a float.
 pub fn add_operands(a: &Operand, b: &Operand) -> Operand {
-    todo!("Implement addition of operands")
+    match (a, b) {
+        (Operand::Integer(a_val), Operand::Integer(b_val)) => Operand::Integer(a_val + b_val),
+        _ => Operand::Float(operand_to_f64(a) + operand_to_f64(b)),
+    }
 }
 
+/// Subtracts the second operand from the first. If both operands are integers, the result is an integer.
+/// Otherwise, the operands are converted to f64 and the result is a float.
 pub fn subtract_operands(a: &Operand, b: &Operand) -> Operand {
-    todo!("Implement subtraction of operands")
+    match (a, b) {
+        (Operand::Integer(a_val), Operand::Integer(b_val)) => Operand::Integer(a_val - b_val),
+        _ => Operand::Float(operand_to_f64(a) - operand_to_f64(b)),
+    }
 }
 
+/// Multiplies two operands. If both operands are integers, the result is an integer.
+/// Otherwise, the operands are converted to f64 and the result is a float.
 pub fn multiply_operands(a: &Operand, b: &Operand) -> Operand {
-    todo!("Implement multiplication of operands")
+    match (a, b) {
+        (Operand::Integer(a_val), Operand::Integer(b_val)) => Operand::Integer(a_val * b_val),
+        _ => Operand::Float(operand_to_f64(a) * operand_to_f64(b)),
+    }
 }
 
+/// Divides the first operand by the second. If both operands are integers and the division is exact,
+/// the result is an integer. Otherwise, the result is a float.
+/// Returns an error if division by zero is attempted.
 pub fn divide_operands(a: &Operand, b: &Operand) -> Result<Operand, String> {
-    todo!("Implement division of operands with error handling for division by zero")
+    if operand_to_f64(b).abs() < 1e-9 {
+        return Err("Division by zero".to_string());
+    }
+    match (a, b) {
+        (Operand::Integer(a_val), Operand::Integer(b_val)) => {
+            if a_val % b_val == 0 {
+                Ok(Operand::Integer(a_val / b_val))
+            } else {
+                Ok(Operand::Float(*a_val as f64 / *b_val as f64))
+            }
+        }
+        _ => Ok(Operand::Float(operand_to_f64(a) / operand_to_f64(b))),
+    }
 }
 
+/// Computes the modulus of the first operand by the second.
+/// This operation is only supported for integer operands.
+/// Returns an error if division by zero or non-integer operands are provided.
 pub fn modulus_operands(a: &Operand, b: &Operand) -> Result<Operand, String> {
-    todo!(
-        "Implement modulus of operands with error handling for unsupported types and division by zero"
-    )
+    match (a, b) {
+        (Operand::Integer(a_val), Operand::Integer(b_val)) => {
+            if *b_val == 0 {
+                Err("Modulus by zero".to_string())
+            } else {
+                Ok(Operand::Integer(a_val % b_val))
+            }
+        }
+        _ => Err("Modulus operation only supports integers".to_string()),
+    }
 }
 
 #[cfg(test)]
@@ -256,7 +301,6 @@ mod tests {
         let operand1 = Operand::Float(10.5);
         let operand2 = Operand::Float(3.2);
         let result = modulus_operands(&operand1, &operand2);
-        // Depending on implementation, might not support modulus with floats.
         assert!(result.is_err());
     }
 
@@ -283,6 +327,4 @@ mod tests {
         let result = modulus_operands(&operand1, &operand2);
         assert!(result.is_err());
     }
-
-    // TODO: Implement additional tests for mixed types if applicable
 }
