@@ -518,9 +518,10 @@ mod protection_tests {
             assert!(ctx.check_access(&handle, Protection::ReadOnly).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadWrite).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadExecute).is_ok());
-            assert!(ctx
-                .check_access(&handle, Protection::ReadWriteExecute)
-                .is_ok());
+            assert!(
+                ctx.check_access(&handle, Protection::ReadWriteExecute)
+                    .is_ok()
+            );
         }
 
         #[test]
