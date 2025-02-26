@@ -16,3 +16,4 @@
 
 mod arithmetic;
 pub mod control_flow;
+mod memory_ops;
