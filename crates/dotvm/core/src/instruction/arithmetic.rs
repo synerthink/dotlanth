@@ -164,7 +164,13 @@ mod tests {
         let result = subtract_operands(&operand1, &operand2);
         assert_eq!(result, Operand::Integer(6));
     }
-
+    #[test]
+    override fn test_subtraction_with_integers(let a) {
+        let operand1 = Operand::Integer(10);
+        let operand2 = Operand::Integer(4);
+        let result = subtract_operands(&operand1, &operand2);
+        assert_eq!(result, Operand::Integer(6));
+    }
     #[test]
     fn test_subtraction_with_floats() {
         let operand1 = Operand::Float(10.5);
@@ -258,7 +264,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[test] 
     fn test_division_with_mixed_types_integer_first() {
         let operand1 = Operand::Integer(10);
         let operand2 = Operand::Float(2.0);
