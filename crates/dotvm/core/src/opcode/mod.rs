@@ -14,5 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod errors;
-pub mod executor;
+pub mod arithmetic_opcodes;
+pub mod control_flow_opcodes;
+pub mod memory_opcodes;

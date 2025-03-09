@@ -14,5 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod errors;
-pub mod executor;
+#[derive(Debug, PartialEq, Clone)]
+pub enum Operand {
+    Integer(i64),
+    Float(f64),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Operator {
+    GreaterThan,
+    LessThan,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+    Equal,
+    NotEqual,
+}
+
+pub fn operand_to_f64(op: &Operand) -> f64 {
+    match op {
+        Operand::Integer(i) => *i as f64,
+        Operand::Float(f) => *f,
+    }
+}
