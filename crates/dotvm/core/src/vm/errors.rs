@@ -25,26 +25,13 @@ pub enum VMError {
     InvalidJumpTarget(usize),
     InvalidInstructionArguments,
     MissingInstructionArguments,
+    MemoryManagerUnavailable,
+    PointerOverflow,
+    MemoryOperationError(String),
     // Add more error variants as needed
 }
-
-impl fmt::Display for VMError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VMError::StackUnderflow => write!(f, "Stack underflow occurred."),
-            VMError::DivisionByZero => write!(f, "Attempted division by zero."),
-            VMError::UnknownOpcode => write!(f, "Encountered unknown opcode."),
-            VMError::InvalidJumpTarget(target) => {
-                write!(f, "Invalid jump target: {}.", target)
-            }
-            VMError::InvalidInstructionArguments => {
-                write!(f, "Invalid instruction arguments provided.")
-            }
-            VMError::MissingInstructionArguments => {
-                write!(f, "Missing instruction arguments.")
-            }
-        }
+impl From<crate::memory::error::MemoryError> for VMError {
+    fn from(err: crate::memory::error::MemoryError) -> Self {
+        VMError::MemoryOperationError(err.to_string())
     }
 }
-
-impl std::error::Error for VMError {}

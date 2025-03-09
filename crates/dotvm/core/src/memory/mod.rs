@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 mod allocator;
-mod error;
+pub mod error;
 mod page_table;
 mod pool;
 mod protection;
@@ -209,6 +209,8 @@ pub trait MemoryManagement: Sized {
     fn map(&mut self, handle: MemoryHandle) -> Result<VirtualAddress, Self::Error>;
     fn unmap(&mut self, addr: VirtualAddress) -> Result<(), Self::Error>;
     fn check_permission(&self, p0: &MemoryHandle, p1: Protection) -> Result<(), Self::Error>;
+    fn load(&self, address: usize) -> Result<u8, Self::Error>;
+    fn store(&mut self, address: usize, value: u8) -> Result<(), Self::Error>;
 }
 
 impl<A: Architecture> MemoryManagement for MemoryManager<A> {
@@ -348,6 +350,16 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
             }
         }
 
+        Ok(())
+    }
+    
+    fn load(&self, address: usize) -> Result<u8, Self::Error> {
+        // Dummy implementation: return lower 8 bits of the address.
+        Ok((address & 0xFF) as u8)
+    }
+    
+    fn store(&mut self, address: usize, value: u8) -> Result<(), Self::Error> {
+        // Dummy implementation: simulate storing a value.
         Ok(())
     }
 }

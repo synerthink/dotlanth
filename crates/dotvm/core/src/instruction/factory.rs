@@ -123,7 +123,7 @@ impl InstructionFactory {
                         if args.len() != 1 {
                             return Err(VMError::InvalidInstructionArguments);
                         }
-                        Ok(Arc::new(LoadInstruction::new(VirtualAddress(args[0]))))
+                        Ok(Arc::new(LoadInstruction::new(args[0])))
                     } else {
                         Err(VMError::MissingInstructionArguments)
                     }
@@ -134,7 +134,7 @@ impl InstructionFactory {
                         if args.len() != 1 {
                             return Err(VMError::InvalidInstructionArguments);
                         }
-                        Ok(Arc::new(StoreInstruction::new(VirtualAddress(args[0]))))
+                        Ok(Arc::new(StoreInstruction::new(args[0])))
                     } else {
                         Err(VMError::MissingInstructionArguments)
                     }
@@ -156,7 +156,7 @@ impl InstructionFactory {
                         if args.len() != 1 {
                             return Err(VMError::InvalidInstructionArguments);
                         }
-                        Ok(Arc::new(DeallocateInstruction::new(MemoryHandle(args[0]))))
+                        Ok(Arc::new(DeallocateInstruction::new(args[0])))
                     } else {
                         Err(VMError::MissingInstructionArguments)
                     }
