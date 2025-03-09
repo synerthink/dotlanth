@@ -16,7 +16,7 @@
 
 use crate::{
     instruction::{
-        factory::{InstructionFactory, Opcode},
+        registry::{InstructionRegistry, Opcode},
         instruction::Instruction,
     },
     memory::{Arch64, Architecture, MemoryHandle, MemoryManagement, MemoryManager, VirtualAddress},
@@ -73,8 +73,9 @@ impl Executor {
     where
         Self: Sized,
     {
+        let registry = InstructionRegistry::new();
         for (opcode, args) in opcodes {
-            match InstructionFactory::create_instruction(opcode, args) {
+            match registry.create_instruction(opcode, args) {
                 Ok(instr) => self.instructions.push(instr),
                 Err(e) => {
                     // Handle error (e.g., log or panic). Here, we choose to panic for simplicity.
