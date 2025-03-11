@@ -1,13 +1,16 @@
 // Dotlanth
 // Copyright (C) 2025 Synerthink
+
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Affero General Public License for more details.
+
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -70,26 +73,11 @@ mod tests {
 
     #[test]
     fn test_mnemonic_conversions() {
-        assert_eq!(
-            MemoryOpcode::from_mnemonic("LOAD"),
-            Some(MemoryOpcode::Load)
-        );
-        assert_eq!(
-            MemoryOpcode::from_mnemonic("store"),
-            Some(MemoryOpcode::Store)
-        );
-        assert_eq!(
-            MemoryOpcode::from_mnemonic("Allocate"),
-            Some(MemoryOpcode::Allocate)
-        );
-        assert_eq!(
-            MemoryOpcode::from_mnemonic("Deallocate"),
-            Some(MemoryOpcode::Deallocate)
-        );
-        assert_eq!(
-            MemoryOpcode::from_mnemonic("pointeroperation"),
-            Some(MemoryOpcode::PointerOperation)
-        );
+        assert_eq!(MemoryOpcode::from_mnemonic("LOAD"), Some(MemoryOpcode::Load));
+        assert_eq!(MemoryOpcode::from_mnemonic("store"), Some(MemoryOpcode::Store));
+        assert_eq!(MemoryOpcode::from_mnemonic("Allocate"), Some(MemoryOpcode::Allocate));
+        assert_eq!(MemoryOpcode::from_mnemonic("Deallocate"), Some(MemoryOpcode::Deallocate));
+        assert_eq!(MemoryOpcode::from_mnemonic("pointeroperation"), Some(MemoryOpcode::PointerOperation));
         assert_eq!(MemoryOpcode::from_mnemonic("UNKNOWN"), None);
     }
 
@@ -99,9 +87,6 @@ mod tests {
         assert_eq!(MemoryOpcode::Store.to_string(), "STORE");
         assert_eq!(MemoryOpcode::Allocate.to_string(), "ALLOCATE");
         assert_eq!(MemoryOpcode::Deallocate.to_string(), "DEALLOCATE");
-        assert_eq!(
-            MemoryOpcode::PointerOperation.to_string(),
-            "POINTEROPERATION"
-        );
+        assert_eq!(MemoryOpcode::PointerOperation.to_string(), "POINTEROPERATION");
     }
 }

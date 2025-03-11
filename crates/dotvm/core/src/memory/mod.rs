@@ -227,9 +227,7 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
 
     fn allocate(&mut self, size: usize) -> Result<MemoryHandle, Self::Error> {
         if size == 0 {
-            return Err(MemoryError::InvalidSize {
-                available: A::MAX_MEMORY,
-            });
+            return Err(MemoryError::InvalidSize { available: A::MAX_MEMORY });
         }
         if size > A::MAX_MEMORY {
             return Err(MemoryError::AllocationTooLarge {
@@ -241,13 +239,7 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
             return Err(MemoryError::InvalidAlignment(A::ALIGNMENT));
         }
         self.allocator.allocate(size).map_err(|e| match e {
-            MemoryError::OutOfMemory {
-                requested,
-                available,
-            } => MemoryError::OutOfMemory {
-                requested,
-                available,
-            },
+            MemoryError::OutOfMemory { requested, available } => MemoryError::OutOfMemory { requested, available },
             _ => MemoryError::AllocationError(e.to_string()),
         })
     }
@@ -319,11 +311,7 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
         Ok(())
     }
 
-    fn check_permission(
-        &self,
-        handle: &MemoryHandle,
-        required: Protection,
-    ) -> Result<(), Self::Error> {
+    fn check_permission(&self, handle: &MemoryHandle, required: Protection) -> Result<(), Self::Error> {
         let phys_addr = PhysicalAddress::new(handle.0);
         let size = self.allocator.get_allocation_size(*handle)?;
 
@@ -331,33 +319,23 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
         for offset in (0..size).step_by(A::PAGE_SIZE) {
             let current_phys = PhysicalAddress::new(phys_addr.0 + offset);
             // Find the virtual address mapped to the physical address
-            let (virt_addr, _) = self
-                .page_table
-                .reverse_mapping(current_phys)
-                .ok_or(MemoryError::InvalidAddress(current_phys.0))?;
+            let (virt_addr, _) = self.page_table.reverse_mapping(current_phys).ok_or(MemoryError::InvalidAddress(current_phys.0))?;
 
-            let (_, flags) = self
-                .page_table
-                .translate(virt_addr)
-                .ok_or(MemoryError::InvalidAddress(virt_addr.0))?;
+            let (_, flags) = self.page_table.translate(virt_addr).ok_or(MemoryError::InvalidAddress(virt_addr.0))?;
 
             if !flags.check_protection(required) {
-                return Err(MemoryError::PermissionDenied(format!(
-                    "Required: {:?}, Current: {:?}",
-                    required,
-                    flags.to_protection()
-                )));
+                return Err(MemoryError::PermissionDenied(format!("Required: {:?}, Current: {:?}", required, flags.to_protection())));
             }
         }
 
         Ok(())
     }
-    
+
     fn load(&self, address: usize) -> Result<u8, Self::Error> {
         // Dummy implementation: return lower 8 bits of the address.
         Ok((address & 0xFF) as u8)
     }
-    
+
     fn store(&mut self, address: usize, value: u8) -> Result<(), Self::Error> {
         // Dummy implementation: simulate storing a value.
         Ok(())
@@ -418,23 +396,14 @@ mod memory_tests {
         fn test_zero_size_allocation() {
             let mut mm = create_memory_manager::<Arch64>();
             let result = mm.allocate(0);
-            assert!(matches!(
-                result,
-                Err(MemoryError::InvalidSize { available: _ })
-            ));
+            assert!(matches!(result, Err(MemoryError::InvalidSize { available: _ })));
         }
 
         #[test]
         fn test_max_size_allocation() {
             let mut mm = create_memory_manager::<Arch32>();
             let result = mm.allocate(Arch32::MAX_MEMORY + 1);
-            assert!(matches!(
-                result,
-                Err(MemoryError::AllocationTooLarge {
-                    requested: _,
-                    maximum: _
-                })
-            ));
+            assert!(matches!(result, Err(MemoryError::AllocationTooLarge { requested: _, maximum: _ })));
         }
 
         #[test]
@@ -479,19 +448,13 @@ mod memory_tests {
             // In this case, you may expect AlreadyDeallocated or InvalidHandle
             let result = mm.deallocate(handle);
 
-            assert!(
-                matches!(result, Err(MemoryError::AlreadyDeallocated))
-                    || matches!(result, Err(MemoryError::InvalidHandle))
-            );
+            assert!(matches!(result, Err(MemoryError::AlreadyDeallocated)) || matches!(result, Err(MemoryError::InvalidHandle)));
         }
 
         #[test]
         fn test_invalid_handle_deallocation() {
             let mut mm = create_memory_manager::<Arch64>();
-            assert!(matches!(
-                mm.deallocate(MemoryHandle(0xDEADBEEF)),
-                Err(MemoryError::InvalidHandle)
-            ));
+            assert!(matches!(mm.deallocate(MemoryHandle(0xDEADBEEF)), Err(MemoryError::InvalidHandle)));
         }
     }
 
@@ -511,10 +474,7 @@ mod memory_tests {
         #[test]
         fn test_invalid_handle_protection() {
             let mut mm = create_memory_manager::<Arch64>();
-            assert!(matches!(
-                mm.protect(MemoryHandle(0xDEADBEEF), Protection::ReadOnly),
-                Err(MemoryError::InvalidHandle)
-            ));
+            assert!(matches!(mm.protect(MemoryHandle(0xDEADBEEF), Protection::ReadOnly), Err(MemoryError::InvalidHandle)));
         }
     }
 
@@ -554,10 +514,7 @@ mod memory_tests {
             // Try to allocate larger blocks
             let large_handles: Result<Vec<_>, _> = (0..10).map(|_| mm.allocate(4096)).collect();
 
-            assert!(
-                large_handles.is_ok(),
-                "Failed to allocate after fragmentation"
-            );
+            assert!(large_handles.is_ok(), "Failed to allocate after fragmentation");
         }
 
         #[test]
@@ -570,10 +527,7 @@ mod memory_tests {
                 match mm.allocate(1024 * 1024) {
                     // 1MB blocks
                     Ok(handle) => handles.push(handle),
-                    Err(MemoryError::OutOfMemory {
-                        requested: _,
-                        available: _,
-                    }) => break,
+                    Err(MemoryError::OutOfMemory { requested: _, available: _ }) => break,
                     Err(e) => panic!("Unexpected error: {:?}", e),
                 }
             }
@@ -623,12 +577,8 @@ mod memory_tests {
         #[test]
         fn test_memory_isolation_between_contracts() {
             let mut mm = create_memory_manager::<Arch64>();
-            let handle1 = mm
-                .allocate(1024)
-                .expect("Failed to allocate memory for contract 1");
-            let handle2 = mm
-                .allocate(1024)
-                .expect("Failed to allocate memory for contract 2");
+            let handle1 = mm.allocate(1024).expect("Failed to allocate memory for contract 1");
+            let handle2 = mm.allocate(1024).expect("Failed to allocate memory for contract 2");
 
             // Attempt to access handle1's memory from handle2's context
             // This should fail if isolation is enforced
@@ -639,9 +589,7 @@ mod memory_tests {
         #[test]
         fn test_memory_isolation_on_deallocation() {
             let mut mm = create_memory_manager::<Arch64>();
-            let handle = mm
-                .allocate(1024)
-                .expect("Failed to allocate memory for contract");
+            let handle = mm.allocate(1024).expect("Failed to allocate memory for contract");
 
             mm.deallocate(handle).expect("Failed to deallocate memory");
 

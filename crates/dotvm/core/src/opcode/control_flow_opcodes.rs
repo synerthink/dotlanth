@@ -67,26 +67,11 @@ mod tests {
 
     #[test]
     fn test_from_mnemonic() {
-        assert_eq!(
-            ControlFlowOpcode::from_mnemonic("IFELSE"),
-            Some(ControlFlowOpcode::IfElse)
-        );
-        assert_eq!(
-            ControlFlowOpcode::from_mnemonic("forloop"),
-            Some(ControlFlowOpcode::ForLoop)
-        );
-        assert_eq!(
-            ControlFlowOpcode::from_mnemonic("WhileLoop"),
-            Some(ControlFlowOpcode::WhileLoop)
-        );
-        assert_eq!(
-            ControlFlowOpcode::from_mnemonic("DoWhileLoop"),
-            Some(ControlFlowOpcode::DoWhileLoop)
-        );
-        assert_eq!(
-            ControlFlowOpcode::from_mnemonic("jump"),
-            Some(ControlFlowOpcode::Jump)
-        );
+        assert_eq!(ControlFlowOpcode::from_mnemonic("IFELSE"), Some(ControlFlowOpcode::IfElse));
+        assert_eq!(ControlFlowOpcode::from_mnemonic("forloop"), Some(ControlFlowOpcode::ForLoop));
+        assert_eq!(ControlFlowOpcode::from_mnemonic("WhileLoop"), Some(ControlFlowOpcode::WhileLoop));
+        assert_eq!(ControlFlowOpcode::from_mnemonic("DoWhileLoop"), Some(ControlFlowOpcode::DoWhileLoop));
+        assert_eq!(ControlFlowOpcode::from_mnemonic("jump"), Some(ControlFlowOpcode::Jump));
         assert_eq!(ControlFlowOpcode::from_mnemonic("unknown"), None);
     }
 

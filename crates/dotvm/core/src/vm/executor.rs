@@ -16,8 +16,8 @@
 
 use crate::{
     instruction::{
-        registry::{InstructionRegistry, Opcode},
         instruction::Instruction,
+        registry::{InstructionRegistry, Opcode},
     },
     memory::{Arch64, Architecture, MemoryHandle, MemoryManagement, MemoryManager, VirtualAddress},
     vm::errors::VMError,

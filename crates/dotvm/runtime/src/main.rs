@@ -20,8 +20,7 @@ use tonic::transport::Server;
 mod proto {
     tonic::include_proto!("runtime");
 
-    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
-        tonic::include_file_descriptor_set!("runtime_descriptor");
+    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("runtime_descriptor");
 }
 
 #[derive(Debug, Default)]
@@ -29,10 +28,7 @@ struct RuntimeService {}
 
 #[tonic::async_trait]
 impl Runtime for RuntimeService {
-    async fn ping(
-        &self,
-        request: tonic::Request<proto::PingRequest>,
-    ) -> Result<tonic::Response<proto::PingResponse>, tonic::Status> {
+    async fn ping(&self, request: tonic::Request<proto::PingRequest>) -> Result<tonic::Response<proto::PingResponse>, tonic::Status> {
         let response = proto::PingResponse {
             message: format!("Ping: {}", request.into_inner().message),
         };
@@ -51,11 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
         .build()?;
 
-    Server::builder()
-        .add_service(service)
-        .add_service(RuntimeServer::new(runtime))
-        .serve(addr)
-        .await?;
+    Server::builder().add_service(service).add_service(RuntimeServer::new(runtime)).serve(addr).await?;
 
     Ok(())
 }

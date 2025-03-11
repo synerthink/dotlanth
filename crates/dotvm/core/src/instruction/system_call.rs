@@ -52,13 +52,8 @@ impl Instruction for ReadSysCallInstruction {
         print!("Enter a number: ");
         io::stdout().flush().unwrap();
         let mut input = String::new();
-        io::stdin()
-            .read_line(&mut input)
-            .map_err(|_| VMError::SystemCallError("Failed to read from stdin".into()))?;
-        let parsed: f64 = input
-            .trim()
-            .parse()
-            .map_err(|_| VMError::SystemCallError("Invalid number entered".into()))?;
+        io::stdin().read_line(&mut input).map_err(|_| VMError::SystemCallError("Failed to read from stdin".into()))?;
+        let parsed: f64 = input.trim().parse().map_err(|_| VMError::SystemCallError("Invalid number entered".into()))?;
         executor.push_operand(parsed);
         Ok(())
     }
@@ -77,9 +72,9 @@ impl CreateProcessInstruction {
 impl Instruction for CreateProcessInstruction {
     fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
         // Spawn a new process using the specified command.
-        let child = Command::new(&self.command).spawn().map_err(|e| {
-            VMError::ProcessError(format!("Failed to spawn process '{}': {}", self.command, e))
-        })?;
+        let child = Command::new(&self.command)
+            .spawn()
+            .map_err(|e| VMError::ProcessError(format!("Failed to spawn process '{}': {}", self.command, e)))?;
         // Push the process ID (converted to f64) onto the operand stack.
         executor.push_operand(child.id() as f64);
         Ok(())

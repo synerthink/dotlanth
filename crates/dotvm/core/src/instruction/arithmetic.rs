@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{
-    opcode::arithmetic_opcodes::ArithmeticOpcode, vm::errors::VMError, vm::executor::Executor,
-};
+use crate::{opcode::arithmetic_opcodes::ArithmeticOpcode, vm::errors::VMError, vm::executor::Executor};
 
 use super::instruction::Instruction;
 

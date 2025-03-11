@@ -70,36 +70,20 @@ impl<A: Architecture> SharedMemoryManager<A> {
         if let Some(region) = self.regions.remove(&id) {
             self.allocator
                 .deallocate(region.memory_handle)
-                .map_err(|e| {
-                    MemoryError::AllocationError(format!(
-                        "Failed to deallocate region {}: {:?}",
-                        id, e
-                    ))
-                })?;
+                .map_err(|e| MemoryError::AllocationError(format!("Failed to deallocate region {}: {:?}", id, e)))?;
             Ok(())
         } else {
-            Err(MemoryError::InvalidRegion(format!(
-                "Region {} not found",
-                id
-            )))
+            Err(MemoryError::InvalidRegion(format!("Region {} not found", id)))
         }
     }
 
     /// Shares a memory region with a contract.
-    pub fn share_region(
-        &mut self,
-        region_id: u64,
-        contract_id: u64,
-        protection: Protection,
-    ) -> Result<(), MemoryError> {
+    pub fn share_region(&mut self, region_id: u64, contract_id: u64, protection: Protection) -> Result<(), MemoryError> {
         if let Some(region) = self.regions.get_mut(&region_id) {
             region.share(contract_id, protection);
             Ok(())
         } else {
-            Err(MemoryError::InvalidRegion(format!(
-                "Region {} does not exist",
-                region_id
-            )))
+            Err(MemoryError::InvalidRegion(format!("Region {} does not exist", region_id)))
         }
     }
 
@@ -126,10 +110,7 @@ mod tests {
         let handle = MemoryHandle(123); // Fake handle for testing
         let region = SharedMemoryRegion::new(1, handle);
         assert_eq!(region.id, 1);
-        assert_eq!(
-            region.memory_handle.0, 123,
-            "Memory handle should be initialized correctly."
-        );
+        assert_eq!(region.memory_handle.0, 123, "Memory handle should be initialized correctly.");
     }
 
     #[test]
@@ -137,12 +118,8 @@ mod tests {
         let mut manager = SharedMemoryManager::<Arch64>::new();
 
         // Create Zones
-        manager
-            .create_region(1, 1024)
-            .expect("Failed to create region 1");
-        manager
-            .create_region(2, 2048)
-            .expect("Failed to create region 2");
+        manager.create_region(1, 1024).expect("Failed to create region 1");
+        manager.create_region(2, 2048).expect("Failed to create region 2");
 
         // Sharing and unsharing
         manager.share_region(1, 100, Protection::ReadWrite).unwrap();
@@ -162,9 +139,6 @@ mod tests {
 
         let region1 = manager.get_region(1).unwrap();
         let region2 = manager.get_region(2).unwrap();
-        assert_ne!(
-            region1.memory_handle.0, region2.memory_handle.0,
-            "Shared memory regions should have different handles"
-        );
+        assert_ne!(region1.memory_handle.0, region2.memory_handle.0, "Shared memory regions should have different handles");
     }
 }

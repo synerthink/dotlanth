@@ -33,16 +33,10 @@ pub struct ProtectionContext {
 
 impl ProtectionContext {
     pub fn new() -> Self {
-        Self {
-            regions: HashMap::new(),
-        }
+        Self { regions: HashMap::new() }
     }
 
-    pub fn set_protection(
-        &mut self,
-        handle: MemoryHandle,
-        protection: Protection,
-    ) -> Result<(), MemoryError> {
+    pub fn set_protection(&mut self, handle: MemoryHandle, protection: Protection) -> Result<(), MemoryError> {
         self.regions.insert(handle, protection);
         Ok(())
     }
@@ -55,20 +49,13 @@ impl ProtectionContext {
         self.regions.remove(handle)
     }
 
-    pub fn check_access(
-        &self,
-        handle: &MemoryHandle,
-        requested: Protection,
-    ) -> Result<(), MemoryError> {
+    pub fn check_access(&self, handle: &MemoryHandle, requested: Protection) -> Result<(), MemoryError> {
         match self.get_protection(handle) {
             Some(current) => {
                 if Self::is_compatible(current, requested) {
                     Ok(())
                 } else {
-                    Err(MemoryError::ProtectionError(format!(
-                        "Access violation: requested {:?}, current {:?}",
-                        requested, current
-                    )))
+                    Err(MemoryError::ProtectionError(format!("Access violation: requested {:?}, current {:?}", requested, current)))
                 }
             }
             None => Err(MemoryError::InvalidHandle),
@@ -106,10 +93,7 @@ impl HardwareProtection {
             if arch == "x86_64" {
                 let mpk_supported = Self::is_mpk_supported(arch);
                 let pkey_supported = Self::is_pkey_supported(arch);
-                HardwareProtection {
-                    pkey_supported,
-                    mpk_supported,
-                }
+                HardwareProtection { pkey_supported, mpk_supported }
             } else {
                 println!("Unsupported Architecture");
                 HardwareProtection {
@@ -127,12 +111,7 @@ impl HardwareProtection {
     }
 
     /// Implements the protection mechanism according to the operating system and architecture.
-    pub fn initialize_protection(
-        &self,
-        addr: VirtualAddress,
-        size: usize,
-        protection: Protection,
-    ) -> Result<(), MemoryError> {
+    pub fn initialize_protection(&self, addr: VirtualAddress, size: usize, protection: Protection) -> Result<(), MemoryError> {
         let os = env::consts::OS;
         let arch = env::consts::ARCH;
 
@@ -150,12 +129,7 @@ impl HardwareProtection {
     }
 
     /// Automatically determines the protection type and applies protection.
-    fn protect_region(
-        &self,
-        addr: VirtualAddress,
-        size: usize,
-        protection: Protection,
-    ) -> Result<(), MemoryError> {
+    fn protect_region(&self, addr: VirtualAddress, size: usize, protection: Protection) -> Result<(), MemoryError> {
         self.enforce_alignment(addr)?;
         self.validate_size(size)?;
 
@@ -173,12 +147,7 @@ impl HardwareProtection {
     }
 
     #[cfg(target_arch = "x86_64")]
-    fn apply_mpk_protection(
-        &self,
-        addr: VirtualAddress,
-        size: usize,
-        protection: Protection,
-    ) -> Result<(), MemoryError> {
+    fn apply_mpk_protection(&self, addr: VirtualAddress, size: usize, protection: Protection) -> Result<(), MemoryError> {
         // Set MPK protection key
         let mpk = self.determine_mpk_for_protection(protection);
 
@@ -213,18 +182,11 @@ impl HardwareProtection {
     }
 
     #[cfg(target_arch = "x86_64")]
-    fn enforce_mpk_protection(
-        &self,
-        addr: VirtualAddress,
-        size: usize,
-        mpk: u32,
-    ) -> Result<(), MemoryError> {
+    fn enforce_mpk_protection(&self, addr: VirtualAddress, size: usize, mpk: u32) -> Result<(), MemoryError> {
         // Check the protection switch of the memory region
         // Return an error if the protection key is not available
         if !self.check_mpk_protection(addr, size, mpk) {
-            return Err(MemoryError::ProtectionError(
-                "MPK protection failed".to_string(),
-            ));
+            return Err(MemoryError::ProtectionError("MPK protection failed".to_string()));
         }
         Ok(())
     }
@@ -241,12 +203,7 @@ impl HardwareProtection {
     }
 
     #[cfg(target_arch = "x86_64")]
-    fn apply_pkey_protection(
-        &self,
-        addr: VirtualAddress,
-        size: usize,
-        protection: Protection,
-    ) -> Result<(), MemoryError> {
+    fn apply_pkey_protection(&self, addr: VirtualAddress, size: usize, protection: Protection) -> Result<(), MemoryError> {
         // Set PKEY protection key
         let pkey = self.determine_pkey_for_protection(protection);
 
@@ -281,18 +238,11 @@ impl HardwareProtection {
     }
 
     #[cfg(target_arch = "x86_64")]
-    fn enforce_pkey_protection(
-        &self,
-        addr: VirtualAddress,
-        size: usize,
-        pkey: u32,
-    ) -> Result<(), MemoryError> {
+    fn enforce_pkey_protection(&self, addr: VirtualAddress, size: usize, pkey: u32) -> Result<(), MemoryError> {
         // Check the protection switch of the memory region
         // Return an error if the protection key is not available
         if !self.check_pkey_protection(addr, size, pkey) {
-            return Err(MemoryError::ProtectionError(
-                "PKEY protection failed".to_string(),
-            ));
+            return Err(MemoryError::ProtectionError("PKEY protection failed".to_string()));
         }
         Ok(())
     }
@@ -316,10 +266,7 @@ impl HardwareProtection {
                 // For x86_64, check the 'mpk' flag in /proc/cpuinfo
                 if let Ok(cpu_info) = fs::read_to_string("/proc/cpuinfo") {
                     // Search for 'mpk' in the 'flags' lines
-                    cpu_info
-                        .lines()
-                        .filter(|line| line.contains("flags"))
-                        .any(|line| line.contains("mpk"))
+                    cpu_info.lines().filter(|line| line.contains("flags")).any(|line| line.contains("mpk"))
                 } else {
                     false
                 }
@@ -336,10 +283,7 @@ impl HardwareProtection {
                 // check pkey flag in /proc/cpuinfo for x86_64
                 if let Ok(cpu_info) = fs::read_to_string("/proc/cpuinfo") {
                     // search for “pkey” in “flags” lines
-                    cpu_info
-                        .lines()
-                        .filter(|line| line.contains("flags"))
-                        .any(|line| line.contains("pkey"))
+                    cpu_info.lines().filter(|line| line.contains("flags")).any(|line| line.contains("pkey"))
                 } else {
                     false
                 }
@@ -351,9 +295,7 @@ impl HardwareProtection {
     /// Enforces alignment for memory protection.
     pub fn enforce_alignment(&self, addr: VirtualAddress) -> Result<(), MemoryError> {
         if addr.0 % PAGE_SIZE != 0 {
-            return Err(MemoryError::ProtectionError(
-                "Address is not page-aligned".to_string(),
-            ));
+            return Err(MemoryError::ProtectionError("Address is not page-aligned".to_string()));
         }
         Ok(())
     }
@@ -361,9 +303,7 @@ impl HardwareProtection {
     // update the HardwareProtection impl block in protection.rs
     pub fn validate_size(&self, size: usize) -> Result<(), MemoryError> {
         if size == 0 || size > MAX_MEMORY_SIZE || size % PAGE_SIZE != 0 {
-            return Err(MemoryError::ProtectionError(
-                "Invalid memory size".to_string(),
-            ));
+            return Err(MemoryError::ProtectionError("Invalid memory size".to_string()));
         }
         Ok(())
     }
@@ -439,10 +379,7 @@ mod protection_tests {
 
             assert_eq!(ctx.get_protection(&invalid_handle), None);
             assert_eq!(ctx.remove_protection(&invalid_handle), None);
-            assert!(matches!(
-                ctx.check_access(&invalid_handle, Protection::ReadOnly),
-                Err(MemoryError::InvalidHandle)
-            ));
+            assert!(matches!(ctx.check_access(&invalid_handle, Protection::ReadOnly), Err(MemoryError::InvalidHandle)));
         }
     }
 
@@ -460,14 +397,8 @@ mod protection_tests {
             assert!(ctx.check_access(&handle, Protection::ReadOnly).is_ok());
 
             // ReadOnly should not be compatible with other modes
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadWrite),
-                Err(MemoryError::ProtectionError(_))
-            ));
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadExecute),
-                Err(MemoryError::ProtectionError(_))
-            ));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadWrite), Err(MemoryError::ProtectionError(_))));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadExecute), Err(MemoryError::ProtectionError(_))));
         }
 
         #[test]
@@ -482,10 +413,7 @@ mod protection_tests {
             assert!(ctx.check_access(&handle, Protection::ReadWrite).is_ok());
 
             // ReadWrite should not be compatible with Execute modes
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadExecute),
-                Err(MemoryError::ProtectionError(_))
-            ));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadExecute), Err(MemoryError::ProtectionError(_))));
         }
 
         #[test]
@@ -500,10 +428,7 @@ mod protection_tests {
             assert!(ctx.check_access(&handle, Protection::ReadExecute).is_ok());
 
             // ReadExecute should not be compatible with Write modes
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadWrite),
-                Err(MemoryError::ProtectionError(_))
-            ));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadWrite), Err(MemoryError::ProtectionError(_))));
         }
 
         #[test]
@@ -511,17 +436,13 @@ mod protection_tests {
             let mut ctx = ProtectionContext::new();
             let handle = MemoryHandle(1);
 
-            ctx.set_protection(handle, Protection::ReadWriteExecute)
-                .unwrap();
+            ctx.set_protection(handle, Protection::ReadWriteExecute).unwrap();
 
             // ReadWriteExecute should be compatible with all modes
             assert!(ctx.check_access(&handle, Protection::ReadOnly).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadWrite).is_ok());
             assert!(ctx.check_access(&handle, Protection::ReadExecute).is_ok());
-            assert!(
-                ctx.check_access(&handle, Protection::ReadWriteExecute)
-                    .is_ok()
-            );
+            assert!(ctx.check_access(&handle, Protection::ReadWriteExecute).is_ok());
         }
 
         #[test]
@@ -532,22 +453,10 @@ mod protection_tests {
             ctx.set_protection(handle, Protection::None).unwrap();
 
             // None should not be compatible with any access mode
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadOnly),
-                Err(MemoryError::ProtectionError(_))
-            ));
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadWrite),
-                Err(MemoryError::ProtectionError(_))
-            ));
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadExecute),
-                Err(MemoryError::ProtectionError(_))
-            ));
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadWriteExecute),
-                Err(MemoryError::ProtectionError(_))
-            ));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadOnly), Err(MemoryError::ProtectionError(_))));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadWrite), Err(MemoryError::ProtectionError(_))));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadExecute), Err(MemoryError::ProtectionError(_))));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadWriteExecute), Err(MemoryError::ProtectionError(_))));
         }
     }
 
@@ -569,10 +478,7 @@ mod protection_tests {
             let addr = VirtualAddress(0x1000);
 
             // Expect UnsupportedProtection if there is no hardware support
-            assert!(matches!(
-                hw_protection.protect_region(addr, 4096, Protection::ReadWrite),
-                Err(MemoryError::UnsupportedProtection)
-            ));
+            assert!(matches!(hw_protection.protect_region(addr, 4096, Protection::ReadWrite), Err(MemoryError::UnsupportedProtection)));
         }
 
         #[test]
@@ -593,10 +499,7 @@ mod protection_tests {
             let addr = VirtualAddress(0x1000);
 
             // Invalid size error expected (100 cannot be divided by PAGE_SIZE)
-            assert!(matches!(
-                hw_protection.protect_region(addr, 100, Protection::ReadWrite),
-                Err(MemoryError::ProtectionError(_))
-            ));
+            assert!(matches!(hw_protection.protect_region(addr, 100, Protection::ReadWrite), Err(MemoryError::ProtectionError(_))));
         }
     }
 
@@ -651,10 +554,7 @@ mod protection_tests {
 
             // Check software protection
             assert!(ctx.check_access(&handle, Protection::ReadOnly).is_ok());
-            assert!(matches!(
-                ctx.check_access(&handle, Protection::ReadWrite),
-                Err(MemoryError::ProtectionError(_))
-            ));
+            assert!(matches!(ctx.check_access(&handle, Protection::ReadWrite), Err(MemoryError::ProtectionError(_))));
         }
     }
 }

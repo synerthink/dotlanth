@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use dotvm_core::memory::{
-    Allocator, Arch32, Arch64, Architecture, MemoryError, MemoryHandle, MemoryManagement,
-    MemoryManager, MemoryPool, PageTable, PhysicalAddress, Protection, VirtualAddress,
-};
+use dotvm_core::memory::{Allocator, Arch32, Arch64, Architecture, MemoryError, MemoryHandle, MemoryManagement, MemoryManager, MemoryPool, PageTable, PhysicalAddress, Protection, VirtualAddress};
 
 // Common test configurations
 pub const TEST_PAGE_SIZE: usize = 4096;
@@ -47,26 +44,14 @@ pub mod test_utils {
 #[macro_export]
 macro_rules! assert_aligned {
     ($addr:expr, $arch:ty) => {
-        assert_eq!(
-            $addr % <$arch>::ALIGNMENT,
-            0,
-            "Address {:#x} is not aligned to {} bytes",
-            $addr,
-            <$arch>::ALIGNMENT
-        );
+        assert_eq!($addr % <$arch>::ALIGNMENT, 0, "Address {:#x} is not aligned to {} bytes", $addr, <$arch>::ALIGNMENT);
     };
 }
 
 #[macro_export]
 macro_rules! assert_page_aligned {
     ($addr:expr, $arch:ty) => {
-        assert_eq!(
-            $addr % <$arch>::PAGE_SIZE,
-            0,
-            "Address {:#x} is not page aligned to {} bytes",
-            $addr,
-            <$arch>::PAGE_SIZE
-        );
+        assert_eq!($addr % <$arch>::PAGE_SIZE, 0, "Address {:#x} is not page aligned to {} bytes", $addr, <$arch>::PAGE_SIZE);
     };
 }
 
@@ -81,15 +66,10 @@ pub mod fixtures {
 
     impl<A: Architecture> TestMemoryManager<A> {
         pub fn new() -> Result<Self, MemoryError> {
-            Ok(Self {
-                manager: MemoryManager::new()?,
-            })
+            Ok(Self { manager: MemoryManager::new()? })
         }
 
-        pub fn allocate_test_pages(
-            &mut self,
-            count: usize,
-        ) -> Result<Vec<MemoryHandle>, MemoryError> {
+        pub fn allocate_test_pages(&mut self, count: usize) -> Result<Vec<MemoryHandle>, MemoryError> {
             let mut handles = Vec::new();
             for _ in 0..count {
                 handles.push(self.manager.allocate(A::PAGE_SIZE)?);

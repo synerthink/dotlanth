@@ -17,9 +17,6 @@
 use crate::instruction::instruction::Instruction;
 use crate::vm::errors::VMError;
 use crate::vm::executor::Executor;
-
-// For the SHA-256 hash, we use the sha2 crate.
-// Ensure you include sha2 = "0.10" (or an appropriate version) in your Cargo.toml.
 use sha2::{Digest, Sha256};
 
 pub struct HashInstruction;

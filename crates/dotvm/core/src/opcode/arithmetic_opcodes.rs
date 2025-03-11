@@ -68,26 +68,11 @@ mod tests {
 
     #[test]
     fn test_from_mnemonic_valid() {
-        assert_eq!(
-            ArithmeticOpcode::from_mnemonic("ADD"),
-            Some(ArithmeticOpcode::Add)
-        );
-        assert_eq!(
-            ArithmeticOpcode::from_mnemonic("sub"),
-            Some(ArithmeticOpcode::Subtract)
-        );
-        assert_eq!(
-            ArithmeticOpcode::from_mnemonic("MuL"),
-            Some(ArithmeticOpcode::Multiply)
-        );
-        assert_eq!(
-            ArithmeticOpcode::from_mnemonic("div"),
-            Some(ArithmeticOpcode::Divide)
-        );
-        assert_eq!(
-            ArithmeticOpcode::from_mnemonic("MOD"),
-            Some(ArithmeticOpcode::Modulus)
-        );
+        assert_eq!(ArithmeticOpcode::from_mnemonic("ADD"), Some(ArithmeticOpcode::Add));
+        assert_eq!(ArithmeticOpcode::from_mnemonic("sub"), Some(ArithmeticOpcode::Subtract));
+        assert_eq!(ArithmeticOpcode::from_mnemonic("MuL"), Some(ArithmeticOpcode::Multiply));
+        assert_eq!(ArithmeticOpcode::from_mnemonic("div"), Some(ArithmeticOpcode::Divide));
+        assert_eq!(ArithmeticOpcode::from_mnemonic("MOD"), Some(ArithmeticOpcode::Modulus));
     }
 
     #[test]
