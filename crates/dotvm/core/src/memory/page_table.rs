@@ -66,6 +66,7 @@ impl<A: Architecture> PageTable<A> {
         }
     }
 
+    #[rustfmt::skip]
     pub fn map(&mut self, virtual_addr: VirtualAddress, physical_addr: PhysicalAddress, flags: PageFlags) -> Result<(), MemoryError> {
         // Check virtual address alignment
         if virtual_addr.0 % A::PAGE_SIZE != 0 {
@@ -78,12 +79,10 @@ impl<A: Architecture> PageTable<A> {
         }
 
         // Insert new entry
-        self.entries.insert(
-            virtual_addr, 
-            PageTableEntry {
+        self.entries.insert(virtual_addr, PageTableEntry {
             physical_address: physical_addr,
-            flags }
-        );
+            flags,
+        });
 
         Ok(())
     }
