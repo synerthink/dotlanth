@@ -16,53 +16,96 @@
 
 use super::arithmetic::ArithmeticInstruction;
 use super::control_flow::{IfElseInstruction, JumpInstruction, LoopInstruction, LoopType};
+use super::crypto::{
+    DecryptInstruction, EncryptInstruction, HashInstruction, SignInstruction,
+    VerifySignatureInstruction,
+};
 use super::instruction::Instruction;
+use super::system_call::{
+    CreateProcessInstruction, ReadSysCallInstruction, ReceiveNetworkPacketInstruction,
+    SendNetworkPacketInstruction, TerminateProcessInstruction, WriteSysCallInstruction,
+};
 use crate::instruction::memory::{
     AllocateInstruction, DeallocateInstruction, LoadInstruction, PointerOperationInstruction,
     PointerOperationType, StoreInstruction,
 };
 use crate::opcode::{
     arithmetic_opcodes::ArithmeticOpcode, control_flow_opcodes::ControlFlowOpcode,
-    memory_opcodes::MemoryOpcode,
+    crypto_opcodes::CryptoOpcode, memory_opcodes::MemoryOpcode,
+    system_call_opcodes::SystemCallOpcode,
 };
 use crate::vm::errors::VMError;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Central registry for instruction creation with segregated registries for each opcode category.
+/// Enum representing all possible opcodes.
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum Opcode {
+    Arithmetic(ArithmeticOpcode),
+    ControlFlow(ControlFlowOpcode),
+    Memory(MemoryOpcode),
+    SystemCall(SystemCallOpcode),
+    Crypto(CryptoOpcode),
+}
+
+/// Central registry for instruction creation segregated by opcode category.
 pub struct InstructionRegistry {
-    /// Closure to create arithmetic instructions.
+    /// Creator for arithmetic instructions.
     pub arithmetic: Box<
         dyn Fn(ArithmeticOpcode, Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
             + Send
             + Sync,
     >,
-    /// Registry of control flow instruction creators.
+    /// Registry for control flow instruction creators.
     pub control_flow: HashMap<
         ControlFlowOpcode,
         Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
     >,
-    /// Registry of memory instruction creators.
+    /// Registry for memory instruction creators.
     pub memory: HashMap<
         MemoryOpcode,
+        Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+    >,
+    /// Registry for system call instruction creators.
+    pub system_calls: HashMap<
+        SystemCallOpcode,
+        Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+    >,
+    /// Registry for cryptographic instruction creators.
+    pub crypto: HashMap<
+        CryptoOpcode,
         Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
     >,
 }
 
 impl InstructionRegistry {
-    /// Create a new registry populated with default instruction creators.
+    /// Creates a new InstructionRegistry populated with default instruction creators.
     pub fn new() -> Self {
-        let arithmetic_creator = Box::new(
-            |arith_opcode: ArithmeticOpcode, _args: Option<Vec<usize>>| {
-                Ok(Arc::new(ArithmeticInstruction::new(arith_opcode)) as Arc<dyn Instruction>)
-            },
-        );
+        InstructionRegistry {
+            arithmetic: Self::build_arithmetic_registry(),
+            control_flow: Self::build_control_flow_registry(),
+            memory: Self::build_memory_registry(),
+            system_calls: Self::build_system_calls_registry(),
+            crypto: Self::build_crypto_registry(),
+        }
+    }
 
-        let mut control_flow: HashMap<
-            ControlFlowOpcode,
-            Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
-        > = HashMap::new();
-        control_flow.insert(
+    fn build_arithmetic_registry() -> Box<
+        dyn Fn(ArithmeticOpcode, Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+            + Send
+            + Sync,
+    > {
+        Box::new(|opcode: ArithmeticOpcode, _args: Option<Vec<usize>>| {
+            Ok(Arc::new(ArithmeticInstruction::new(opcode)) as Arc<dyn Instruction>)
+        })
+    }
+
+    fn build_control_flow_registry() -> HashMap<
+        ControlFlowOpcode,
+        Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+    > {
+        let mut registry = HashMap::new();
+        registry.insert(
             ControlFlowOpcode::IfElse,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -73,9 +116,14 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-        control_flow.insert(
+        registry.insert(
             ControlFlowOpcode::Jump,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -86,9 +134,14 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-        control_flow.insert(
+        registry.insert(
             ControlFlowOpcode::WhileLoop,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -102,9 +155,14 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-        control_flow.insert(
+        registry.insert(
             ControlFlowOpcode::DoWhileLoop,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -119,12 +177,16 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-        control_flow.insert(
+        registry.insert(
             ControlFlowOpcode::ForLoop,
             Box::new(|args: Option<Vec<usize>>| {
-                // For this example, we consider ForLoop requires two arguments: init and body_start.
                 if let Some(args) = args {
                     if args.len() != 2 {
                         return Err(VMError::InvalidInstructionArguments);
@@ -136,14 +198,22 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
+        registry
+    }
 
-        let mut memory: HashMap<
-            MemoryOpcode,
-            Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
-        > = HashMap::new();
-        memory.insert(
+    fn build_memory_registry() -> HashMap<
+        MemoryOpcode,
+        Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+    > {
+        let mut registry = HashMap::new();
+        registry.insert(
             MemoryOpcode::Load,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -154,9 +224,14 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-        memory.insert(
+        registry.insert(
             MemoryOpcode::Store,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -167,9 +242,14 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-        memory.insert(
+        registry.insert(
             MemoryOpcode::Allocate,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -180,9 +260,14 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-        memory.insert(
+        registry.insert(
             MemoryOpcode::Deallocate,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -193,9 +278,14 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-        memory.insert(
+        registry.insert(
             MemoryOpcode::PointerOperation,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(args) = args {
@@ -214,34 +304,196 @@ impl InstructionRegistry {
                 } else {
                     Err(VMError::MissingInstructionArguments)
                 }
-            }),
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
         );
-
-        InstructionRegistry {
-            arithmetic: arithmetic_creator,
-            control_flow,
-            memory,
-        }
+        registry
     }
 
-    /// Creates an instruction based on the given opcode and arguments.
-    /// Delegates to the appropriate registry branch.
+    fn build_system_calls_registry() -> HashMap<
+        SystemCallOpcode,
+        Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+    > {
+        let mut registry = HashMap::new();
+        registry.insert(
+            SystemCallOpcode::Write,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(WriteSysCallInstruction::new()) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            SystemCallOpcode::Read,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(ReadSysCallInstruction::new()) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            SystemCallOpcode::CreateProcess,
+            Box::new(|_args: Option<Vec<usize>>| {
+                // Use a fixed command ("echo") for demonstration.
+                Ok(
+                    Arc::new(CreateProcessInstruction::new(String::from("echo")))
+                        as Arc<dyn Instruction>,
+                )
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            SystemCallOpcode::TerminateProcess,
+            Box::new(|args: Option<Vec<usize>>| {
+                if let Some(vals) = args {
+                    let pid = vals.get(0).cloned().unwrap_or(0) as u32;
+                    Ok(Arc::new(TerminateProcessInstruction::new(pid)) as Arc<dyn Instruction>)
+                } else {
+                    Err(VMError::InvalidInstructionArguments)
+                }
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            SystemCallOpcode::NetworkSend,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(SendNetworkPacketInstruction::new(
+                    String::from("127.0.0.1"),
+                    8080,
+                )) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            SystemCallOpcode::NetworkReceive,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(ReceiveNetworkPacketInstruction::new(8080)) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry
+    }
+
+    fn build_crypto_registry() -> HashMap<
+        CryptoOpcode,
+        Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+    > {
+        let mut registry = HashMap::new();
+        registry.insert(
+            CryptoOpcode::Hash,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(HashInstruction::new()) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            CryptoOpcode::Encrypt,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(EncryptInstruction::new()) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            CryptoOpcode::Decrypt,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(DecryptInstruction::new()) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            CryptoOpcode::Sign,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(SignInstruction::new()) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry.insert(
+            CryptoOpcode::VerifySignature,
+            Box::new(|_args: Option<Vec<usize>>| {
+                Ok(Arc::new(VerifySignatureInstruction::new()) as Arc<dyn Instruction>)
+            })
+                as Box<
+                    dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError>
+                        + Send
+                        + Sync,
+                >,
+        );
+        registry
+    }
+
+    /// Creates an instruction based on the given opcode and arguments by delegating to the corresponding registry.
     pub fn create_instruction(
         &self,
         opcode: Opcode,
         args: Option<Vec<usize>>,
     ) -> Result<Arc<dyn Instruction>, VMError> {
         match opcode {
-            Opcode::Arithmetic(arith_opcode) => (self.arithmetic)(arith_opcode, args),
-            Opcode::ControlFlow(cf_opcode) => {
-                if let Some(creator) = self.control_flow.get(&cf_opcode) {
+            Opcode::Arithmetic(op) => (self.arithmetic)(op, args),
+            Opcode::ControlFlow(op) => {
+                if let Some(creator) = self.control_flow.get(&op) {
                     creator(args)
                 } else {
                     Err(VMError::UnknownOpcode)
                 }
             }
-            Opcode::Memory(mem_opcode) => {
-                if let Some(creator) = self.memory.get(&mem_opcode) {
+            Opcode::Memory(op) => {
+                if let Some(creator) = self.memory.get(&op) {
+                    creator(args)
+                } else {
+                    Err(VMError::UnknownOpcode)
+                }
+            }
+            Opcode::SystemCall(op) => {
+                if let Some(creator) = self.system_calls.get(&op) {
+                    creator(args)
+                } else {
+                    Err(VMError::UnknownOpcode)
+                }
+            }
+            Opcode::Crypto(op) => {
+                if let Some(creator) = self.crypto.get(&op) {
                     creator(args)
                 } else {
                     Err(VMError::UnknownOpcode)
@@ -249,12 +501,4 @@ impl InstructionRegistry {
             }
         }
     }
-}
-
-/// Enum representing all possible opcodes.
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum Opcode {
-    Arithmetic(ArithmeticOpcode),
-    ControlFlow(ControlFlowOpcode),
-    Memory(MemoryOpcode),
 }

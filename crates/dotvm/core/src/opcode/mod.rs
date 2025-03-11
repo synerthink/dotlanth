@@ -16,4 +16,6 @@
 
 pub mod arithmetic_opcodes;
 pub mod control_flow_opcodes;
+pub mod crypto_opcodes;
 pub mod memory_opcodes;
+pub mod system_call_opcodes;

@@ -28,8 +28,35 @@ pub enum VMError {
     MemoryManagerUnavailable,
     PointerOverflow,
     MemoryOperationError(String),
+    SystemCallError(String),
+    ProcessError(String),
+    CryptoError(String),
     // Add more error variants as needed
 }
+
+impl fmt::Display for VMError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VMError::StackUnderflow => write!(f, "Stack underflow occurred"),
+            VMError::DivisionByZero => write!(f, "Division by zero attempted"),
+            VMError::UnknownOpcode => write!(f, "Unknown opcode encountered"),
+            VMError::InvalidJumpTarget(target) => write!(f, "Invalid jump target: {}", target),
+            VMError::InvalidInstructionArguments => {
+                write!(f, "Invalid instruction arguments provided")
+            }
+            VMError::MissingInstructionArguments => write!(f, "Missing instruction arguments"),
+            VMError::MemoryManagerUnavailable => write!(f, "Memory manager is unavailable"),
+            VMError::PointerOverflow => write!(f, "Pointer overflow occurred"),
+            VMError::MemoryOperationError(msg) => write!(f, "Memory operation error: {}", msg),
+            VMError::SystemCallError(msg) => write!(f, "System call error: {}", msg),
+            VMError::ProcessError(msg) => write!(f, "Process error: {}", msg),
+            VMError::CryptoError(msg) => write!(f, "Cryptographic error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for VMError {}
+
 impl From<crate::memory::error::MemoryError> for VMError {
     fn from(err: crate::memory::error::MemoryError) -> Self {
         VMError::MemoryOperationError(err.to_string())
