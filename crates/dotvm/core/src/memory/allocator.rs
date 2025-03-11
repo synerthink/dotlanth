@@ -86,10 +86,7 @@ impl<A: Architecture> Allocator<A> {
 
     pub fn get_allocation_size(&self, handle: MemoryHandle) -> Result<usize, MemoryError> {
         let addr = PhysicalAddress::new(handle.0);
-        self.blocks
-            .get(&addr)
-            .map(|block| block.size)
-            .ok_or(MemoryError::InvalidHandle)
+        self.blocks.get(&addr).map(|block| block.size).ok_or(MemoryError::InvalidHandle)
     }
 
     fn align_up(size: usize, align: usize) -> usize {
@@ -97,11 +94,9 @@ impl<A: Architecture> Allocator<A> {
     }
 
     pub fn is_valid_handle(&self, handle: MemoryHandle) -> bool {
-        self.blocks.values().any(|block| {
-            block.address.as_usize() <= handle.0
-                && handle.0 < block.address.as_usize() + block.size
-                && !block.is_free
-        })
+        self.blocks
+            .values()
+            .any(|block| block.address.as_usize() <= handle.0 && handle.0 < block.address.as_usize() + block.size && !block.is_free)
     }
 
     /// Function to allocate a block of memory
@@ -133,10 +128,7 @@ impl<A: Architecture> Allocator<A> {
         // Then perform fragmentation check
         let max_contiguous = self.get_max_contiguous_free_block();
         if max_contiguous < aligned_size {
-            return Err(MemoryError::FragmentationError(format!(
-                "Maximum contiguous block size: {}",
-                max_contiguous
-            )));
+            return Err(MemoryError::FragmentationError(format!("Maximum contiguous block size: {}", max_contiguous)));
         }
 
         match self.strategy {
@@ -148,12 +140,7 @@ impl<A: Architecture> Allocator<A> {
 
     // New helper method
     fn get_max_contiguous_free_block(&self) -> usize {
-        self.blocks
-            .values()
-            .filter(|b| b.is_free)
-            .map(|b| b.size)
-            .max()
-            .unwrap_or(0)
+        self.blocks.values().filter(|b| b.is_free).map(|b| b.size).max().unwrap_or(0)
     }
 
     fn first_fit_allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
@@ -225,12 +212,7 @@ impl<A: Architecture> Allocator<A> {
         }
     }
 
-    fn allocate_block(
-        &mut self,
-        address: PhysicalAddress,
-        block_size: usize,
-        requested_size: usize,
-    ) -> Result<MemoryHandle, MemoryError> {
+    fn allocate_block(&mut self, address: PhysicalAddress, block_size: usize, requested_size: usize) -> Result<MemoryHandle, MemoryError> {
         // Split and allocate the block
         if block_size > requested_size {
             let remaining_size = block_size - requested_size;
@@ -252,16 +234,14 @@ impl<A: Architecture> Allocator<A> {
             block.is_free = false;
         }
 
-        self.used_memory
-            .fetch_add(requested_size, std::sync::atomic::Ordering::SeqCst);
+        self.used_memory.fetch_add(requested_size, std::sync::atomic::Ordering::SeqCst);
         Ok(MemoryHandle(address.as_usize()))
     }
 
     fn create_out_of_memory_error(&self, requested: usize) -> MemoryError {
         MemoryError::OutOfMemory {
             requested,
-            available: self.total_memory
-                - self.used_memory.load(std::sync::atomic::Ordering::SeqCst),
+            available: self.total_memory - self.used_memory.load(std::sync::atomic::Ordering::SeqCst),
         }
     }
 
@@ -312,8 +292,7 @@ impl<A: Architecture> Allocator<A> {
             block.is_free = true;
 
             // Decrease the used memory counter
-            self.used_memory
-                .fetch_sub(block.size, std::sync::atomic::Ordering::SeqCst);
+            self.used_memory.fetch_sub(block.size, std::sync::atomic::Ordering::SeqCst);
 
             // Save current block address and size into temporary variables
             let current_block_size = block.size;
@@ -323,8 +302,7 @@ impl<A: Architecture> Allocator<A> {
             let _ = block;
 
             // Coalescing: Merge with the next (right) block if it is free
-            let next_address =
-                memory::PhysicalAddress::new(current_block_address.as_usize() + current_block_size);
+            let next_address = memory::PhysicalAddress::new(current_block_address.as_usize() + current_block_size);
             if let Some(next_block) = self.blocks.get(&next_address).cloned() {
                 if next_block.is_free {
                     // Re-borrow the block to update its size
@@ -336,9 +314,7 @@ impl<A: Architecture> Allocator<A> {
             }
 
             // Coalescing: Merge with the previous (left) block if it is free
-            if let Some((&previous_address, previous_block)) =
-                self.blocks.range_mut(..current_block_address).rev().next()
-            {
+            if let Some((&previous_address, previous_block)) = self.blocks.range_mut(..current_block_address).rev().next() {
                 if previous_block.is_free {
                     // Merge the current block with the previous block
                     previous_block.size += current_block_size;
@@ -392,10 +368,7 @@ mod allocator_tests {
         #[test]
         fn test_invalid_memory_size() {
             let result = Allocator::<Arch64>::new(0);
-            assert!(matches!(result.get_stats(), AllocatorStats {
-                total_memory: 0,
-                ..
-            }));
+            assert!(matches!(result.get_stats(), AllocatorStats { total_memory: 0, .. }));
         }
     }
 
@@ -445,13 +418,7 @@ mod allocator_tests {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::NextFit);
 
             // Create several blocks
-            let handles: Vec<_> = (0..5)
-                .map(|i| {
-                    allocator
-                        .allocate(1024)
-                        .expect(&format!("Allocation {} failed", i))
-                })
-                .collect();
+            let handles: Vec<_> = (0..5).map(|i| allocator.allocate(1024).expect(&format!("Allocation {} failed", i))).collect();
 
             // Free alternate blocks
             for (i, handle) in handles.iter().enumerate() {
@@ -485,9 +452,7 @@ mod allocator_tests {
         fn test_aligned_allocation() {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::FirstFit);
 
-            let handle = allocator
-                .allocate(Arch64::WORD_SIZE * 3)
-                .expect("Aligned allocation failed");
+            let handle = allocator.allocate(Arch64::WORD_SIZE * 3).expect("Aligned allocation failed");
 
             // Address should be aligned to word size
             assert_eq!(handle.0 % Arch64::WORD_SIZE, 0);
@@ -497,13 +462,7 @@ mod allocator_tests {
         fn test_out_of_memory() {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::FirstFit);
             let result = allocator.allocate(TEST_MEMORY_SIZE + 8); // 8 byte alignment is required
-            assert!(matches!(
-                result,
-                Err(MemoryError::OutOfMemory {
-                    requested: _,
-                    available: _
-                })
-            ));
+            assert!(matches!(result, Err(MemoryError::OutOfMemory { requested: _, available: _ })));
         }
 
         #[test]
@@ -515,26 +474,17 @@ mod allocator_tests {
             let block_size = 64;
             let total_blocks = TEST_MEMORY_SIZE / block_size;
             for _ in 0..total_blocks {
-                handles.push(
-                    allocator
-                        .allocate(block_size)
-                        .expect("Small allocation failed"),
-                );
+                handles.push(allocator.allocate(block_size).expect("Small allocation failed"));
             }
 
             // Free every other block
             for i in (0..handles.len()).step_by(2) {
-                allocator
-                    .deallocate(handles[i])
-                    .expect("Deallocation failed");
+                allocator.deallocate(handles[i]).expect("Deallocation failed");
             }
 
             // Attempt to allocate a large block
             let large_allocation = allocator.allocate(TEST_MEMORY_SIZE / 2);
-            assert!(matches!(
-                large_allocation,
-                Err(MemoryError::FragmentationError(_))
-            ));
+            assert!(matches!(large_allocation, Err(MemoryError::FragmentationError(_))));
         }
     }
 
@@ -558,9 +508,7 @@ mod allocator_tests {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::FirstFit);
 
             let handle = allocator.allocate(1024).expect("Allocation failed");
-            allocator
-                .deallocate(handle)
-                .expect("First deallocation failed");
+            allocator.deallocate(handle).expect("First deallocation failed");
             let result = allocator.deallocate(handle);
 
             assert!(matches!(result, Err(MemoryError::AlreadyDeallocated)));
@@ -602,9 +550,7 @@ mod allocator_tests {
             }
 
             for i in (0..handles.len()).step_by(2) {
-                allocator
-                    .deallocate(handles[i])
-                    .expect("Deallocation failed");
+                allocator.deallocate(handles[i]).expect("Deallocation failed");
             }
 
             let stats = allocator.get_stats();

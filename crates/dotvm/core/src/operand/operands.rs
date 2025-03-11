@@ -14,10 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod arithmetic;
-pub mod control_flow;
-pub mod crypto;
-pub mod instruction;
-pub mod memory;
-pub mod registry;
-pub mod system_call;
+#[derive(Debug, PartialEq, Clone)]
+pub enum Operand {
+    Integer(i64),
+    Float(f64),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Operator {
+    GreaterThan,
+    LessThan,
+    GreaterThanOrEqual,
+    LessThanOrEqual,
+    Equal,
+    NotEqual,
+}
+
+pub fn operand_to_f64(op: &Operand) -> f64 {
+    match op {
+        Operand::Integer(i) => *i as f64,
+        Operand::Float(f) => *f,
+    }
+}

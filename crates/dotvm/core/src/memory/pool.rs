@@ -96,11 +96,7 @@ impl MemoryPool {
 
     pub fn get_stats(&self) -> PoolStats {
         let free_blocks = self.free_blocks.len();
-        let utilization = if self.total_blocks > 0 {
-            self.used_blocks as f64 / self.total_blocks as f64
-        } else {
-            0.0
-        };
+        let utilization = if self.total_blocks > 0 { self.used_blocks as f64 / self.total_blocks as f64 } else { 0.0 };
 
         PoolStats {
             block_size: self.block_size,
@@ -154,9 +150,7 @@ impl PoolManager {
 
     pub fn create_pool(&mut self, block_size: usize, total_size: usize) -> Result<(), MemoryError> {
         if self.size_classes.contains(&block_size) {
-            return Err(MemoryError::PoolError(
-                "Size class already exists".to_string(),
-            ));
+            return Err(MemoryError::PoolError("Size class already exists".to_string()));
         }
         let pool = MemoryPool::new(block_size, total_size)?;
         self.size_classes.push(block_size);
@@ -187,22 +181,13 @@ mod pool_tests {
         #[test]
         fn test_invalid_pool_creation() {
             // Test zero block size
-            assert!(matches!(
-                MemoryPool::new(0, 1024),
-                Err(MemoryError::AllocationFailed(_))
-            ));
+            assert!(matches!(MemoryPool::new(0, 1024), Err(MemoryError::AllocationFailed(_))));
 
             // Test zero total size
-            assert!(matches!(
-                MemoryPool::new(64, 0),
-                Err(MemoryError::AllocationFailed(_))
-            ));
+            assert!(matches!(MemoryPool::new(64, 0), Err(MemoryError::AllocationFailed(_))));
 
             // Test total size not multiple of block size
-            assert!(matches!(
-                MemoryPool::new(64, 100),
-                Err(MemoryError::InvalidAlignment(_))
-            ));
+            assert!(matches!(MemoryPool::new(64, 100), Err(MemoryError::InvalidAlignment(_))));
         }
 
         #[test]
@@ -246,13 +231,7 @@ mod pool_tests {
             }
 
             // Try to allocate one more block
-            assert!(matches!(
-                pool.allocate(),
-                Err(MemoryError::OutOfMemory {
-                    requested: 64,
-                    available: 0
-                })
-            ));
+            assert!(matches!(pool.allocate(), Err(MemoryError::OutOfMemory { requested: 64, available: 0 })));
         }
 
         #[test]
@@ -278,10 +257,7 @@ mod pool_tests {
                 size: 64,
             };
 
-            assert!(matches!(
-                pool.deallocate(invalid_block),
-                Err(MemoryError::InvalidAddress(_))
-            ));
+            assert!(matches!(pool.deallocate(invalid_block), Err(MemoryError::InvalidAddress(_))));
         }
 
         #[test]
@@ -315,10 +291,7 @@ mod pool_tests {
             assert!(manager.create_pool(64, 1024).is_ok());
 
             // Try to create a pool with duplicate size class
-            assert!(matches!(
-                manager.create_pool(64, 2048),
-                Err(MemoryError::PoolError(_))
-            ));
+            assert!(matches!(manager.create_pool(64, 2048), Err(MemoryError::PoolError(_))));
         }
 
         #[test]
@@ -326,15 +299,9 @@ mod pool_tests {
             let mut manager = PoolManager::new();
 
             // Create pools with different size classes
-            manager
-                .create_pool(32, 1024)
-                .expect("Failed to create 32-byte pool");
-            manager
-                .create_pool(64, 1024)
-                .expect("Failed to create 64-byte pool");
-            manager
-                .create_pool(128, 1024)
-                .expect("Failed to create 128-byte pool");
+            manager.create_pool(32, 1024).expect("Failed to create 32-byte pool");
+            manager.create_pool(64, 1024).expect("Failed to create 64-byte pool");
+            manager.create_pool(128, 1024).expect("Failed to create 128-byte pool");
 
             // Test each pool size separately to avoid multiple mutable borrows
             {
@@ -382,9 +349,7 @@ mod pool_tests {
         #[test]
         fn test_allocation_deallocation_cycle() {
             let mut manager = PoolManager::new();
-            manager
-                .create_pool(64, 1024)
-                .expect("Failed to create pool");
+            manager.create_pool(64, 1024).expect("Failed to create pool");
 
             let mut blocks = Vec::new();
 
@@ -421,12 +386,8 @@ mod pool_tests {
             let mut manager = PoolManager::new();
 
             // Create pools for different sizes
-            manager
-                .create_pool(32, 1024)
-                .expect("Failed to create 32-byte pool");
-            manager
-                .create_pool(64, 1024)
-                .expect("Failed to create 64-byte pool");
+            manager.create_pool(32, 1024).expect("Failed to create 32-byte pool");
+            manager.create_pool(64, 1024).expect("Failed to create 64-byte pool");
 
             // Use separate scopes for different pool operations
             let block1 = {

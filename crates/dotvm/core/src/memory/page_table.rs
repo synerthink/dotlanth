@@ -66,12 +66,8 @@ impl<A: Architecture> PageTable<A> {
         }
     }
 
-    pub fn map(
-        &mut self,
-        virtual_addr: VirtualAddress,
-        physical_addr: PhysicalAddress,
-        flags: PageFlags,
-    ) -> Result<(), MemoryError> {
+    #[rustfmt::skip]
+    pub fn map(&mut self, virtual_addr: VirtualAddress, physical_addr: PhysicalAddress, flags: PageFlags) -> Result<(), MemoryError> {
         // Check virtual address alignment
         if virtual_addr.0 % A::PAGE_SIZE != 0 {
             return Err(MemoryError::InvalidAlignment(virtual_addr.0));
@@ -79,9 +75,7 @@ impl<A: Architecture> PageTable<A> {
 
         // Check for existing mapping
         if self.entries.contains_key(&virtual_addr) {
-            return Err(MemoryError::PageTableError(
-                "Virtual address already mapped".to_string(),
-            ));
+            return Err(MemoryError::PageTableError("Virtual address already mapped".to_string()));
         }
 
         // Insert new entry
@@ -98,47 +92,28 @@ impl<A: Architecture> PageTable<A> {
             self.free_pages.push(entry.physical_address);
             Ok(())
         } else {
-            Err(MemoryError::PageTableError(
-                "Virtual address not mapped".into(),
-            ))
+            Err(MemoryError::PageTableError("Virtual address not mapped".into()))
         }
     }
 
     pub fn translate(&self, virtual_addr: VirtualAddress) -> Option<(PhysicalAddress, PageFlags)> {
-        self.entries
-            .get(&virtual_addr)
-            .map(|entry| (entry.physical_address, entry.flags))
+        self.entries.get(&virtual_addr).map(|entry| (entry.physical_address, entry.flags))
     }
 
-    pub fn update_flags(
-        &mut self,
-        virtual_addr: VirtualAddress,
-        flags: PageFlags,
-    ) -> Result<(), MemoryError> {
+    pub fn update_flags(&mut self, virtual_addr: VirtualAddress, flags: PageFlags) -> Result<(), MemoryError> {
         if let Some(entry) = self.entries.get_mut(&virtual_addr) {
             entry.flags = flags;
             Ok(())
         } else {
-            Err(MemoryError::PageTableError(
-                "Virtual address not mapped".to_string(),
-            ))
+            Err(MemoryError::PageTableError("Virtual address not mapped".to_string()))
         }
     }
 
-    pub fn reverse_mapping(
-        &self,
-        phys_addr: PhysicalAddress,
-    ) -> Option<(VirtualAddress, PageFlags)> {
-        self.entries
-            .iter()
-            .find(|(_, entry)| entry.physical_address == phys_addr)
-            .map(|(virt, entry)| (*virt, entry.flags))
+    pub fn reverse_mapping(&self, phys_addr: PhysicalAddress) -> Option<(VirtualAddress, PageFlags)> {
+        self.entries.iter().find(|(_, entry)| entry.physical_address == phys_addr).map(|(virt, entry)| (*virt, entry.flags))
     }
 
-    pub fn find_contiguous_virtual_space(
-        &self,
-        size: usize,
-    ) -> Result<VirtualAddress, MemoryError> {
+    pub fn find_contiguous_virtual_space(&self, size: usize) -> Result<VirtualAddress, MemoryError> {
         let mut current_addr = VirtualAddress::new(0);
         let end_addr = VirtualAddress::new(A::MAX_MEMORY);
         let required_pages = size / A::PAGE_SIZE;
@@ -148,9 +123,7 @@ impl<A: Architecture> PageTable<A> {
             if !self.entries.contains_key(&current_addr) {
                 found_pages += 1;
                 if found_pages == required_pages {
-                    return Ok(VirtualAddress::new(
-                        current_addr.0 - (required_pages - 1) * A::PAGE_SIZE,
-                    ));
+                    return Ok(VirtualAddress::new(current_addr.0 - (required_pages - 1) * A::PAGE_SIZE));
                 }
             } else {
                 found_pages = 0;
@@ -184,12 +157,7 @@ impl<A: Architecture> TLB<A> {
         self.entries.get(&virtual_addr).copied()
     }
 
-    pub fn insert(
-        &mut self,
-        virtual_addr: VirtualAddress,
-        physical_addr: PhysicalAddress,
-        flags: PageFlags,
-    ) {
+    pub fn insert(&mut self, virtual_addr: VirtualAddress, physical_addr: PhysicalAddress, flags: PageFlags) {
         // Remove the old entry (if it exists)
         if self.entries.contains_key(&virtual_addr) {
             if let Some(pos) = self.order.iter().position(|&x| x == virtual_addr) {
@@ -275,10 +243,7 @@ mod page_table_tests {
 
             table.map(vaddr, paddr, flags).expect("Failed to map page");
 
-            let new_flags = PageFlags {
-                writable: false,
-                ..flags
-            };
+            let new_flags = PageFlags { writable: false, ..flags };
 
             assert!(table.update_flags(vaddr, new_flags).is_ok());
             assert_eq!(table.translate(vaddr), Some((paddr, new_flags)));
@@ -296,10 +261,7 @@ mod page_table_tests {
             let flags = create_test_flags();
 
             assert!(table.map(vaddr, paddr, flags).is_ok());
-            assert!(matches!(
-                table.map(vaddr, paddr, flags),
-                Err(MemoryError::PageTableError(_))
-            ));
+            assert!(matches!(table.map(vaddr, paddr, flags), Err(MemoryError::PageTableError(_))));
         }
 
         #[test]
@@ -307,10 +269,7 @@ mod page_table_tests {
             let mut table = PageTable::<Arch64>::new();
             let vaddr = create_aligned_address::<Arch64>(0x1000);
 
-            assert!(matches!(
-                table.unmap(vaddr),
-                Err(MemoryError::PageTableError(_))
-            ));
+            assert!(matches!(table.unmap(vaddr), Err(MemoryError::PageTableError(_))));
         }
 
         #[test]
@@ -319,10 +278,7 @@ mod page_table_tests {
             let vaddr = create_aligned_address::<Arch64>(0x1000);
             let flags = create_test_flags();
 
-            assert!(matches!(
-                table.update_flags(vaddr, flags),
-                Err(MemoryError::PageTableError(_))
-            ));
+            assert!(matches!(table.update_flags(vaddr, flags), Err(MemoryError::PageTableError(_))));
         }
 
         #[test]
@@ -332,10 +288,7 @@ mod page_table_tests {
             let paddr = PhysicalAddress(0x2000);
             let flags = create_test_flags();
 
-            assert!(matches!(
-                table.map(vaddr, paddr, flags),
-                Err(MemoryError::InvalidAlignment(_))
-            ));
+            assert!(matches!(table.map(vaddr, paddr, flags), Err(MemoryError::InvalidAlignment(_))));
         }
     }
 
@@ -441,10 +394,7 @@ mod page_table_tests {
             tlb.insert(vaddr, paddr, flags);
 
             // Update with new flags
-            let new_flags = PageFlags {
-                writable: false,
-                ..flags
-            };
+            let new_flags = PageFlags { writable: false, ..flags };
             tlb.insert(vaddr, paddr, new_flags);
 
             assert_eq!(tlb.lookup(vaddr), Some((paddr, new_flags)));
@@ -487,13 +437,8 @@ mod page_table_tests {
             tlb.insert(vaddr, paddr, flags);
 
             // Update protection
-            let new_flags = PageFlags {
-                writable: false,
-                ..flags
-            };
-            table
-                .update_flags(vaddr, new_flags)
-                .expect("Failed to update flags");
+            let new_flags = PageFlags { writable: false, ..flags };
+            table.update_flags(vaddr, new_flags).expect("Failed to update flags");
 
             // TLB should be flushed and updated
             tlb.flush();
