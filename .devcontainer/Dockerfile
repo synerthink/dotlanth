@@ -32,3 +32,6 @@ USER dev
 
 # Install rustup and Rust nightly version
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y
+
+# Expose port 50051 for gRPC
+EXPOSE 50051

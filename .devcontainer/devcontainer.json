@@ -13,6 +13,7 @@
         "source=${localEnv:HOME}/.gitconfig,target=/home/dev/.gitconfig,type=bind,consistency=cached",
         "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
     ],
+    "forwardPorts": [50051],
     "remoteUser": "dev", //set default user
     "workspaceFolder": "/workspace", // set default workspace
     "settings": {
