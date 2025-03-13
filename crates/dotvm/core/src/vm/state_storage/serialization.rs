@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use bincode;
 use serde::{Serialize, de::DeserializeOwned};
+use serde_json;
 use std::fmt;
 
 /// Defines errors that may occur during serialization or deserialization.
@@ -72,21 +74,18 @@ where
 }
 
 /// JsonStateSerializer is our production implementation for JSON serialization.
-/// The methods are left unimplemented to drive TDD.
 pub struct JsonStateSerializer;
 
 impl<T> StateSerializer<T> for JsonStateSerializer
 where
     T: Serialize + DeserializeOwned,
 {
-    fn serialize(&self, _value: &T) -> Result<Vec<u8>, SerializationError> {
-        // TDD: Replace unimplemented!() with a call to serde_json when ready.
-        unimplemented!("JsonStateSerializer::serialize is not implemented yet")
+    fn serialize(&self, value: &T) -> Result<Vec<u8>, SerializationError> {
+        serde_json::to_vec(value).map_err(|e| SerializationError::SerializeError(e.to_string()))
     }
 
-    fn deserialize(&self, _data: &[u8]) -> Result<T, SerializationError> {
-        // TDD: Replace unimplemented!() with a call to serde_json when ready.
-        unimplemented!("JsonStateSerializer::deserialize is not implemented yet")
+    fn deserialize(&self, data: &[u8]) -> Result<T, SerializationError> {
+        serde_json::from_slice(data).map_err(|e| SerializationError::DeserializeError(e.to_string()))
     }
 }
 
@@ -98,14 +97,14 @@ impl<T> StateSerializer<T> for BinaryStateSerializer
 where
     T: Serialize + DeserializeOwned,
 {
-    fn serialize(&self, _value: &T) -> Result<Vec<u8>, SerializationError> {
-        // TDD: Replace this unimplemented!() with a binary serializer (e.g., using bincode).
-        unimplemented!("BinaryStateSerializer::serialize is not implemented yet")
+    fn serialize(&self, value: &T) -> Result<Vec<u8>, SerializationError> {
+        bincode::serde::encode_to_vec(value, bincode::config::standard()).map_err(|e| SerializationError::SerializeError(e.to_string()))
     }
 
-    fn deserialize(&self, _data: &[u8]) -> Result<T, SerializationError> {
-        // TDD: Replace this unimplemented!() with a binary deserializer (e.g., using bincode).
-        unimplemented!("BinaryStateSerializer::deserialize is not implemented yet")
+    fn deserialize(&self, data: &[u8]) -> Result<T, SerializationError> {
+        bincode::serde::decode_from_slice(data, bincode::config::standard())
+            .map(|(result, _)| result)
+            .map_err(|e| SerializationError::DeserializeError(e.to_string()))
     }
 }
 
