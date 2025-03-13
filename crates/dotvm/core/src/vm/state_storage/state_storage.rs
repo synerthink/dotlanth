@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::fmt;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 /// Enum representing the possible errors during state operations.
 #[derive(Debug, PartialEq)]
 pub enum StateStorageError {
     /// The requested state key was not found.
     NotFound,
+    /// Key already exists in storage.
+    AlreadyExists,
     /// An error occurred while connecting to or accessing the underlying storage.
     ConnectionError,
     /// An unspecified error occurred.
@@ -81,24 +86,44 @@ pub trait StateStorage {
 
 /// DefaultStateStorage is our primary production implementation of the StateStorage interface.
 /// Its methods are left unimplemented (using unimplemented!()) to be filled per the TDD process.
-pub struct DefaultStateStorage;
+/// Thread-safe production implementation using HashMap
+#[derive(Debug, Default)]
+pub struct DefaultStateStorage {
+    storage: Arc<Mutex<HashMap<String, String>>>,
+}
 
 impl DefaultStateStorage {
-    /// Creates a new instance of DefaultStateStorage.
     pub fn new() -> Self {
-        DefaultStateStorage
+        Self {
+            storage: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 }
 
 impl StateStorage for DefaultStateStorage {
-    fn load(&self, _key: &str) -> Result<String, StateStorageError> {
-        unimplemented!("DefaultStateStorage::load is not implemented yet")
+    fn load(&self, key: &str) -> Result<String, StateStorageError> {
+        let storage = self.storage.lock().unwrap();
+        storage.get(key).cloned().ok_or(StateStorageError::NotFound)
     }
-    fn save(&mut self, _key: &str, _value: &str) -> Result<(), StateStorageError> {
-        unimplemented!("DefaultStateStorage::save is not implemented yet")
+
+    fn save(&mut self, key: &str, value: &str) -> Result<(), StateStorageError> {
+        let mut storage = self.storage.lock().unwrap();
+        if storage.contains_key(key) {
+            Err(StateStorageError::AlreadyExists)
+        } else {
+            storage.insert(key.to_string(), value.to_string());
+            Ok(())
+        }
     }
-    fn update(&mut self, _key: &str, _value: &str) -> Result<(), StateStorageError> {
-        unimplemented!("DefaultStateStorage::update is not implemented yet")
+
+    fn update(&mut self, key: &str, value: &str) -> Result<(), StateStorageError> {
+        let mut storage = self.storage.lock().unwrap();
+        if storage.contains_key(key) {
+            storage.insert(key.to_string(), value.to_string());
+            Ok(())
+        } else {
+            Err(StateStorageError::NotFound)
+        }
     }
 }
 
@@ -135,7 +160,7 @@ mod tests {
         assert!(storage.save(key, value).is_ok(), "Initial save should succeed");
         // Second save with the same key should fail.
         let result = storage.save(key, "state_two");
-        assert_eq!(result, Err(StateStorageError::Unknown), "Saving an existing key should fail with Unknown error");
+        assert_eq!(result, Err(StateStorageError::AlreadyExists), "Saving an existing key should fail with Unknown error");
     }
 
     #[test]
