@@ -123,16 +123,40 @@ impl<T> SnapshotManager<T> for DefaultSnapshotManager<T>
 where
     T: Clone,
 {
-    fn capture_snapshot(&mut self, _state: &T) -> Result<u32, SnapshotError> {
-        unimplemented!("DefaultSnapshotManager::capture_snapshot is not implemented yet")
+    fn capture_snapshot(&mut self, state: &T) -> Result<u32, SnapshotError> {
+        let mut snapshots_guard = self.snapshots.lock().map_err(|_| SnapshotError::OperationFailed("Mutex poisoned".into()))?;
+        let snapshot_id = self.next_id;
+        let snapshot = Snapshot {
+            id: snapshot_id,
+            state: state.clone(),
+        };
+        snapshots_guard.insert(snapshot_id, snapshot);
+        self.next_id += 1;
+        Ok(snapshot_id)
     }
 
-    fn restore_snapshot(&self, _snapshot_id: u32) -> Result<T, SnapshotError> {
-        unimplemented!("DefaultSnapshotManager::restore_snapshot is not implemented yet")
+    fn restore_snapshot(&self, snapshot_id: u32) -> Result<T, SnapshotError> {
+        let snapshots_guard = self.snapshots.lock().map_err(|_| SnapshotError::OperationFailed("Mutex poisoned".into()))?;
+        if let Some(snapshot) = snapshots_guard.get(&snapshot_id) {
+            Ok(snapshot.state.clone())
+        } else {
+            Err(SnapshotError::SnapshotNotFound)
+        }
     }
 
     fn cleanup_snapshots(&mut self) -> Result<usize, SnapshotError> {
-        unimplemented!("DefaultSnapshotManager::cleanup_snapshots is not implemented yet")
+        let mut snapshots_guard = self.snapshots.lock().map_err(|_| SnapshotError::OperationFailed("Mutex poisoned".into()))?;
+        let total = snapshots_guard.len();
+        if total <= self.retention_limit {
+            return Ok(0);
+        }
+        let remove_count = total - self.retention_limit;
+        // Since BTreeMap keys are ordered, we remove the smallest (oldest) snapshots.
+        let keys_to_remove: Vec<u32> = snapshots_guard.keys().cloned().take(remove_count).collect();
+        for key in keys_to_remove {
+            snapshots_guard.remove(&key);
+        }
+        Ok(remove_count)
     }
 }
 
