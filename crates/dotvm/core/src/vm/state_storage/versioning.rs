@@ -63,8 +63,17 @@ impl<T> StateVersioner<T> for DefaultStateVersioner
 where
     T: Clone,
 {
-    fn migrate(&self, _old: VersionedState<T>) -> Result<VersionedState<T>, StateStorageError> {
-        unimplemented!("DefaultStateVersioner::migrate is not implemented yet")
+    fn migrate(&self, old: VersionedState<T>) -> Result<VersionedState<T>, StateStorageError> {
+        if old.version > LATEST_VERSION {
+            return Err(StateStorageError::Unknown);
+        }
+        if old.version == LATEST_VERSION {
+            return Ok(old);
+        }
+        Ok(VersionedState {
+            version: LATEST_VERSION,
+            data: old.data,
+        })
     }
 }
 
