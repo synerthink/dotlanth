@@ -28,8 +28,15 @@ use super::state_transitions::{Event, State, TransitionError};
 /// - Paused + Resume -> Running
 /// - Running + Stop   -> Idle
 pub fn validate_transition(current: &State, event: &Event) -> Result<(), TransitionError> {
-    // TDD: Add pattern matching to verify allowed transitions.
-    unimplemented!("transition_validation::validate_transition is not implemented yet")
+    match (current, event) {
+        (State::Idle, Event::Start) => Ok(()),
+        (State::Running, Event::Pause) => Ok(()),
+        (State::Paused, Event::Resume) => Ok(()),
+        (State::Running, Event::Stop) => Ok(()),
+        (State::Running, Event::Fail) => Ok(()),
+        (State::Error, _) => Err(TransitionError::InvalidTransition),
+        _ => Err(TransitionError::InvalidTransition),
+    }
 }
 
 /// Checks that state invariants hold within the current state.
@@ -38,18 +45,22 @@ pub fn validate_transition(current: &State, event: &Event) -> Result<(), Transit
 /// * Ok(()) if invariants hold,
 /// * Err(TransitionError) if any invariant is violated.
 pub fn check_state_invariants(current: &State) -> Result<(), TransitionError> {
-    // TDD: Validate overall state properties.
-    unimplemented!("transition_validation::check_state_invariants is not implemented yet")
+    match current {
+        State::Error => Err(TransitionError::InvalidTransition),
+        _ => Ok(()),
+    }
 }
 
-/// (Optional) Validates that the provided event is recognized by the system.
+/// Validates that the provided event is recognized by the system.
 ///
 /// # Returns
-/// * Ok(()) if the event is valid,
-/// * Err(TransitionError) if the event is unsupported.
+/// * `Ok(())` if the event is valid,
+/// * `Err(TransitionError::InvalidTransition)` if the event is unsupported.
 pub fn validate_event(event: &Event) -> Result<(), TransitionError> {
-    // TDD: Check if the event belongs to our enum or known set.
-    unimplemented!("transition_validation::validate_event is not implemented yet")
+    match event {
+        Event::Start | Event::Pause | Event::Resume | Event::Stop | Event::Fail => Ok(()),
+        _ => Err(TransitionError::InvalidTransition), // For unsupported events
+    }
 }
 
 #[cfg(test)]

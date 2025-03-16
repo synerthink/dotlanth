@@ -40,7 +40,7 @@ pub enum Event {
 #[derive(Debug)]
 pub enum TransitionError {
     InvalidTransition,
-    RollbackFailed,
+    RollbackFailed(String),
     NotImplemented,
 }
 
@@ -58,37 +58,95 @@ pub struct StateManager {
     pub current_state: Mutex<State>,
 }
 
+/// Core state transition handler with thread-safe mutex protection.
+/// Manages state changes through events, direct updates, and rollbacks.
 impl StateManager {
-    /// Creates a new StateManager with an initial state.
+    /// Creates a new instance with the specified initial state.
+    ///
+    /// # Arguments
+    /// - `initial`: Starting state of the system (e.g., `State::Idle`)
     pub fn new(initial: State) -> Self {
         StateManager { current_state: Mutex::new(initial) }
     }
 
-    /// Processes an event and triggers a transition.
-    /// This function should validate the event and determine the appropriate state change.
+    /// Processes an event to trigger state transitions.
+    /// Follows predefined transition rules:
+    /// - Idle + Start ➔ Running
+    /// - Running + Pause ➔ Paused
+    /// - Paused + Resume ➔ Running
+    /// - Running + Stop ➔ Idle
+    /// - Running + Fail ➔ Error
+    ///
+    /// # Arguments
+    /// - `event`: Triggering event (e.g., `Event::Start`)
+    ///
+    /// # Returns
+    /// - `Ok(())`: On valid transition
+    /// - `Err(TransitionError::InvalidTransition)`: For unsupported event/state pairs
     pub fn process_event(&self, event: &Event) -> Result<(), TransitionError> {
-        // Log the event
-        // log::info!("Processing event: {:?}", event);
-
-        // TDD: Pattern match the event and determine transition logic
-        unimplemented!("StateManager::process_event is not implemented yet")
+        let mut current = self.current_state.lock().unwrap(); // Thread-safe lock
+        let new_state = match (&*current, event) {
+            // Valid transitions
+            (State::Idle, Event::Start) => State::Running,
+            (State::Running, Event::Pause) => State::Paused,
+            (State::Paused, Event::Resume) => State::Running,
+            (State::Running, Event::Stop) => State::Idle,
+            (State::Running, Event::Fail) => State::Error,
+            // Invalid combinations
+            _ => return Err(TransitionError::InvalidTransition),
+        };
+        *current = new_state; // Apply state change
+        Ok(())
     }
 
-    /// Changes the current state to the provided new_state.
-    /// Should perform validation and support rollback if needed.
+    /// Directly changes the state with validation:
+    /// - Blocks transitions to/from `Error` state
+    ///
+    /// # Arguments
+    /// - `new_state`: Target state
+    ///
+    /// # Returns
+    /// - `Ok(())`: On valid change
+    /// - `Err(TransitionError::InvalidTransition)`: For `Error`-related attempts
     pub fn change_state(&self, new_state: State) -> Result<(), TransitionError> {
-        // Log the state change attempt
-        // log::info!("Changing state to: {:?}", new_state);
-
-        unimplemented!("StateManager::change_state is not implemented yet")
+        let mut current = self.current_state.lock().unwrap();
+        // Block Error state transitions
+        if *current == State::Error || new_state == State::Error {
+            return Err(TransitionError::InvalidTransition);
+        }
+        *current = new_state;
+        Ok(())
     }
 
-    /// Rollbacks the state to the previous state in case of failure.
+    /// Reverts the current state to a specified `previous_state` with validations:
+    /// - **Mutex Lock Safety**: Handles mutex poisoning errors
+    /// - **No-Op Rule**: Skips update if current state matches target
+    /// - **Error State Policy**: Only allows rollback to `Idle` from `Error`
+    /// - **State Update**: Applies the rollback if validations pass
+    ///
+    /// # Arguments
+    /// - `previous_state`: Target state to revert to
+    ///
+    /// # Returns
+    /// - `Ok(())`: On successful rollback or no-op
+    /// - `Err(TransitionError)`: For failures (lock errors/invalid transitions)
     pub fn rollback(&self, previous_state: State) -> Result<(), TransitionError> {
-        // Log the rollback action
-        // log::error!("Rolling back to state: {:?}", previous_state);
+        // Rule 1: Acquire mutex lock with error propagation
+        let mut current = self.current_state.lock().map_err(|_| TransitionError::RollbackFailed("Mutex lock failed (poisoning)".into()))?;
 
-        unimplemented!("StateManager::rollback is not implemented yet")
+        // Rule 2: Skip update if current == target (no-op)
+        if *current == previous_state {
+            return Ok(()); // No change needed
+        }
+
+        // Rule 3: Error state transition constraints
+        if *current == State::Error && previous_state != State::Idle {
+            return Err(TransitionError::InvalidTransition); // Error → Non-Idle blocked
+        }
+
+        // Rule 4: Apply the rollback
+        *current = previous_state;
+        Ok(()) // Success
     }
 }
 

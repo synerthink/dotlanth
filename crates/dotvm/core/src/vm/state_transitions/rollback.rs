@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::state_transitions::{State, TransitionError};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 /// Trait for managing rollback of state transitions.
 pub trait RollbackManager {
@@ -45,9 +45,38 @@ impl DefaultRollbackManager {
     }
 }
 
+/// Production implementation of `RollbackManager` for state rollbacks.
+/// Enforces system-specific rollback rules and error handling.
 impl RollbackManager for DefaultRollbackManager {
+    /// Reverts the current state to a specified `previous_state` with validations:
+    /// - **Mutex Lock Safety**: Handles mutex poisoning errors
+    /// - **No-Op Rule**: Skips update if current state matches target
+    /// - **Error State Policy**: Only allows rollback to `Idle` from `Error`
+    /// - **State Update**: Applies the rollback if validations pass
+    ///
+    /// # Arguments
+    /// - `previous_state`: Target state to revert to
+    ///
+    /// # Returns
+    /// - `Ok(())`: On successful rollback or no-op
+    /// - `Err(TransitionError)`: For failures (lock errors/invalid transitions)
     fn rollback_to(&self, previous_state: State) -> Result<(), TransitionError> {
-        unimplemented!("DefaultRollbackManager::rollback_to is not implemented yet")
+        // Rule 1: Acquire mutex lock with error propagation
+        let mut current = self.current_state.lock().map_err(|_| TransitionError::RollbackFailed("Mutex lock failed (poisoning)".into()))?;
+
+        // Rule 2: Skip update if current == target (no-op)
+        if *current == previous_state {
+            return Ok(()); // No change needed
+        }
+
+        // Rule 3: Error state transition constraints
+        if *current == State::Error && previous_state != State::Idle {
+            return Err(TransitionError::InvalidTransition); // Error → Non-Idle blocked
+        }
+
+        // Rule 4: Apply the rollback
+        *current = previous_state;
+        Ok(()) // Success
     }
 }
 
