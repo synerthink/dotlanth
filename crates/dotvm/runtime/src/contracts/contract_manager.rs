@@ -28,35 +28,59 @@ pub struct Contract {
 pub struct ContractInstance {
     pub contract: Contract,
     pub active: bool,
+    pub temp_file: Option<std::path::PathBuf>,
 }
 
 impl ContractInstance {
     pub fn new(contract: Contract) -> Self {
-        unimplemented!()
+        let temp_path = std::env::temp_dir().join(format!("{}.txt", contract.id));
+        std::fs::write(&temp_path, "temp data").expect("Failed to create temp file");
+
+        Self {
+            contract,
+            active: true,
+            temp_file: Some(temp_path),
+        }
     }
 }
 
 /// Loads a contract from a file path.
 /// The contract's id is derived from the file name.
 pub fn load_contract<P: AsRef<Path>>(path: P) -> Result<Contract, io::Error> {
-    unimplemented!()
+    let code = fs::read_to_string(&path)?;
+    let id = path
+        .as_ref()
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid file name"))?
+        .to_string();
+    Ok(Contract { id, code })
 }
 
 /// Instantiate a contract to create a new instance.
 pub fn instantiate_contract(contract: Contract) -> ContractInstance {
-    unimplemented!()
+    ContractInstance::new(contract)
 }
 
 /// Terminates an active contract instance by marking it inactive.
 /// Returns an error if the instance is already terminated.
 pub fn terminate_contract(instance: &mut ContractInstance) -> Result<(), String> {
-    unimplemented!()
+    if instance.active {
+        instance.active = false;
+        Ok(())
+    } else {
+        Err("Contract instance is already terminated".to_string())
+    }
 }
 
 /// Cleans up resources associated with a contract instance.
 /// This should only be invoked on a terminated contract.
 pub fn cleanup_resources(instance: &ContractInstance) {
-    unimplemented!()
+    if !instance.active {
+        if let Some(path) = &instance.temp_file {
+            let _ = std::fs::remove_file(path); // Remove temp file
+        }
+    }
 }
 
 #[cfg(test)]
@@ -67,7 +91,6 @@ mod tests {
     use std::io::Write;
 
     #[test]
-    #[should_panic(expected = "not implemented")]
     fn test_load_contract() {
         let mut path = env::temp_dir();
         path.push("test_contract.txt");
@@ -81,7 +104,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "not implemented")]
     fn test_instantiate_and_terminate_contract() {
         let contract = Contract {
             id: "test".to_string(),
@@ -97,13 +119,26 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "not implemented")]
     fn test_cleanup_resources() {
-        let contract = Contract {
-            id: "test".to_string(),
-            code: "code".to_string(),
+        // Set temporary file path
+        let temp_path = std::env::temp_dir().join("test.txt");
+        // Create the file manually (since ContractInstance::new is not called)
+        std::fs::write(&temp_path, "temp data").expect("Failed to create file");
+
+        // Create a passive instance
+        let instance = ContractInstance {
+            contract: Contract {
+                id: "test".to_string(),
+                code: "code".to_string(),
+            },
+            active: false,
+            temp_file: Some(temp_path.clone()), // Save path
         };
-        let instance = instantiate_contract(contract);
+
+        // Verify file exists before cleaning
+        assert!(temp_path.exists(), "File must be available before cleaning");
         cleanup_resources(&instance);
+        // Verify that the file has been deleted after cleaning
+        assert!(!temp_path.exists(), "File should be deleted after cleaning");
     }
 }
