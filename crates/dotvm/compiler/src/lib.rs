@@ -15,5 +15,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pub mod codegen;
+pub mod dependency_analysis;
 pub mod optimizer;
 pub mod parser;
