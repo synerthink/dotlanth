@@ -16,5 +16,6 @@
 
 pub mod errors;
 pub mod executor;
+pub mod state_access;
 pub mod state_storage;
 pub mod state_transitions;
