@@ -18,7 +18,7 @@ repository = "https://github.com/synerthink-organization/dotVM"
 [workspace.dependencies]
 # Core dependencies
 tokio = { version = "1.36", features = ["full"] }
-futures = "0.3"
+futures = "0.3.31"
 async-trait = "0.1"
 thiserror = "1.0"
 anyhow = "1.0"
