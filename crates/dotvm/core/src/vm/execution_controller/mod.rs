@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod errors;
-pub mod execution_controller;
-pub mod executor;
-pub mod state_access;
-pub mod state_storage;
-pub mod state_transitions;
+// Sub-modules
+pub mod lib;
+pub mod load_balancing;
+pub mod priority_execution;
+pub mod resource_allocation;
+pub mod work_stealing_scheduler;
+
+// Public exports
+pub use lib::{ExecutionController, ExecutionError, ResourceRequirements, Task, TaskPriority};
