@@ -14,10 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod errors;
-pub mod execution_controller;
-pub mod executor;
-pub mod state_access;
-pub mod state_management;
-pub mod state_storage;
-pub mod state_transitions;
+// State Management module for ParaContracts
+// This module provides advanced mechanisms for concurrent state operations
+// and integrity verification.
+
+pub mod lib;
+pub mod mvcc;
+pub mod snapshot;
+pub mod tree;
+pub mod verification;
+
+// Public re-exports
+pub use lib::{Error, Result, StateKey, StateValue};
+pub use mvcc::{MVCCStore, Version, VersionedValue, WriteOperation};
+pub use snapshot::{Snapshot, SnapshotManager, SnapshotMetadata};
+pub use tree::{MerkleNode, MerkleProof, MerkleTree, StateHash};
+pub use verification::{Validator, VerificationError, VerificationResult};
