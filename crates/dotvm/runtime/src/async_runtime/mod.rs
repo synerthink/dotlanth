@@ -14,8 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod async_runtime;
-pub mod contracts;
-pub mod environment;
-pub mod execution_context;
-pub mod state;
+pub mod cancellation;
+pub mod executor;
+mod lib;
+pub mod polling;
+pub mod scheduler;
+
+// Public re-exports
+pub use cancellation::{CancellationToken, TaskHandle};
+pub use executor::{ExecutionStats, FutureExecutor};
+pub use polling::{PollResult, PollStatus, Poller};
+pub use scheduler::{AsyncTaskScheduler, Priority, Task, TaskQueue};
