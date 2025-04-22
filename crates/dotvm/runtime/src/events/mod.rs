@@ -14,9 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod async_runtime;
-pub mod contracts;
-pub mod environment;
-pub mod events;
-pub mod execution_context;
-pub mod state;
+// Public modules
+pub mod dispatcher;
+pub mod filter;
+pub mod lib;
+pub mod prioritization;
+pub mod queue;
+
+// Re-export primary types for easier access
+pub use dispatcher::EventDispatcher;
+pub use filter::{FilterManager, FilterResult};
+pub use lib::{Event, HandlerId, Priority};
+pub use prioritization::PriorityManager;
+pub use queue::EventQueue;
