@@ -10,11 +10,17 @@ tokio.workspace = true
 futures.workspace = true
 async-trait.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 tracing.workspace = true
+thiserror.workspace = true
 tonic = "0.11"
 prost = "0.12"
 tonic-reflection = "0.11"
 futures-timer = "3.0.3"
+rand = "0.9.1"
+ring = "0.17.14"
+dashmap = "6.1.0"
+base64 = "0.22.1"
 
 [build-dependencies]
 tonic-build = "0.11"
