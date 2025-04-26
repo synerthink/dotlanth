@@ -14,10 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod async_runtime;
-pub mod contracts;
-pub mod environment;
-pub mod events;
-pub mod execution_context;
-pub mod finalizer;
-pub mod state;
+// Core modules for finality handling and auditing
+pub mod finality_confirmation;
+pub mod finality_validation;
+pub mod instant_finality;
+pub mod lib;
+pub mod logging_audit;
+
+// Public exports
+pub use finality_confirmation::FinalityConfirmation;
+pub use finality_validation::FinalityValidator;
+pub use instant_finality::InstantFinalityModule;
+pub use logging_audit::AuditLogger;
