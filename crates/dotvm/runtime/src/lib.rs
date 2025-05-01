@@ -20,4 +20,5 @@ pub mod environment;
 pub mod events;
 pub mod execution_context;
 pub mod finalizer;
+pub mod rollback;
 pub mod state;
