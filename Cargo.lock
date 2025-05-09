@@ -491,6 +491,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "dotdb-common"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "dotdb-core"
+version = "0.1.0"
+dependencies = [
+ "dotdb-common",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "dotvm-common"
 version = "0.1.0"
 dependencies = [
