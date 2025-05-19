@@ -1,0 +1,10 @@
+[package]
+name = "dotdb-common"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+tracing.workspace = true

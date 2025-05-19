@@ -7,6 +7,8 @@ members = [
     "crates/dotvm/core",
     "crates/dotvm/runtime",
     "crates/dotvm/tools",
+    "crates/dotdb/common",
+    "crates/dotdb/core",
 ]
 
 [workspace.package]
