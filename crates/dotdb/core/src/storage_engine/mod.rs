@@ -27,7 +27,7 @@ pub mod wal;
 // Public exports
 pub use buffer_manager::{Buffer, BufferManager, BufferPool, BufferStats};
 pub use file_format::{FileFormat, Page, PageId, PageType};
-pub use lib::{calculate_checksum, generate_timestamp, AsyncIO, DatabaseId, Flushable, Initializable, Storage, StorageConfig, StorageDevice, StorageError, StorageResult, VersionId};
+pub use lib::{AsyncIO, DatabaseId, Flushable, Initializable, Storage, StorageConfig, StorageDevice, StorageError, StorageResult, VersionId, calculate_checksum, generate_timestamp};
 pub use page_manager::{PageAllocation, PageManager};
 pub use transaction::{IsolationLevel, Transaction, TransactionManager, TransactionState};
 pub use wal::{LogEntry, LogSequenceNumber, WriteAheadLog};
