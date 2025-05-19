@@ -1,0 +1,15 @@
+[package]
+name = "dotdb-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dotdb-common = { path = "../common" }
+tokio.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+byteorder = "1.5.0"
+tempfile = "3.20.0"
+crc32fast = "1.4.2"
+libc = "0.2.172"
