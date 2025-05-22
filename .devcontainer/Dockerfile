@@ -6,7 +6,7 @@ RUN dpkg --add-architecture i386 && \
     apt update && apt install -y \
     sudo man-db apt-utils dialog \
     git curl build-essential \
-    protobuf-compiler && \
+    protobuf-compiler libnuma-dev && \
     rm -rf /var/lib/apt/lists/* && \
     apt update && \
     dpkg -l | grep ^ii | cut -d' ' -f3 | xargs apt-get install -y --reinstall && \
