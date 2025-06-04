@@ -5,7 +5,8 @@
     },
     "runArgs": [
         "--name", "dotlanth", // set container name
-        "--hostname", "dotlanth" // set container hostname
+        "--hostname", "dotlanth", // set container hostname
+        "--privileged" // set container to be privileged
     ],
     "mounts": [ // set mount points for dev container (read-write mode)
         "source=${localEnv:HOME}/.ssh,target=/home/dev/.ssh,type=bind,consistency=cached",
