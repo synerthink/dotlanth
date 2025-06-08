@@ -178,7 +178,9 @@ impl HardwareProtection {
     unsafe fn set_memory_protection(addr: usize, mpk: u32) {
         // Set memory protection using platform-specific instructions
         // Example: For x86_64 the `wrpkru` instruction is available
-        asm!("wrpkru", in("eax") mpk, in("ecx") addr);
+        unsafe {
+            asm!("wrpkru", in("eax") mpk, in("ecx") addr);
+        }
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -234,7 +236,9 @@ impl HardwareProtection {
     unsafe fn set_protection_key(addr: usize, pkey: u32) {
         // Set the protection switch using platform-specific instructions
         // Example: `pkey_mprotect` system call available for x86_64
-        asm!("syscall", in("rax") 0x123, in("rdi") addr, in("rsi") pkey);
+        unsafe {
+            asm!("syscall", in("rax") 0x123, in("rdi") addr, in("rsi") pkey);
+        }
     }
 
     #[cfg(target_arch = "x86_64")]
