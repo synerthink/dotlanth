@@ -926,8 +926,6 @@ mod tests {
         page.update_checksum();
         let original_checksum = page.header.checksum;
 
-        println!("Original checksum: {}", original_checksum);
-
         // Create a buffer and serialize the page
         let page_size = 4096;
         let mut buffer = vec![0; page_size];
@@ -949,9 +947,6 @@ mod tests {
 
         // Create a new page from the deserialized data
         let deserialized_page = Page { id: PageId(1), header, data };
-
-        println!("Deserialized checksum: {}", deserialized_page.header.checksum);
-        println!("Recalculated checksum: {}", deserialized_page.calculate_checksum());
 
         // Verify checksum integrity
         assert_eq!(original_checksum, deserialized_page.header.checksum, "Checksum changed during serialization");
