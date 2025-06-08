@@ -19,4 +19,5 @@ pub mod fs;
 pub mod io;
 pub mod memory;
 pub mod recovery;
+pub mod state;
 pub mod storage_engine;
