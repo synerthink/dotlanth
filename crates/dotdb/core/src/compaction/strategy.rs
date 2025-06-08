@@ -505,11 +505,42 @@ mod tests {
         };
         let strategy = TimeWindowStrategy::new(config);
 
+        // Use a fixed base time to avoid timing race conditions
+        let base_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1000000);
+
         let files = vec![
-            create_test_file(1, 1024, 100),  // Window 1
-            create_test_file(2, 1024, 200),  // Window 1
-            create_test_file(3, 1024, 4000), // Window 2 (different hour)
-            create_test_file(4, 1024, 4100), // Window 2
+            FileMetadata {
+                id: 1,
+                file_type: FileType::Data,
+                version: 1,
+                size: 1024,
+                created_at: base_time - Duration::from_secs(100), // Window 1
+                path: "test_1.dat".into(),
+            },
+            FileMetadata {
+                id: 2,
+                file_type: FileType::Data,
+                version: 1,
+                size: 1024,
+                created_at: base_time - Duration::from_secs(200), // Window 1
+                path: "test_2.dat".into(),
+            },
+            FileMetadata {
+                id: 3,
+                file_type: FileType::Data,
+                version: 1,
+                size: 1024,
+                created_at: base_time - Duration::from_secs(4000), // Window 2 (different hour)
+                path: "test_3.dat".into(),
+            },
+            FileMetadata {
+                id: 4,
+                file_type: FileType::Data,
+                version: 1,
+                size: 1024,
+                created_at: base_time - Duration::from_secs(4100), // Window 2
+                path: "test_4.dat".into(),
+            },
         ];
 
         let windows = strategy.group_files_by_time_window(&files);
