@@ -591,6 +591,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "dashmap",
+ "dotdb-core",
  "dotvm-common",
  "dotvm-core",
  "futures",

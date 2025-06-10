@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod arithmetic_opcodes;
-pub mod control_flow_opcodes;
-pub mod crypto_opcodes;
-pub mod memory_opcodes;
-pub mod state_opcodes;
-pub mod system_call_opcodes;
+//! # Execution Context Module
+//!
+//! This module provides components for managing execution context
+//! during smart contract execution, including state access management.
+
+pub mod state_access;
+
+// Re-export commonly used types
+pub use state_access::{StateAccessError, StateAccessInterface, StateAccessManager, StateAccessResult};
