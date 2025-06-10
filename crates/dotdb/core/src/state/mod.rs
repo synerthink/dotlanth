@@ -86,6 +86,7 @@
 //! for different failure scenarios. See individual component
 //! documentation for detailed error handling information.
 
+pub mod contract_storage_layout;
 pub mod db_interface;
 pub mod diff;
 pub mod mpt;
@@ -93,6 +94,7 @@ pub mod pruning;
 pub mod snapshot;
 
 // Re-export commonly used types
+pub use contract_storage_layout::{ContractAddress, ContractStorageLayout, StorageLayoutError, StorageValue, StorageVariable, StorageVariableType};
 pub use db_interface::{Database, DbConfig, DbError, MptStorageAdapter, create_in_memory_mpt, create_persistent_mpt};
 pub use diff::StateDiff;
 pub use mpt::{MPTError, MerklePatriciaTrie, StateProof};
