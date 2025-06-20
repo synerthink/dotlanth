@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod compaction;
-pub mod fs;
-pub mod indices;
-pub mod io;
-pub mod memory;
-pub mod recovery;
-pub mod state;
-pub mod storage_engine;
-pub mod write_batch;
+pub mod b_plus_tree;
+pub mod composite_index;
+pub mod hash_index;
+pub mod lib;
+pub mod persistence;
+
+// Re-export commonly used types
+pub use lib::{CompositeKey, Index, IndexError, IndexIterator, IndexKey, IndexMaintenance, IndexOperation, IndexResult, IndexStats, IndexType, IndexValue, RangeQuery, create_composite_key};
+
+pub use b_plus_tree::BPlusTree;
+pub use composite_index::{CompositeIndex, CompositeIndexConfig, FieldSpec};
+pub use hash_index::HashIndex;
+pub use persistence::{IndexMetadata, IndexPersistence, IndexPersistenceManager, IndexSerializationFormat};
