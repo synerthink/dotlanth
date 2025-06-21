@@ -54,8 +54,10 @@ pub enum MapFlags {
     Private = libc::MAP_PRIVATE as isize,     // Private mapping (changes not visible to other processes)
     Anonymous = libc::MAP_ANONYMOUS as isize, // Not backed by a file
     Fixed = libc::MAP_FIXED as isize,         // Map at exact address
-    Populate = libc::MAP_POPULATE as isize,   // Populate page tables eagerly
-    Locked = libc::MAP_LOCKED as isize,       // Lock pages in memory
+    #[cfg(target_os = "linux")]
+    Populate = libc::MAP_POPULATE as isize, // Populate page tables eagerly
+    #[cfg(target_os = "linux")]
+    Locked = libc::MAP_LOCKED as isize, // Lock pages in memory
 }
 
 /// Errors that can occur during memory mapping operations
@@ -71,6 +73,7 @@ pub enum MmapError {
     ProtectionFailed,   // mprotect system call failed
     InvalidOffset,      // Invalid offset into file
     FileTooSmall,       // File is smaller than requested mapping
+    Unsupported,        // Operation not supported on this platform
 }
 
 impl From<io::Error> for MmapError {
@@ -516,6 +519,7 @@ impl MemoryMap {
     }
 
     /// Resize the mapping (if possible)
+    #[cfg(target_os = "linux")]
     pub fn resize(&mut self, new_size: usize) -> Result<(), MmapError> {
         if new_size == 0 {
             return Err(MmapError::InvalidSize);
@@ -544,6 +548,12 @@ impl MemoryMap {
         }
 
         Ok(())
+    }
+
+    /// Resize the mapping (if possible) - Fallback for non-Linux
+    #[cfg(not(target_os = "linux"))]
+    pub fn resize(&mut self, _new_size: usize) -> Result<(), MmapError> {
+        Err(MmapError::Unsupported)
     }
 
     /// Get information about the mapping

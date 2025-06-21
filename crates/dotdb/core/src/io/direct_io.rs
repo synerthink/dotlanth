@@ -37,8 +37,8 @@ impl DirectIOFile {
         let mut options = OpenOptions::new();
         options.read(true).write(true).create(true);
 
-        // Enable Direct I/O on Unix systems
-        #[cfg(unix)]
+        // Enable Direct I/O on Linux systems
+        #[cfg(target_os = "linux")]
         if config.enabled {
             options.custom_flags(libc::O_DIRECT);
         }
@@ -57,7 +57,7 @@ impl DirectIOFile {
         let mut options = OpenOptions::new();
         options.write(true).create(true).truncate(true);
 
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         if config.enabled {
             options.custom_flags(libc::O_DIRECT);
         }

@@ -146,7 +146,7 @@ pub fn open_storage<P: AsRef<Path>>(path: P, device_type: StorageDevice, create:
         options.create(true);
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     if direct_io {
         use std::os::unix::fs::OpenOptionsExt;
         options.custom_flags(libc::O_DIRECT);
