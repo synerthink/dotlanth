@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Contract processing module
+//! Dot processing module
 
 // Sub-modules
 pub mod dependencies;
@@ -27,7 +27,7 @@ pub mod validation;
 // Public exports
 pub use dependencies::{DependencyGraph, DependencyResolver, DependencyType, SegmentDependency};
 pub use error::{ProcessingError, ValidationError};
-pub use lib::{Contract, ContractProcessor};
+pub use lib::{Dot, DotProcessor};
 pub use scheduling::{ProcessingOrder, SchedulingAlgorithm, SchedulingStrategy};
-pub use splitting::{ContractSegment, SegmentCriteria, SegmentExtractor};
+pub use splitting::{DotSegment, SegmentCriteria, SegmentExtractor};
 pub use validation::{ValidationResult, Validator};

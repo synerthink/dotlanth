@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Error types for contract processing pipeline
+//! Error types for dot processing pipeline
 
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ProcessingError {
-    #[error("Failed to split contract: {0}")]
+    #[error("Failed to split dot: {0}")]
     SplittingFailed(String),
 
     #[error("Failed to resolve dependencies: {0}")]

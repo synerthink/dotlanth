@@ -14,10 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod dots;
-pub mod executor;
-pub mod instruction;
-pub mod memory;
-pub mod opcode;
-pub mod operand;
-pub mod vm;
+// Purpose: Implements the topological sorting strategy for scheduling.
+
+use crate::dots::{DependencyGraph, ProcessingError, ProcessingOrder};
+
+/// Schedules segments based on topological sort of the dependency graph.
+///
+/// # Arguments
+/// * `dependency_graph`: The graph representing dependencies between dot segments.
+///
+/// # Returns
+/// * `Result<ProcessingOrder, ProcessingError>`: The processing order if successful, or an error.
+pub fn schedule_topological(dependency_graph: &DependencyGraph) -> Result<ProcessingOrder, ProcessingError> {
+    let ordered_ids = dependency_graph.topological_sort()?;
+    Ok(ProcessingOrder::new(ordered_ids))
+}

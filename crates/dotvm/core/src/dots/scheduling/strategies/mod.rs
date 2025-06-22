@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod dots;
-pub mod executor;
-pub mod instruction;
-pub mod memory;
-pub mod opcode;
-pub mod operand;
-pub mod vm;
+pub mod by_type;
+pub mod complexity_first;
+pub mod parallel;
+pub mod topological;

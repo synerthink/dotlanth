@@ -14,27 +14,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Main contract processing pipeline
+//! Main dot processing pipeline
 //!
 //! Coordinates splitting, validation, dependency resolution, and scheduling
 //!
-use super::{ContractSegment, DependencyResolver, ProcessingError, SchedulingAlgorithm, SchedulingStrategy, SegmentExtractor, Validator};
+use super::{DependencyResolver, DotSegment, ProcessingError, SchedulingAlgorithm, SchedulingStrategy, SegmentExtractor, Validator};
 
-/// Represents a contract that can be split into segments
+/// Represents a dot that can be split into segments
 #[derive(Debug, Clone)]
-pub struct Contract {
+pub struct Dot {
     pub id: String,
     pub content: String,
 }
-/// Complete contract processing pipeline
-pub struct ContractProcessor {
+/// Complete dot processing pipeline
+pub struct DotProcessor {
     splitter: SegmentExtractor,
     resolver: DependencyResolver,
     validator: Validator,
     scheduler: SchedulingAlgorithm,
 }
 
-impl ContractProcessor {
+impl DotProcessor {
     /// Initializes processor with default components:
     /// - Segment extractor
     /// - Dependency resolver
@@ -49,7 +49,7 @@ impl ContractProcessor {
         }
     }
 
-    /// Create a new contract processor with custom implementations
+    /// Create a new dot processor with custom implementations
     pub fn with_components(splitter: SegmentExtractor, resolver: DependencyResolver, validator: Validator, scheduler: SchedulingAlgorithm) -> Self {
         Self {
             splitter,
@@ -59,16 +59,16 @@ impl ContractProcessor {
         }
     }
 
-    /// Processes contract through full pipeline:
+    /// Processes a dot through full pipeline:
     ///
     /// 1. Splitting → 2. Dependency Resolution →
     /// 3. Validation → 4. Scheduling
     ///
     /// # Returns
-    /// - Ok(Vec<ContractSegment>): Ordered segments
+    /// - Ok(Vec<DotSegment>): Ordered segments
     /// - Err(ProcessingError): On any stage failure
-    pub fn process(&self, contract: &Contract) -> Result<Vec<ContractSegment>, ProcessingError> {
-        let segments = self.splitter.extract_segments(contract)?;
+    pub fn process(&self, dot: &Dot) -> Result<Vec<DotSegment>, ProcessingError> {
+        let segments = self.splitter.extract_segments(dot)?;
         let dependency_graph = self.resolver.resolve_dependencies(&segments)?;
 
         for segment in &segments {

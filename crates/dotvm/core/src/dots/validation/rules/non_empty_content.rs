@@ -14,10 +14,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod dots;
-pub mod executor;
-pub mod instruction;
-pub mod memory;
-pub mod opcode;
-pub mod operand;
-pub mod vm;
+// Purpose: Implements the non-empty content validation rule.
+
+use crate::dots::DotSegment;
+use crate::dots::error::ValidationError;
+use crate::dots::validation::{ValidationResult, ValidationRule};
+
+/// Ensures dot segment content is non-empty.
+pub struct NonEmptyContentRule;
+
+impl ValidationRule for NonEmptyContentRule {
+    /// Checks content.trim().is_empty()
+    fn validate(&self, segment: &DotSegment) -> ValidationResult {
+        if segment.content.trim().is_empty() {
+            ValidationResult::failure(ValidationError::EmptyContent)
+        } else {
+            ValidationResult::success()
+        }
+    }
+
+    fn name(&self) -> &str {
+        "non_empty_content"
+    }
+}

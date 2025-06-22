@@ -14,22 +14,22 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Contract segmentation module
+//! Dot segmentation module
 //!
-//! Splits raw contract text into structured segments based on configurable patterns
+//! Splits raw dot text into structured segments based on configurable patterns
 
-use crate::contracts::error::ProcessingError;
-use crate::contracts::lib::Contract;
+use crate::dots::error::ProcessingError;
+use crate::dots::lib::Dot;
 use std::collections::HashMap;
 
 /// Represents a segment of a contract after splitting
 #[derive(Debug, Clone)]
-pub struct ContractSegment {
+pub struct DotSegment {
     /// Unique identifier for the segment
     pub id: String,
 
-    /// Reference to the parent contract
-    pub contract_id: String,
+    /// Reference to the parent dot
+    pub dot_id: String,
 
     /// Type of segment (e.g., "clause", "condition", "definition")
     pub segment_type: String,
@@ -37,19 +37,19 @@ pub struct ContractSegment {
     /// The actual content of the segment
     pub content: String,
 
-    /// Position in the original contract
+    /// Position in the original dot
     pub position: usize,
 
     /// Metadata relevant to this segment
     pub metadata: HashMap<String, String>,
 }
 
-impl ContractSegment {
-    /// Create a new contract segment
-    pub fn new(id: String, contract_id: String, segment_type: String, content: String, position: usize) -> Self {
+impl DotSegment {
+    /// Create a new dot segment
+    pub fn new(id: String, dot_id: String, segment_type: String, content: String, position: usize) -> Self {
         Self {
             id,
-            contract_id,
+            dot_id,
             segment_type,
             content,
             position,
@@ -64,7 +64,7 @@ impl ContractSegment {
     }
 }
 
-/// Configuration for contract segmentation
+/// Configuration for dot segmentation
 #[derive(Debug, Clone)]
 pub struct SegmentCriteria {
     /// Regular expression patterns to identify segment boundaries
@@ -91,8 +91,9 @@ impl Default for SegmentCriteria {
     }
 }
 
-/// Extracts segments from contracts based on specified criteria
+/// Extracts segments from dots based on specified criteria
 pub struct SegmentExtractor {
+    #[allow(dead_code)] // TODO: Implement splitting logic based on these criteria
     criteria: SegmentCriteria,
 }
 
@@ -110,7 +111,7 @@ impl SegmentExtractor {
         Self { criteria }
     }
 
-    /// Processes contract content into segments
+    /// Processes dot content into segments
     ///
     /// # Steps
     /// 1. Validate non-empty content
@@ -118,23 +119,23 @@ impl SegmentExtractor {
     /// 3. Apply size constraints
     ///
     /// # Returns
-    /// - Ok(Vec<ContractSegment>): Valid segments
+    /// - Ok(Vec<DotSegment>): Valid segments
     /// - Err(ProcessingError): On empty content/split failure
-    pub fn extract_segments(&self, contract: &Contract) -> Result<Vec<ContractSegment>, ProcessingError> {
-        if contract.content.trim().is_empty() {
-            return Err(ProcessingError::SplittingFailed("Contract content is empty".to_string()));
+    pub fn extract_segments(&self, dot: &Dot) -> Result<Vec<DotSegment>, ProcessingError> {
+        if dot.content.trim().is_empty() {
+            return Err(ProcessingError::SplittingFailed("Dot content is empty".to_string()));
         }
 
         let mut segments = Vec::new();
-        let content_parts = self.split_by_patterns(&contract.content);
+        let content_parts = self.split_by_patterns(&dot.content);
 
         for (i, (segment_type, content)) in content_parts.into_iter().enumerate() {
-            let segment = ContractSegment::new(format!("{}-seg-{}", contract.id, i), contract.id.clone(), segment_type, content, i);
+            let segment = DotSegment::new(format!("{}-seg-{}", dot.id, i), dot.id.clone(), segment_type, content, i);
             segments.push(segment);
         }
 
         if segments.is_empty() {
-            return Err(ProcessingError::SplittingFailed("Contract could not be split into segments".to_string()));
+            return Err(ProcessingError::SplittingFailed("Dot could not be split into segments".to_string()));
         }
 
         Ok(segments)
@@ -204,13 +205,14 @@ mod tests {
 
     #[test]
     fn test_extract_segments() {
-        let contract = Contract {
-            id: "contract-001".to_string(),
+        let dot = Dot {
+            // Renamed from contract
+            id: "dot-001".to_string(), // Renamed from contract-001
             content: "SECTION 1\nThis is section 1 content.\n\nARTICLE 2\nThis is article 2 content.\n\nCLAUSE 3\nThis is clause 3 content.".to_string(),
         };
 
         let extractor = SegmentExtractor::new();
-        let segments = extractor.extract_segments(&contract).unwrap();
+        let segments = extractor.extract_segments(&dot).unwrap(); // Renamed from contract
 
         assert_eq!(segments.len(), 3);
         assert_eq!(segments[0].segment_type, "SECTION");
@@ -219,14 +221,16 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_contract() {
-        let contract = Contract {
-            id: "empty-contract".to_string(),
+    fn test_empty_dot() {
+        // Renamed from test_empty_contract
+        let dot = Dot {
+            // Renamed from contract
+            id: "empty-dot".to_string(), // Renamed from empty-contract
             content: "".to_string(),
         };
 
         let extractor = SegmentExtractor::new();
-        let result = extractor.extract_segments(&contract);
+        let result = extractor.extract_segments(&dot); // Renamed from contract
 
         assert!(result.is_err());
     }

@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod dots;
-pub mod executor;
-pub mod instruction;
-pub mod memory;
-pub mod opcode;
-pub mod operand;
-pub mod vm;
+// Purpose: Declares the modules for different validation rules.
+
+pub mod max_length;
+pub mod min_length;
+pub mod non_empty_content;
+pub mod required_metadata;
