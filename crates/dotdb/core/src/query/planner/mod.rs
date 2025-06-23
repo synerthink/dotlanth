@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod compaction;
-pub mod fs;
-pub mod indices;
-pub mod io;
-pub mod memory;
-pub mod query;
-pub mod recovery;
-pub mod state;
-pub mod statistics;
-pub mod storage_engine;
-pub mod write_batch;
+//! Query Planning System
+//!
+//! This module provides cost-based query planning capabilities for DotDB.
+//! It generates and evaluates alternative execution plans for queries,
+//! using collected statistics to make optimal decisions.
+
+pub mod cost_model;
+pub mod index_selector;
+pub mod plan_generator;
+
+// Re-export commonly used types
+pub use cost_model::{CostEstimate, CostModel, OperationCost};
+pub use index_selector::{IndexRecommendation, IndexSelector, IndexUsageHint};
+pub use plan_generator::{ExecutionPlan, PlanNode, QueryPlan, QueryPlanner};

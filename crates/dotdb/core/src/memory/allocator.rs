@@ -31,6 +31,7 @@ extern crate libc;
 
 /// Interface to NUMA (Non-Uniform Memory Access) functions
 /// Used for optimizing memory allocation on NUMA architectures
+#[cfg(target_os = "linux")]
 unsafe extern "C" {
     /// Checks if NUMA is available on the system
     fn numa_available() -> libc::c_int;
@@ -723,6 +724,7 @@ impl CustomAllocator {
     /// # Errors
     /// * `AllocatorError::OutOfMemory` - If NUMA allocation fails or is not available
     /// * `AllocatorError::InvalidAlignment` - If the allocation doesn't satisfy the alignment
+    #[cfg(target_os = "linux")]
     pub fn allocate_on_numa_node(&self, size: usize, alignment: usize, node: usize) -> Result<NonNull<u8>, AllocatorError> {
         unsafe {
             if numa_available() == -1 {
@@ -747,6 +749,7 @@ impl CustomAllocator {
     /// # Arguments
     /// * `ptr` - Pointer to the memory to deallocate
     /// * `size` - Size of the allocation
+    #[cfg(target_os = "linux")]
     pub fn deallocate_numa(&self, ptr: NonNull<u8>, size: usize) {
         unsafe {
             numa_free(ptr.as_ptr() as *mut libc::c_void, size);
@@ -1129,6 +1132,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn test_numa_allocation() {
         let allocator = super::CustomAllocator::new(super::AllocationStrategy::FirstFit);
         let size = 4096;

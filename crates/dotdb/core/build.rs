@@ -21,14 +21,17 @@
 /// for the dotdb core library.
 
 fn main() {
-    // Link against the libnuma library, which provides NUMA (Non-Uniform Memory Access) support
-    // NUMA is critical for optimizing memory access on multi-processor systems
-    // where memory access time depends on the memory location relative to the processor
-    println!("cargo:rustc-link-lib=numa");
+    // Only apply Linux-specific configurations when building for Linux
+    if cfg!(target_os = "linux") {
+        // Link against the libnuma library, which provides NUMA (Non-Uniform Memory Access) support
+        // NUMA is critical for optimizing memory access on multi-processor systems
+        // where memory access time depends on the memory location relative to the processor
+        println!("cargo:rustc-link-lib=numa");
 
-    // Specify the search path for the native libraries
-    // This helps the linker find the required libraries on the system
-    println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
+        // Specify the search path for the native libraries
+        // This helps the linker find the required libraries on the system
+        println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
+    }
 
     // Additional cargo directives could be added here for:
     // - Rerunning the build script when specific files change
