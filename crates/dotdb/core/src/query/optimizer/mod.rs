@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod compaction;
-pub mod fs;
-pub mod indices;
-pub mod io;
-pub mod memory;
-pub mod query;
-pub mod recovery;
-pub mod state;
-pub mod statistics;
-pub mod storage_engine;
-pub mod write_batch;
+//! Query Optimization System
+//!
+//! This module implements rule-based query optimization for DotDB.
+//! It provides a framework for transforming query plans into more
+//! efficient equivalents using various optimization techniques.
+
+pub mod optimizer;
+pub mod rule_engine;
+pub mod rules;
+
+// Re-export commonly used types
+pub use optimizer::{OptimizationContext, OptimizationResult, QueryOptimizer};
+pub use rule_engine::{OptimizationRule, RuleApplication, RuleEngine};
+pub use rules::{ConstantFoldingRule, JoinReorderingRule, PredicatePushdownRule};
