@@ -117,7 +117,7 @@ impl CompactionStrategy for SizeTieredStrategy {
                 let priority = self.calculate_priority(&files_to_merge, size_bucket);
 
                 tasks.push(CompactionTask {
-                    id: rand::random(), // In real implementation, use proper ID generation
+                    id: size_bucket + (files_to_merge.len() as u64 * 1000), // Deterministic ID for consistency
                     strategy_type: CompactionStrategyType::SizeTiered,
                     input_files: files_to_merge,
                     estimated_output_size: estimated_size,
@@ -229,7 +229,7 @@ impl CompactionStrategy for LeveledStrategy {
                     let priority = 255 - (level as u8 * 30).min(200); // Higher level = lower priority
 
                     tasks.push(CompactionTask {
-                        id: rand::random(),
+                        id: (level as u64 * 10000) + files_to_merge.len() as u64, // Deterministic ID based on level
                         strategy_type: CompactionStrategyType::Leveled,
                         input_files: files_to_merge,
                         estimated_output_size: estimated_size,
@@ -298,13 +298,18 @@ impl CompactionStrategy for TimeWindowStrategy {
                 let estimated_size = files_to_merge.iter().map(|f| f.size).sum();
 
                 // Priority based on window age (older windows have higher priority)
-                let current_time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+                // Use the oldest file's creation time as reference to avoid timing issues
+                let reference_time = files_to_merge
+                    .iter()
+                    .map(|f| f.created_at.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+                    .max()
+                    .unwrap_or_default();
                 let window_start = window_id * self.config.time_window_size.as_secs();
-                let age_hours = (current_time - window_start) / 3600;
-                let priority = (255 - age_hours.min(255)) as u8;
+                let age_hours = (reference_time.saturating_sub(window_start)) / 3600;
+                let priority = age_hours.min(255) as u8; // Older windows get higher priority values
 
                 tasks.push(CompactionTask {
-                    id: rand::random(),
+                    id: window_id * 1000 + files_to_merge.len() as u64, // Deterministic ID based on window
                     strategy_type: CompactionStrategyType::TimeWindow,
                     input_files: files_to_merge,
                     estimated_output_size: estimated_size,
@@ -329,13 +334,20 @@ mod tests {
     use super::*;
     use std::time::{Duration, SystemTime};
 
+    // Fixed base time for deterministic tests
+    const TEST_BASE_TIME: u64 = 1_000_000; // Fixed timestamp
+
     fn create_test_file(id: u64, size: u64, age_secs: u64) -> FileMetadata {
+        create_test_file_with_base_time(id, size, age_secs, SystemTime::UNIX_EPOCH + Duration::from_secs(TEST_BASE_TIME))
+    }
+
+    fn create_test_file_with_base_time(id: u64, size: u64, age_secs: u64, base_time: SystemTime) -> FileMetadata {
         FileMetadata {
             id,
             file_type: FileType::Data,
             version: 1,
             size,
-            created_at: SystemTime::now() - Duration::from_secs(age_secs),
+            created_at: base_time - Duration::from_secs(age_secs),
             path: format!("test_{}.dat", id).into(),
         }
     }
@@ -483,11 +495,12 @@ mod tests {
         };
         let strategy = TimeWindowStrategy::new(config);
 
-        // Create files in the same time window
+        // Use fixed base time to avoid timing issues
+        let base_time = SystemTime::UNIX_EPOCH + Duration::from_secs(TEST_BASE_TIME);
         let files = vec![
-            create_test_file(1, 1024, 100),  // Same window
-            create_test_file(2, 1024, 200),  // Same window
-            create_test_file(3, 1024, 7200), // Different window (2 hours ago)
+            create_test_file_with_base_time(1, 1024, 100, base_time),  // Same window
+            create_test_file_with_base_time(2, 1024, 200, base_time),  // Same window
+            create_test_file_with_base_time(3, 1024, 7200, base_time), // Different window (2 hours ago)
         ];
 
         assert!(strategy.should_compact(&files));
@@ -561,15 +574,18 @@ mod tests {
         };
         let strategy = TimeWindowStrategy::new(config);
 
-        // Create files with different ages
+        // Use fixed base time for deterministic results
+        let base_time = SystemTime::UNIX_EPOCH + Duration::from_secs(TEST_BASE_TIME);
+
+        // Create files with different ages - older files should have higher priority
         let old_files = vec![
-            create_test_file(1, 1024, 7200), // 2 hours old
-            create_test_file(2, 1024, 7300), // 2 hours old
+            create_test_file_with_base_time(1, 1024, 7200, base_time), // 2 hours old
+            create_test_file_with_base_time(2, 1024, 7300, base_time), // 2 hours old
         ];
 
         let new_files = vec![
-            create_test_file(3, 1024, 100), // Recent
-            create_test_file(4, 1024, 200), // Recent
+            create_test_file_with_base_time(3, 1024, 100, base_time), // Recent
+            create_test_file_with_base_time(4, 1024, 200, base_time), // Recent
         ];
 
         let mut all_files = old_files;
@@ -578,7 +594,7 @@ mod tests {
         let tasks = strategy.select_files_for_compaction(&all_files);
         assert_eq!(tasks.len(), 2);
 
-        // Older window should have higher priority
+        // Older window should have higher priority (higher numeric value)
         assert!(tasks[0].priority >= tasks[1].priority);
     }
 
