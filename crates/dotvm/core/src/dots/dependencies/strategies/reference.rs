@@ -39,14 +39,43 @@ impl DependencyDetectionStrategy for ReferenceDetectionStrategy {
                     continue;
                 }
 
-                if dependent.content.contains(&format!("see {}", dependency.id))
-                    || dependent.content.contains(&format!("refer to {}", dependency.id))
-                    || dependent.content.contains(&format!("as per {}", dependency.id))
-                {
+                // Check for reference patterns more efficiently without format! allocations
+                if self.contains_reference_pattern(&dependent.content, &dependency.id) {
                     graph.add_dependency(&dependent.id, &dependency.id, DependencyType::Reference);
                 }
             }
         }
         Ok(())
+    }
+}
+
+impl ReferenceDetectionStrategy {
+    /// Efficiently checks for reference patterns without string allocations
+    fn contains_reference_pattern(&self, content: &str, dependency_id: &str) -> bool {
+        let content_lower = content.to_lowercase();
+        let patterns = [
+            ("see ", 4),
+            ("refer to ", 9),
+            ("as per ", 7),
+        ];
+
+        for (pattern, offset) in &patterns {
+            let mut search_start = 0;
+            while let Some(pos) = content_lower[search_start..].find(pattern) {
+                let actual_pos = search_start + pos;
+                let after_pattern = &content[actual_pos + offset..];
+                if after_pattern.starts_with(dependency_id) {
+                    // Ensure it's a complete word match (not part of a larger word)
+                    let end_pos = dependency_id.len();
+                    if after_pattern.len() == end_pos || 
+                       after_pattern.chars().nth(end_pos).map_or(true, |c| !c.is_alphanumeric() && c != '_') {
+                        return true;
+                    }
+                }
+                search_start = actual_pos + 1;
+            }
+        }
+
+        false
     }
 }

@@ -138,7 +138,7 @@ impl Validator {
             if result.errors.len() == 1 {
                 Err(result.errors[0].clone())
             } else {
-                let error_messages: Vec<String> = result.errors.iter().map(|e| format!("{}", e)).collect();
+                let error_messages: Vec<String> = result.errors.iter().map(|e| e.to_string()).collect();
 
                 Err(ValidationError::Multiple(error_messages.join("; ")))
             }
@@ -171,7 +171,7 @@ impl Validator {
             } else if result.errors.len() == 1 {
                 Err(result.errors[0].clone())
             } else {
-                let error_messages: Vec<String> = result.errors.iter().map(|e| format!("{}", e)).collect();
+                let error_messages: Vec<String> = result.errors.iter().map(|e| e.to_string()).collect();
                 Err(ValidationError::Multiple(error_messages.join("; ")))
             }
         }
