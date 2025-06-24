@@ -213,6 +213,25 @@ pub trait MemoryManagement: Sized {
     fn store(&mut self, address: usize, value: u8) -> Result<(), Self::Error>;
 }
 
+/// Implementation of MemoryManagerInterface for MemoryManager
+impl<A: Architecture> crate::instruction::instruction::MemoryManagerInterface for MemoryManager<A> {
+    fn allocate(&mut self, size: usize) -> Result<MemoryHandle, crate::vm::errors::VMError> {
+        MemoryManagement::allocate(self, size).map_err(|e| crate::vm::errors::VMError::MemoryOperationError(e.to_string()))
+    }
+
+    fn deallocate(&mut self, handle: MemoryHandle) -> Result<(), crate::vm::errors::VMError> {
+        MemoryManagement::deallocate(self, handle).map_err(|e| crate::vm::errors::VMError::MemoryOperationError(e.to_string()))
+    }
+
+    fn load(&self, address: usize) -> Result<u8, crate::vm::errors::VMError> {
+        MemoryManagement::load(self, address).map_err(|e| crate::vm::errors::VMError::MemoryOperationError(e.to_string()))
+    }
+
+    fn store(&mut self, address: usize, value: u8) -> Result<(), crate::vm::errors::VMError> {
+        MemoryManagement::store(self, address, value).map_err(|e| crate::vm::errors::VMError::MemoryOperationError(e.to_string()))
+    }
+}
+
 impl<A: Architecture> MemoryManagement for MemoryManager<A> {
     type Error = MemoryError;
 

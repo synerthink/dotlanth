@@ -19,10 +19,10 @@ use crate::memory::{MemoryHandle, VirtualAddress};
 use crate::opcode::memory_opcodes::MemoryOpcode;
 use crate::operand::operands::Operand;
 use crate::vm::errors::VMError;
-use crate::vm::executor::Executor;
+
 use std::fmt;
 
-use super::instruction::Instruction;
+use super::instruction::{ExecutorInterface, Instruction};
 
 /// Struct representing a LOAD instruction.
 pub struct LoadInstruction {
@@ -36,7 +36,7 @@ impl LoadInstruction {
 }
 
 impl Instruction for LoadInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         let value = {
             let memory_manager = executor.get_memory_manager_mut();
             memory_manager.load(self.address)?
@@ -58,7 +58,7 @@ impl StoreInstruction {
 }
 
 impl Instruction for StoreInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         let value = executor.pop_operand()? as u8; // Store as u8
         {
             let memory_manager = executor.get_memory_manager_mut();
@@ -80,7 +80,7 @@ impl AllocateInstruction {
 }
 
 impl Instruction for AllocateInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         let handle = {
             let memory_manager = executor.get_memory_manager_mut();
             memory_manager.allocate(self.size)?
@@ -102,7 +102,7 @@ impl DeallocateInstruction {
 }
 
 impl Instruction for DeallocateInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         {
             let mm = executor.get_memory_manager_mut();
             mm.deallocate(MemoryHandle(self.handle))?;
@@ -130,7 +130,7 @@ impl PointerOperationInstruction {
 }
 
 impl Instruction for PointerOperationInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Pop a pointer (address) from the stack
         let pointer = executor.pop_operand()? as isize;
         let new_pointer = match self.operation {

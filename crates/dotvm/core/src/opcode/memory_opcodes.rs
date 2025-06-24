@@ -49,6 +49,23 @@ impl MemoryOpcode {
             MemoryOpcode::PointerOperation => "POINTEROPERATION",
         }
     }
+
+    /// Returns the opcode's numerical value.
+    pub fn as_u8(&self) -> u8 {
+        *self as u8
+    }
+
+    /// Converts a numerical value back to a MemoryOpcode.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0x20 => Some(Self::Load),
+            0x21 => Some(Self::Store),
+            0x22 => Some(Self::Allocate),
+            0x23 => Some(Self::Deallocate),
+            0x24 => Some(Self::PointerOperation),
+            _ => None,
+        }
+    }
 }
 
 /// Implement Display trait for MemoryOpcode.

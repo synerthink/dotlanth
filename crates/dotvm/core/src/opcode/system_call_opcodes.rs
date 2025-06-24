@@ -47,6 +47,24 @@ impl SystemCallOpcode {
             SystemCallOpcode::NetworkReceive => "SYSCALL_NETWORK_RECEIVE",
         }
     }
+
+    /// Returns the opcode's numerical value.
+    pub fn as_u8(&self) -> u8 {
+        *self as u8
+    }
+
+    /// Converts a numerical value back to a SystemCallOpcode.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0x30 => Some(Self::Write),
+            0x31 => Some(Self::Read),
+            0x32 => Some(Self::CreateProcess),
+            0x33 => Some(Self::TerminateProcess),
+            0x34 => Some(Self::NetworkSend),
+            0x35 => Some(Self::NetworkReceive),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Display for SystemCallOpcode {

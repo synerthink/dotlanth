@@ -54,6 +54,18 @@ impl ArithmeticOpcode {
     pub fn as_u8(&self) -> u8 {
         *self as u8
     }
+
+    /// Converts a numerical value back to an ArithmeticOpcode.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0x01 => Some(Self::Add),
+            0x02 => Some(Self::Subtract),
+            0x03 => Some(Self::Multiply),
+            0x04 => Some(Self::Divide),
+            0x05 => Some(Self::Modulus),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for ArithmeticOpcode {

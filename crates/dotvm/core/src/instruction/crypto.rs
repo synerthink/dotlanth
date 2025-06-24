@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::instruction::instruction::Instruction;
+use crate::instruction::instruction::{ExecutorInterface, Instruction};
 use crate::vm::errors::VMError;
-use crate::vm::executor::Executor;
+
 use sha2::{Digest, Sha256};
 
 pub struct HashInstruction;
@@ -28,7 +28,7 @@ impl HashInstruction {
 }
 
 impl Instruction for HashInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // In this demonstration, we assume a hardcoded input.
         // In a complete implementation the input could be read from memory.
         let input = String::from("sample input");
@@ -51,7 +51,7 @@ impl EncryptInstruction {
 }
 
 impl Instruction for EncryptInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // For demonstration, perform a simple XOR encryption.
         // The operator expects two numbers: key and plaintext.
         let plaintext = executor.pop_operand()? as u64;
@@ -72,7 +72,7 @@ impl DecryptInstruction {
 }
 
 impl Instruction for DecryptInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // For demonstration, decryption is identical to encryption with XOR.
         let ciphertext = executor.pop_operand()? as u64;
         let key = executor.pop_operand()? as u64;
@@ -91,7 +91,7 @@ impl SignInstruction {
 }
 
 impl Instruction for SignInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // For demonstration, use a dummy signature algorithm.
         // Expect that the operand stack holds [private_key, message].
         let message = executor.pop_operand()? as u64;
@@ -112,7 +112,7 @@ impl VerifySignatureInstruction {
 }
 
 impl Instruction for VerifySignatureInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // For demonstration, assume the operand stack holds [public_key, message, signature].
         let signature = executor.pop_operand()? as u64;
         let message = executor.pop_operand()? as u64;

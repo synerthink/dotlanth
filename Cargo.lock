@@ -569,6 +569,8 @@ dependencies = [
  "metrics",
  "mockall",
  "num-bigint",
+ "num-integer",
+ "num-traits",
  "num_cpus",
  "parking_lot",
  "petgraph 0.7.1",

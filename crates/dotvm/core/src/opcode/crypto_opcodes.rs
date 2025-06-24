@@ -46,6 +46,23 @@ impl CryptoOpcode {
             CryptoOpcode::VerifySignature => "CRYPTO_VERIFY_SIGNATURE",
         }
     }
+
+    /// Returns the opcode's numerical value.
+    pub fn as_u8(&self) -> u8 {
+        *self as u8
+    }
+
+    /// Converts a numerical value back to a CryptoOpcode.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0x40 => Some(Self::Hash),
+            0x41 => Some(Self::Encrypt),
+            0x42 => Some(Self::Decrypt),
+            0x43 => Some(Self::Sign),
+            0x44 => Some(Self::VerifySignature),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Display for CryptoOpcode {

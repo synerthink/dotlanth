@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::instruction::Instruction;
+use super::instruction::{ExecutorInterface, Instruction};
 use crate::opcode::control_flow_opcodes::ControlFlowOpcode;
 use crate::vm::errors::VMError;
-use crate::vm::executor::Executor;
+
 use std::sync::Arc;
 
 /// Struct representing a conditional branch (`IfElse`) instruction.
@@ -33,7 +33,7 @@ impl IfElseInstruction {
 }
 
 impl Instruction for IfElseInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Pop the condition from the stack
         let condition = executor.pop_operand()?;
 
@@ -59,7 +59,7 @@ impl JumpInstruction {
 }
 
 impl Instruction for JumpInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Unconditionally jump to target
         executor.set_instruction_pointer(self.target)?;
         Ok(())
@@ -92,7 +92,7 @@ impl LoopInstruction {
 }
 
 impl Instruction for LoopInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         match self.loop_type {
             LoopType::WhileLoop => {
                 // For WhileLoop, condition is already at condition_start

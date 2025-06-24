@@ -15,10 +15,40 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::vm::errors::VMError;
-use crate::vm::executor::Executor;
+
+/// Trait for types that can execute instructions (executor interface)
+pub trait ExecutorInterface {
+    /// Push an operand onto the stack
+    fn push_operand(&mut self, value: f64);
+
+    /// Pop an operand from the stack
+    fn pop_operand(&mut self) -> Result<f64, VMError>;
+
+    /// Set the instruction pointer to a specific index
+    fn set_instruction_pointer(&mut self, target: usize) -> Result<(), VMError>;
+
+    /// Get access to memory manager for memory operations
+    /// Returns a trait object that can handle memory operations
+    fn get_memory_manager_mut(&mut self) -> &mut dyn MemoryManagerInterface;
+}
+
+/// Trait for memory manager interface that instructions can use
+pub trait MemoryManagerInterface {
+    /// Allocate memory and return a handle
+    fn allocate(&mut self, size: usize) -> Result<crate::memory::MemoryHandle, VMError>;
+
+    /// Deallocate memory using a handle
+    fn deallocate(&mut self, handle: crate::memory::MemoryHandle) -> Result<(), VMError>;
+
+    /// Load a byte from memory
+    fn load(&self, address: usize) -> Result<u8, VMError>;
+
+    /// Store a byte to memory
+    fn store(&mut self, address: usize, value: u8) -> Result<(), VMError>;
+}
 
 /// Trait representing a generic instruction.
 pub trait Instruction {
     /// Execute the instruction using the provided executor.
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError>;
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError>;
 }

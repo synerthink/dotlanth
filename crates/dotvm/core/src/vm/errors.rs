@@ -31,6 +31,8 @@ pub enum VMError {
     SystemCallError(String),
     ProcessError(String),
     CryptoError(String),
+    InvalidOperand(String),
+    IntegerOverflow,
     // Add more error variants as needed
 }
 
@@ -51,6 +53,8 @@ impl fmt::Display for VMError {
             VMError::SystemCallError(msg) => write!(f, "System call error: {}", msg),
             VMError::ProcessError(msg) => write!(f, "Process error: {}", msg),
             VMError::CryptoError(msg) => write!(f, "Cryptographic error: {}", msg),
+            VMError::InvalidOperand(msg) => write!(f, "Invalid operand: {}", msg),
+            VMError::IntegerOverflow => write!(f, "Integer overflow occurred"),
         }
     }
 }

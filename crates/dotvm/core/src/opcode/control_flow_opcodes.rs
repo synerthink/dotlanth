@@ -53,6 +53,18 @@ impl ControlFlowOpcode {
     pub fn as_u8(&self) -> u8 {
         *self as u8
     }
+
+    /// Converts a numerical value back to a ControlFlowOpcode.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0x10 => Some(Self::IfElse),
+            0x11 => Some(Self::ForLoop),
+            0x12 => Some(Self::WhileLoop),
+            0x13 => Some(Self::DoWhileLoop),
+            0x14 => Some(Self::Jump),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for ControlFlowOpcode {

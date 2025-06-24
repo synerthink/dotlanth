@@ -15,9 +15,9 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // NOTE: The implementation of the system call instructions is incomplete and it's just a placeholder.
-use crate::instruction::instruction::Instruction;
+use crate::instruction::instruction::{ExecutorInterface, Instruction};
 use crate::vm::errors::VMError;
-use crate::vm::executor::Executor;
+
 use std::io::{self, Write};
 use std::process::Command;
 
@@ -30,7 +30,7 @@ impl WriteSysCallInstruction {
 }
 
 impl Instruction for WriteSysCallInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Pop a value and print it to the console.
         let value = executor.pop_operand()?;
         println!("{}", value);
@@ -47,7 +47,7 @@ impl ReadSysCallInstruction {
 }
 
 impl Instruction for ReadSysCallInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Read a number from the console input and push it onto the operand stack.
         print!("Enter a number: ");
         io::stdout().flush().unwrap();
@@ -70,7 +70,7 @@ impl CreateProcessInstruction {
 }
 
 impl Instruction for CreateProcessInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Spawn a new process using the specified command.
         let child = Command::new(&self.command)
             .spawn()
@@ -92,7 +92,7 @@ impl TerminateProcessInstruction {
 }
 
 impl Instruction for TerminateProcessInstruction {
-    fn execute(&self, _executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, _executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // For demonstration, we print the termination request.
         // A real implementation would call system APIs (or use external crates) to terminate the process.
         println!("Terminating process with pid: {}", self.pid);
@@ -112,7 +112,7 @@ impl SendNetworkPacketInstruction {
 }
 
 impl Instruction for SendNetworkPacketInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Pop data from the operand stack to be “sent”.
         let data = executor.pop_operand()?;
         // In a real implementation, you might open a socket and send data.
@@ -132,7 +132,7 @@ impl ReceiveNetworkPacketInstruction {
 }
 
 impl Instruction for ReceiveNetworkPacketInstruction {
-    fn execute(&self, executor: &mut Executor) -> Result<(), VMError> {
+    fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Simulate reception of a network packet.
         println!("Receiving packet on port: {}", self.port);
         // Push dummy data onto the stack.

@@ -16,10 +16,10 @@
 
 use crate::{
     instruction::{
-        instruction::Instruction,
+        instruction::{ExecutorInterface, Instruction},
         registry::{InstructionRegistry, Opcode},
     },
-    memory::{Arch64, Architecture, MemoryHandle, MemoryManagement, MemoryManager, VirtualAddress},
+    memory::{Arch64, MemoryManagement, MemoryManager},
     vm::errors::VMError,
 };
 use std::sync::Arc;
@@ -102,6 +102,28 @@ impl Executor {
 
     /// Get a mutable reference to the MemoryManager.
     pub fn get_memory_manager_mut(&mut self) -> &mut MemoryManager<Arch64> {
+        &mut self.memory_manager
+    }
+}
+
+impl ExecutorInterface for Executor {
+    fn push_operand(&mut self, value: f64) {
+        self.operand_stack.push(value);
+    }
+
+    fn pop_operand(&mut self) -> Result<f64, VMError> {
+        self.operand_stack.pop().ok_or(VMError::StackUnderflow)
+    }
+
+    fn set_instruction_pointer(&mut self, target: usize) -> Result<(), VMError> {
+        if target >= self.instructions.len() {
+            return Err(VMError::InvalidJumpTarget(target));
+        }
+        self.instruction_pointer = target;
+        Ok(())
+    }
+
+    fn get_memory_manager_mut(&mut self) -> &mut dyn crate::instruction::instruction::MemoryManagerInterface {
         &mut self.memory_manager
     }
 }
