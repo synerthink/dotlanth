@@ -23,8 +23,11 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLock
 use std::time::{Duration, Instant};
 
 use crate::storage_engine::buffer_manager::{BufferManager, PageGuard};
+use crate::storage_engine::deadlock_detector::{DeadlockDetector, DeadlockResolutionPolicy};
 use crate::storage_engine::file_format::{FileFormat, Page, PageId, PageType};
+use crate::storage_engine::isolation::{IsolationLevelEnforcer, LockManager};
 use crate::storage_engine::lib::{Initializable, StorageError, StorageResult, VersionId, calculate_checksum, generate_timestamp};
+use crate::storage_engine::mvcc::MVCCManager;
 use crate::storage_engine::page_manager::{PageAllocation, PageManager};
 use crate::storage_engine::wal::{LogEntry, LogSequenceNumber, WriteAheadLog};
 
@@ -85,6 +88,12 @@ pub struct Transaction {
     buffer_manager: Arc<BufferManager>,
     /// Write-ahead log for durability
     wal: Arc<WriteAheadLog>,
+    /// MVCC manager for version control
+    mvcc_manager: Arc<MVCCManager>,
+    /// Isolation level enforcer
+    isolation_enforcer: Arc<IsolationLevelEnforcer>,
+    /// Deadlock detector
+    deadlock_detector: Arc<DeadlockDetector>,
     /// Start time of the transaction (for performance tracking)
     start_time: Instant,
     /// The first LSN of this transaction
@@ -95,7 +104,16 @@ pub struct Transaction {
 
 impl Transaction {
     /// Create a new transaction
-    pub fn new(id: u64, isolation_level: IsolationLevel, base_version: VersionId, buffer_manager: Arc<BufferManager>, wal: Arc<WriteAheadLog>) -> StorageResult<Self> {
+    pub fn new(
+        id: u64,
+        isolation_level: IsolationLevel,
+        base_version: VersionId,
+        buffer_manager: Arc<BufferManager>,
+        wal: Arc<WriteAheadLog>,
+        mvcc_manager: Arc<MVCCManager>,
+        isolation_enforcer: Arc<IsolationLevelEnforcer>,
+        deadlock_detector: Arc<DeadlockDetector>,
+    ) -> StorageResult<Self> {
         // Get the next LSN
         let next_lsn = wal.next_lsn()?;
 
@@ -104,6 +122,9 @@ impl Transaction {
 
         // Append to the WAL
         let lsn = wal.append(&begin_record)?;
+
+        // Create MVCC snapshot for this transaction
+        mvcc_manager.create_snapshot(id, isolation_level)?;
 
         Ok(Self {
             id,
@@ -118,6 +139,9 @@ impl Transaction {
             allocated_pages: HashSet::new(),
             buffer_manager,
             wal,
+            mvcc_manager,
+            isolation_enforcer,
+            deadlock_detector,
             start_time: Instant::now(),
             first_lsn: Some(lsn),
             last_lsn: Some(lsn),
@@ -170,9 +194,20 @@ impl Transaction {
             return Err(StorageError::TransactionAborted(format!("Cannot read page in transaction state: {:?}", self.state)));
         }
 
+        // Check isolation level constraints before reading
+        if !self.isolation_enforcer.check_read(self.id, page_id, self.isolation_level)? {
+            return Err(StorageError::Concurrency("Read blocked due to isolation level constraints".to_string()));
+        }
+
         // Check if the page is in the write set (our own modifications)
         if let Some(page) = self.write_set.get(&page_id) {
             return Ok(page.clone());
+        }
+
+        // Try to get visible version from MVCC manager first
+        if let Some(mvcc_page) = self.mvcc_manager.get_visible_version(page_id, self.id)? {
+            self.read_set.insert(page_id);
+            return Ok(mvcc_page);
         }
 
         // Add to read set for tracking
@@ -204,6 +239,11 @@ impl Transaction {
             return Err(StorageError::TransactionAborted(format!("Cannot write page in transaction state: {:?}", self.state)));
         }
 
+        // Check isolation level constraints before writing
+        if !self.isolation_enforcer.check_write(self.id, page_id, self.isolation_level)? {
+            return Err(StorageError::Concurrency("Write blocked due to isolation level constraints or deadlock".to_string()));
+        }
+
         // Get the page for update (this will pin it)
         let page_guard = self.buffer_manager.get_page_for_update(page_id)?;
 
@@ -215,6 +255,12 @@ impl Transaction {
 
         // Get the updated page
         let page = self.buffer_manager.get_page(page_id)?;
+
+        // Add version to MVCC manager
+        self.mvcc_manager.add_version(page_id, page.clone(), self.id)?;
+
+        // Update deadlock detector with resource held information
+        self.deadlock_detector.update_transaction_metadata(self.id, self.write_set.len() + 1);
 
         // Log the write operation using the complete page
         let next_lsn = self.wal.next_lsn()?;
@@ -291,13 +337,33 @@ impl Transaction {
         Ok(())
     }
 
+    /// Create a contract state version during this transaction
+    pub fn create_contract_state_version(
+        &mut self,
+        contract_address: crate::state::contract_storage_layout::ContractAddress,
+        mpt_root_hash: crate::state::mpt::Hash,
+        description: String,
+    ) -> StorageResult<crate::state::versioning::StateVersionId> {
+        if self.state != TransactionState::Active {
+            return Err(StorageError::TransactionAborted(format!("Cannot create contract version in transaction state: {:?}", self.state)));
+        }
+
+        self.mvcc_manager.create_contract_state_version(self.id, contract_address, mpt_root_hash, description)
+    }
+
+    /// Get contract state at transaction snapshot
+    pub fn get_contract_state_at_snapshot(&self, contract_address: crate::state::contract_storage_layout::ContractAddress) -> StorageResult<Option<crate::state::versioning::ContractStateVersion>> {
+        self.mvcc_manager.get_contract_state_at_snapshot(self.id, contract_address)
+    }
+
     /// Commit this transaction
     ///
     /// Steps:
     /// 1. Change state to Committing and set commit timestamp.
     /// 2. Write a commit record to the WAL and flush for durability.
-    /// 3. Change state to Committed and update last LSN.
-    /// 4. Return the new version (base_version + 1).
+    /// 3. Commit in MVCC manager and release locks.
+    /// 4. Change state to Committed and update last LSN.
+    /// 5. Return the new version (base_version + 1).
     pub fn commit(&mut self) -> StorageResult<VersionId> {
         if self.state != TransactionState::Active {
             return Err(StorageError::TransactionAborted(format!("Cannot commit transaction in state: {:?}", self.state)));
@@ -321,6 +387,15 @@ impl Transaction {
         // Flush the WAL to ensure durability
         self.wal.flush()?;
 
+        // Commit in isolation enforcer (handles MVCC commit and lock release)
+        self.isolation_enforcer.handle_commit(self.id)?;
+
+        // Commit contract state changes
+        self.mvcc_manager.commit_contract_states(self.id)?;
+
+        // Remove from deadlock detector
+        self.deadlock_detector.remove_transaction(self.id);
+
         // Update the state
         self.state = TransactionState::Committed;
 
@@ -338,8 +413,9 @@ impl Transaction {
     /// Steps:
     /// 1. Change state to Aborting.
     /// 2. Write an abort record to the WAL and flush for durability.
-    /// 3. Change state to Aborted and update last LSN.
-    /// 4. Return Ok.
+    /// 3. Abort in MVCC manager and release locks.
+    /// 4. Change state to Aborted and update last LSN.
+    /// 5. Return Ok.
     pub fn abort(&mut self) -> StorageResult<()> {
         if self.state != TransactionState::Active {
             return Err(StorageError::TransactionAborted(format!("Cannot abort transaction in state: {:?}", self.state)));
@@ -359,6 +435,15 @@ impl Transaction {
 
         // Flush the WAL
         self.wal.flush()?;
+
+        // Abort in isolation enforcer (handles MVCC abort and lock release)
+        self.isolation_enforcer.handle_abort(self.id)?;
+
+        // Rollback contract state changes
+        self.mvcc_manager.rollback_contract_states(self.id)?;
+
+        // Remove from deadlock detector
+        self.deadlock_detector.remove_transaction(self.id);
 
         // Update the state
         self.state = TransactionState::Aborted;
@@ -382,6 +467,14 @@ pub struct TransactionManager {
     buffer_manager: Arc<BufferManager>,
     /// WAL for durability
     wal: Arc<WriteAheadLog>,
+    /// MVCC manager for version control
+    mvcc_manager: Arc<MVCCManager>,
+    /// Lock manager for concurrency control
+    lock_manager: Arc<LockManager>,
+    /// Isolation level enforcer
+    isolation_enforcer: Arc<IsolationLevelEnforcer>,
+    /// Deadlock detector
+    deadlock_detector: Arc<DeadlockDetector>,
     /// Whether the manager is initialized
     initialized: bool,
     /// The oldest active transaction timestamp, used for garbage collection
@@ -395,12 +488,21 @@ pub struct TransactionManager {
 impl TransactionManager {
     /// Create a new transaction manager
     pub fn new(buffer_manager: Arc<BufferManager>, wal: Arc<WriteAheadLog>) -> Self {
+        let mvcc_manager = Arc::new(MVCCManager::new());
+        let lock_manager = Arc::new(LockManager::new());
+        let isolation_enforcer = Arc::new(IsolationLevelEnforcer::new(mvcc_manager.clone(), lock_manager.clone()));
+        let deadlock_detector = Arc::new(DeadlockDetector::default());
+
         Self {
             next_transaction_id: 1,
             current_version: VersionId(0),
             active_transactions: Mutex::new(HashMap::new()),
             buffer_manager,
             wal,
+            mvcc_manager,
+            lock_manager,
+            isolation_enforcer,
+            deadlock_detector,
             initialized: false,
             oldest_active_timestamp: generate_timestamp(),
             exclusive_lock: RwLock::new(()),
@@ -428,7 +530,16 @@ impl TransactionManager {
         self.next_transaction_id += 1;
 
         // Create a new transaction
-        let transaction = Transaction::new(txn_id, isolation_level, self.current_version, self.buffer_manager.clone(), self.wal.clone())?;
+        let transaction = Transaction::new(
+            txn_id,
+            isolation_level,
+            self.current_version,
+            self.buffer_manager.clone(),
+            self.wal.clone(),
+            self.mvcc_manager.clone(),
+            self.isolation_enforcer.clone(),
+            self.deadlock_detector.clone(),
+        )?;
 
         // Add to active transactions
         let txn_arc = Arc::new(Mutex::new(transaction));
