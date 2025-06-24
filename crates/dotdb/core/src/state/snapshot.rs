@@ -68,8 +68,10 @@
 //! `Result<T, SnapshotError>`. The `SnapshotError` enum provides detailed
 //! error information for different failure scenarios.
 
+use crate::state::contract_storage_layout::ContractAddress;
 use crate::state::mpt::trie::{InMemoryStorage, NodeStorage};
 use crate::state::mpt::{Hash, Key, MPTError, MerklePatriciaTrie, TrieResult, Value};
+use crate::state::versioning::{ContractVersionManager, ContractVersioningError, StateVersionId};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -78,14 +80,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 ///
 /// This struct captures all necessary information to reconstruct the state
 /// at a particular moment, including metadata and timing information.
+/// Now integrated with the versioning system for unified state management.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StateSnapshot {
     /// Unique identifier for this snapshot
     pub id: SnapshotId,
+    /// Versioning system state version ID
+    pub version_id: StateVersionId,
+    /// Optional contract address for contract-specific snapshots
+    pub contract_address: Option<ContractAddress>,
     /// Root hash of the state tree at snapshot time
     pub root_hash: Hash,
-    /// Timestamp when the snapshot was created
-    pub timestamp: u64,
     /// Optional metadata for the snapshot
     pub metadata: HashMap<String, String>,
     /// Block height or sequence number (if applicable)
@@ -111,6 +116,10 @@ pub enum SnapshotError {
     InvalidSnapshot(String),
     /// MPT operation failed
     MPTError(String),
+    /// Versioning operation failed
+    VersioningError(String),
+    /// Contract not found
+    ContractNotFound(ContractAddress),
     /// Serialization/deserialization error
     SerializationError(String),
     /// I/O error
@@ -123,8 +132,28 @@ impl From<MPTError> for SnapshotError {
     }
 }
 
+impl From<ContractVersioningError> for SnapshotError {
+    fn from(err: ContractVersioningError) -> Self {
+        SnapshotError::VersioningError(format!("{:?}", err))
+    }
+}
+
 /// Type alias for snapshot operation results
 pub type SnapshotResult<T> = Result<T, SnapshotError>;
+
+impl Default for StateSnapshot {
+    fn default() -> Self {
+        Self {
+            id: "default".to_string(),
+            version_id: StateVersionId::default(),
+            contract_address: None,
+            root_hash: [0u8; 32],
+            metadata: HashMap::new(),
+            height: None,
+            description: None,
+        }
+    }
+}
 
 impl StateSnapshot {
     /// Create a new snapshot with current timestamp
@@ -141,11 +170,40 @@ impl StateSnapshot {
     /// A new StateSnapshot instance
     pub fn new(id: SnapshotId, root_hash: Hash, height: Option<u64>, description: Option<String>) -> Self {
         let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+        // Create a version ID with logical version 0 (for snapshot-only versions)
+        let version_id = StateVersionId::new(0, timestamp);
 
         Self {
             id,
+            version_id,
+            contract_address: None,
             root_hash,
-            timestamp,
+            metadata: HashMap::new(),
+            height,
+            description,
+        }
+    }
+
+    /// Create a new snapshot with specific version ID and optional contract address
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Unique identifier for the snapshot
+    /// * `version_id` - State version ID from versioning system
+    /// * `contract_address` - Optional contract address for contract-specific snapshots
+    /// * `root_hash` - Root hash of the state tree
+    /// * `height` - Optional block height
+    /// * `description` - Optional description
+    ///
+    /// # Returns
+    ///
+    /// A new StateSnapshot instance
+    pub fn new_with_version(id: SnapshotId, version_id: StateVersionId, contract_address: Option<ContractAddress>, root_hash: Hash, height: Option<u64>, description: Option<String>) -> Self {
+        Self {
+            id,
+            version_id,
+            contract_address,
+            root_hash,
             metadata: HashMap::new(),
             height,
             description,
@@ -191,6 +249,15 @@ impl StateSnapshot {
         self.metadata.get(key)
     }
 
+    /// Get snapshot timestamp from version ID
+    ///
+    /// # Returns
+    ///
+    /// Timestamp when the snapshot was created
+    pub fn timestamp(&self) -> u64 {
+        self.version_id.timestamp()
+    }
+
     /// Check if snapshot is older than specified seconds
     ///
     /// # Arguments
@@ -202,8 +269,7 @@ impl StateSnapshot {
     /// True if snapshot is older than the threshold
     pub fn is_older_than(&self, seconds: u64) -> bool {
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-
-        current_time.saturating_sub(self.timestamp) > seconds
+        current_time.saturating_sub(self.timestamp()) > seconds
     }
 
     /// Get age of snapshot in seconds
@@ -213,8 +279,25 @@ impl StateSnapshot {
     /// Age of the snapshot in seconds
     pub fn age_seconds(&self) -> u64 {
         let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+        current_time.saturating_sub(self.timestamp())
+    }
 
-        current_time.saturating_sub(self.timestamp)
+    /// Check if this is a contract-specific snapshot
+    ///
+    /// # Returns
+    ///
+    /// True if this snapshot is for a specific contract
+    pub fn is_contract_snapshot(&self) -> bool {
+        self.contract_address.is_some()
+    }
+
+    /// Get contract address if this is a contract-specific snapshot
+    ///
+    /// # Returns
+    ///
+    /// Optional reference to the contract address
+    pub fn get_contract_address(&self) -> Option<&ContractAddress> {
+        self.contract_address.as_ref()
     }
 }
 
@@ -245,10 +328,10 @@ impl Default for SnapshotConfig {
     }
 }
 
-/// Manages state snapshots with storage and retrieval capabilities
+/// Snapshot management system with versioning integration
 ///
-/// This struct implements the core snapshot management functionality,
-/// including creation, retrieval, and cleanup operations.
+/// This manager provides comprehensive snapshot capabilities with integration
+/// to the contract versioning system for unified state management.
 pub struct SnapshotManager<S: NodeStorage> {
     /// Configuration for snapshot management
     config: SnapshotConfig,
@@ -256,6 +339,8 @@ pub struct SnapshotManager<S: NodeStorage> {
     snapshots: HashMap<SnapshotId, StateSnapshot>,
     /// Reference to the underlying MPT for state reconstruction
     current_trie: Option<MerklePatriciaTrie<S>>,
+    /// Contract version manager for versioning integration
+    version_manager: ContractVersionManager,
 }
 
 impl<S: NodeStorage> SnapshotManager<S> {
@@ -263,7 +348,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     ///
     /// # Arguments
     ///
-    /// * `config` - Snapshot management configuration
+    /// * `config` - Configuration for snapshot management
     ///
     /// # Returns
     ///
@@ -273,10 +358,11 @@ impl<S: NodeStorage> SnapshotManager<S> {
             config,
             snapshots: HashMap::new(),
             current_trie: None,
+            version_manager: ContractVersionManager::new(100), // Default: keep 100 versions per contract
         }
     }
 
-    /// Create a new snapshot manager with default configuration
+    /// Create a snapshot manager with default configuration
     ///
     /// # Returns
     ///
@@ -294,7 +380,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
         self.current_trie = Some(trie);
     }
 
-    /// Create a snapshot from the current state
+    /// Create a snapshot
     ///
     /// # Arguments
     ///
@@ -312,13 +398,107 @@ impl<S: NodeStorage> SnapshotManager<S> {
             return Err(SnapshotError::AlreadyExists(id));
         }
 
+        // Create the snapshot
         let snapshot = StateSnapshot::from_trie(id.clone(), trie, height, description);
-        self.snapshots.insert(id.clone(), snapshot.clone());
 
-        // Trigger cleanup if auto cleanup is enabled
+        // Store the snapshot
+        self.snapshots.insert(id, snapshot.clone());
+
+        // Auto-cleanup if enabled
         if self.config.auto_cleanup {
-            self.cleanup_old_snapshots()?;
+            let _ = self.cleanup_old_snapshots();
         }
+
+        Ok(snapshot)
+    }
+
+    /// Create a contract-specific snapshot with versioning integration
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Unique identifier for the snapshot
+    /// * `contract_address` - Contract address for this snapshot
+    /// * `trie` - The trie to snapshot
+    /// * `height` - Optional block height
+    /// * `description` - Optional description
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the created snapshot or an error
+    pub fn create_contract_snapshot(
+        &mut self,
+        id: SnapshotId,
+        contract_address: ContractAddress,
+        trie: &MerklePatriciaTrie<S>,
+        height: Option<u64>,
+        description: Option<String>,
+    ) -> SnapshotResult<StateSnapshot> {
+        // Check if snapshot already exists
+        if self.snapshots.contains_key(&id) {
+            return Err(SnapshotError::AlreadyExists(id));
+        }
+
+        // Create a version in the version manager
+        let version_id = self
+            .version_manager
+            .create_version(contract_address, trie.root_hash(), description.clone().unwrap_or_else(|| format!("Snapshot: {}", id)))?;
+
+        // Create the snapshot with versioning information
+        let snapshot = StateSnapshot::new_with_version(id.clone(), version_id, Some(contract_address), trie.root_hash(), height, description);
+
+        // Acquire snapshot reference in version manager
+        self.version_manager.acquire_snapshot(contract_address, version_id)?;
+
+        // Store the snapshot
+        self.snapshots.insert(id, snapshot.clone());
+
+        // Auto-cleanup if enabled
+        if self.config.auto_cleanup {
+            let _ = self.cleanup_old_snapshots();
+        }
+
+        Ok(snapshot)
+    }
+
+    /// Create a snapshot from an existing contract version
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Unique identifier for the snapshot
+    /// * `contract_address` - Contract address
+    /// * `version_id` - Existing version ID from contract version manager
+    /// * `trie` - The trie to snapshot
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the created snapshot or an error
+    pub fn create_snapshot_from_version(&mut self, id: SnapshotId, contract_address: ContractAddress, version_id: StateVersionId, trie: &MerklePatriciaTrie<S>) -> SnapshotResult<StateSnapshot> {
+        // Check if snapshot already exists
+        if self.snapshots.contains_key(&id) {
+            return Err(SnapshotError::AlreadyExists(id));
+        }
+
+        // Get the contract version to extract metadata
+        let contract_version = self
+            .version_manager
+            .get_version(contract_address, version_id)
+            .ok_or_else(|| SnapshotError::VersioningError(format!("Version not found: {:?}", version_id)))?;
+
+        // Create the snapshot with versioning information
+        let snapshot = StateSnapshot::new_with_version(
+            id.clone(),
+            version_id,
+            Some(contract_address),
+            trie.root_hash(),
+            contract_version.block_height,
+            Some(contract_version.description),
+        );
+
+        // Acquire snapshot reference in version manager
+        self.version_manager.acquire_snapshot(contract_address, version_id)?;
+
+        // Store the snapshot
+        self.snapshots.insert(id, snapshot.clone());
 
         Ok(snapshot)
     }
@@ -352,7 +532,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     /// A vector of references to snapshots, sorted by timestamp
     pub fn list_snapshots_by_time(&self) -> Vec<&StateSnapshot> {
         let mut snapshots: Vec<&StateSnapshot> = self.snapshots.values().collect();
-        snapshots.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        snapshots.sort_by(|a, b| b.timestamp().cmp(&a.timestamp()));
         snapshots
     }
 
@@ -366,7 +546,14 @@ impl<S: NodeStorage> SnapshotManager<S> {
     ///
     /// A Result containing the deleted snapshot or an error
     pub fn delete_snapshot(&mut self, id: &SnapshotId) -> SnapshotResult<StateSnapshot> {
-        self.snapshots.remove(id).ok_or_else(|| SnapshotError::NotFound(id.clone()))
+        let snapshot = self.snapshots.remove(id).ok_or_else(|| SnapshotError::NotFound(id.clone()))?;
+
+        // If this is a contract snapshot, release the version reference
+        if let Some(contract_address) = snapshot.contract_address {
+            self.version_manager.release_snapshot(contract_address, snapshot.version_id);
+        }
+
+        Ok(snapshot)
     }
 
     /// Get snapshots by height range
@@ -392,7 +579,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     ///
     /// Optional reference to the most recent snapshot
     pub fn get_latest_snapshot(&self) -> Option<&StateSnapshot> {
-        self.snapshots.values().max_by_key(|snapshot| snapshot.timestamp)
+        self.snapshots.values().max_by_key(|snapshot| snapshot.timestamp())
     }
 
     /// Get snapshots newer than specified timestamp
@@ -405,7 +592,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     ///
     /// A vector of references to snapshots newer than the timestamp
     pub fn get_snapshots_after(&self, timestamp: u64) -> Vec<&StateSnapshot> {
-        self.snapshots.values().filter(|snapshot| snapshot.timestamp > timestamp).collect()
+        self.snapshots.values().filter(|snapshot| snapshot.timestamp() > timestamp).collect()
     }
 
     /// Cleanup old snapshots based on configuration
@@ -432,7 +619,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
                 let mut snapshots: Vec<(SnapshotId, StateSnapshot)> = self.snapshots.drain().collect();
 
                 // Sort by timestamp (newest first)
-                snapshots.sort_by(|a, b| b.1.timestamp.cmp(&a.1.timestamp));
+                snapshots.sort_by(|a, b| b.1.timestamp().cmp(&a.1.timestamp()));
 
                 // Keep only the newest max_count snapshots
                 let excess_count = snapshots.len() - max_count;
@@ -502,8 +689,8 @@ impl<S: NodeStorage> SnapshotManager<S> {
         };
 
         if !self.snapshots.is_empty() {
-            stats.oldest_timestamp = self.snapshots.values().map(|s| s.timestamp).min();
-            stats.newest_timestamp = self.snapshots.values().map(|s| s.timestamp).max();
+            stats.oldest_timestamp = self.snapshots.values().map(|s| s.timestamp()).min();
+            stats.newest_timestamp = self.snapshots.values().map(|s| s.timestamp()).max();
             stats.estimated_size_bytes = self.snapshots.values().map(|s| s.metadata.len() * std::mem::size_of::<String>() * 2).sum();
         }
 
@@ -562,6 +749,28 @@ impl<S: NodeStorage> SnapshotManager<S> {
     pub fn get_current_trie_mut(&mut self) -> SnapshotResult<&mut MerklePatriciaTrie<S>> {
         self.current_trie.as_mut().ok_or_else(|| SnapshotError::InvalidSnapshot("No current trie available".to_string()))
     }
+
+    /// Get snapshots for a specific contract
+    ///
+    /// # Arguments
+    ///
+    /// * `contract_address` - Contract address to filter by
+    ///
+    /// # Returns
+    ///
+    /// Vector of snapshots for the specified contract
+    pub fn get_contract_snapshots(&self, contract_address: ContractAddress) -> Vec<&StateSnapshot> {
+        self.snapshots.values().filter(|snapshot| snapshot.contract_address == Some(contract_address)).collect()
+    }
+
+    /// Get global (non-contract-specific) snapshots
+    ///
+    /// # Returns
+    ///
+    /// Vector of global snapshots
+    pub fn get_global_snapshots(&self) -> Vec<&StateSnapshot> {
+        self.snapshots.values().filter(|snapshot| snapshot.contract_address.is_none()).collect()
+    }
 }
 
 /// Statistics about snapshot management
@@ -603,7 +812,7 @@ mod tests {
         assert_eq!(snapshot.root_hash, root_hash);
         assert_eq!(snapshot.height, height);
         assert_eq!(snapshot.description, description);
-        assert!(snapshot.timestamp > 0);
+        assert!(snapshot.timestamp() > 0);
         assert!(snapshot.metadata.is_empty());
     }
 
@@ -680,7 +889,7 @@ mod tests {
         assert_eq!(by_time.len(), 5);
         // Should be sorted by time (newest first)
         for i in 0..4 {
-            assert!(by_time[i].timestamp >= by_time[i + 1].timestamp);
+            assert!(by_time[i].timestamp() >= by_time[i + 1].timestamp());
         }
     }
 
