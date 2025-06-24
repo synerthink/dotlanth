@@ -53,11 +53,7 @@ impl ReferenceDetectionStrategy {
     /// Efficiently checks for reference patterns without string allocations
     fn contains_reference_pattern(&self, content: &str, dependency_id: &str) -> bool {
         let content_lower = content.to_lowercase();
-        let patterns = [
-            ("see ", 4),
-            ("refer to ", 9),
-            ("as per ", 7),
-        ];
+        let patterns = [("see ", 4), ("refer to ", 9), ("as per ", 7)];
 
         for (pattern, offset) in &patterns {
             let mut search_start = 0;
@@ -67,8 +63,7 @@ impl ReferenceDetectionStrategy {
                 if after_pattern.starts_with(dependency_id) {
                     // Ensure it's a complete word match (not part of a larger word)
                     let end_pos = dependency_id.len();
-                    if after_pattern.len() == end_pos || 
-                       after_pattern.chars().nth(end_pos).map_or(true, |c| !c.is_alphanumeric() && c != '_') {
+                    if after_pattern.len() == end_pos || after_pattern.chars().nth(end_pos).map_or(true, |c| !c.is_alphanumeric() && c != '_') {
                         return true;
                     }
                 }
