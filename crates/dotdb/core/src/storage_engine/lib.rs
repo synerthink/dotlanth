@@ -106,6 +106,12 @@ pub enum StorageError {
 
     #[error("Concurrency error: {0}")]
     Concurrency(String),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Invalid operation: {0}")]
+    InvalidOperation(String),
 }
 
 /// Result type for storage operations
