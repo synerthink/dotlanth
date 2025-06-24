@@ -51,6 +51,9 @@
 //!     SnapshotManager,
 //!     StatePruner,
 //!     PruningPolicy,
+//!     ContractVersionManager,
+//!     StateVersionId,
+//!     ContractAddress,
 //!     create_persistent_mpt,
 //!     create_in_memory_mpt,
 //!     DbConfig,
@@ -66,8 +69,21 @@
 //! // Track state changes
 //! let mut diff = StateDiff::new([0; 32], [1; 32]);
 //!
-//! // Manage snapshots  
-//! let snapshot_manager: SnapshotManager<dotdb_core::state::MptStorageAdapter> = SnapshotManager::new(SnapshotConfig::default());
+//! // Manage snapshots with versioning integration
+//! let mut snapshot_manager: SnapshotManager<dotdb_core::state::MptStorageAdapter> = SnapshotManager::new(SnapshotConfig::default());
+//!
+//! // Create global snapshot
+//! let global_snapshot = snapshot_manager.create_snapshot("global_1".to_string(), &trie, Some(100), Some("Genesis state".to_string())).unwrap();
+//!
+//! // Create contract-specific snapshot with versioning
+//! let contract_address = ContractAddress::from([1u8; 20]);
+//! let contract_snapshot = snapshot_manager.create_contract_snapshot(
+//!     "contract_1".to_string(),
+//!     contract_address,
+//!     &trie,
+//!     Some(101),
+//!     Some("Contract deployed".to_string())
+//! ).unwrap();
 //!
 //! // Configure pruning
 //! let pruner: StatePruner<dotdb_core::state::MptStorageAdapter> = StatePruner::new(PruningPolicy::default());
@@ -92,6 +108,7 @@ pub mod diff;
 pub mod mpt;
 pub mod pruning;
 pub mod snapshot;
+pub mod versioning;
 
 // Re-export commonly used types
 pub use contract_storage_layout::{ContractAddress, ContractStorageLayout, StorageLayoutError, StorageValue, StorageVariable, StorageVariableType};
@@ -100,3 +117,6 @@ pub use diff::StateDiff;
 pub use mpt::{MPTError, MerklePatriciaTrie, StateProof};
 pub use pruning::{PruningPolicy, StatePruner};
 pub use snapshot::{SnapshotManager, StateSnapshot};
+pub use versioning::{
+    ContractStateVersion, ContractUpgradeInfo, ContractVersionManager, ContractVersioningError, ContractVersioningStatistics, LayoutChange, LayoutChangeType, StateVersionId, UpgradeType,
+};
