@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use dotvm_core::memory::{Allocator, Arch32, Arch64, Architecture, MemoryError, MemoryHandle, MemoryManagement, MemoryManager, MemoryPool, PageTable, PhysicalAddress, Protection, VirtualAddress};
+use dotvm_core::memory::{Arch64, Architecture, MemoryError, MemoryHandle, MemoryManagement, MemoryManager, Protection};
+// Removed: Allocator, Arch32, MemoryPool, PageTable, PhysicalAddress, VirtualAddress
 
 // Common test configurations
 pub const TEST_PAGE_SIZE: usize = 4096;
@@ -25,7 +26,7 @@ pub mod memory;
 
 // Common test utilities
 pub mod test_utils {
-    use super::*;
+    use super::*; // This brings Architecture into scope for align_address etc.
 
     pub fn align_address<A: Architecture>(addr: usize) -> usize {
         (addr + A::ALIGNMENT - 1) & !(A::ALIGNMENT - 1)
@@ -58,15 +59,19 @@ macro_rules! assert_page_aligned {
 // Test fixtures and helpers
 pub mod fixtures {
     use super::*;
-    use std::marker::PhantomData;
+    use std::marker::PhantomData; // Keep PhantomData as it's used here
 
     pub struct TestMemoryManager<A: Architecture> {
         pub manager: MemoryManager<A>,
+        _phantom: PhantomData<A>, // Ensure A is used, make field private convention
     }
 
     impl<A: Architecture> TestMemoryManager<A> {
         pub fn new() -> Result<Self, MemoryError> {
-            Ok(Self { manager: MemoryManager::new()? })
+            Ok(Self {
+                manager: MemoryManager::new()?,
+                _phantom: PhantomData,
+            })
         }
 
         pub fn allocate_test_pages(&mut self, count: usize) -> Result<Vec<MemoryHandle>, MemoryError> {

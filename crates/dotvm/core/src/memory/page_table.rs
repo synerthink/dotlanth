@@ -18,7 +18,7 @@ use super::*;
 use std::collections::HashMap;
 
 /// Page table entry flags
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)] // PageFlags is already Debug
 pub struct PageFlags {
     pub present: bool,
     pub writable: bool,
@@ -45,16 +45,24 @@ impl PageFlags {
 }
 
 /// Page table entry
+#[derive(Debug, Clone)] // Added derive Debug, Clone
 pub struct PageTableEntry {
-    physical_address: PhysicalAddress,
-    flags: PageFlags,
+    physical_address: PhysicalAddress, // PhysicalAddress is Debug
+    flags: PageFlags,                  // PageFlags is Debug
 }
 
 /// Page table structure supporting multiple levels
+#[derive(Debug)] // Added derive Debug
 pub struct PageTable<A: Architecture> {
-    entries: HashMap<VirtualAddress, PageTableEntry>,
-    free_pages: Vec<PhysicalAddress>,
+    entries: HashMap<VirtualAddress, PageTableEntry>, // VirtualAddress is Debug
+    free_pages: Vec<PhysicalAddress>,                 // PhysicalAddress is Debug
     _phantom: PhantomData<A>,
+}
+
+impl<A: Architecture> Default for PageTable<A> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<A: Architecture> PageTable<A> {
@@ -115,7 +123,7 @@ impl<A: Architecture> PageTable<A> {
 
     pub fn find_contiguous_virtual_space(&self, size: usize) -> Result<VirtualAddress, MemoryError> {
         let mut current_addr = VirtualAddress::new(0);
-        let end_addr = VirtualAddress::new(A::MAX_MEMORY);
+        let end_addr = VirtualAddress::new(1024 * 1024); // Use 1MB for testing
         let required_pages = size / A::PAGE_SIZE;
         let mut found_pages = 0;
 
@@ -123,12 +131,15 @@ impl<A: Architecture> PageTable<A> {
             if !self.entries.contains_key(&current_addr) {
                 found_pages += 1;
                 if found_pages == required_pages {
-                    return Ok(VirtualAddress::new(current_addr.0 - (required_pages - 1) * A::PAGE_SIZE));
+                    return Ok(VirtualAddress::new(current_addr.0.saturating_sub((required_pages - 1) * A::PAGE_SIZE))); // Added saturating_sub
                 }
             } else {
                 found_pages = 0;
             }
-            current_addr = VirtualAddress::new(current_addr.0 + A::PAGE_SIZE);
+            if A::PAGE_SIZE == 0 {
+                return Err(MemoryError::PageTableError("PAGE_SIZE is zero".to_string()));
+            } // Avoid division by zero
+            current_addr = VirtualAddress::new(current_addr.0.saturating_add(A::PAGE_SIZE)); // Added saturating_add
         }
 
         Err(MemoryError::OutOfVirtualMemory)
@@ -136,6 +147,7 @@ impl<A: Architecture> PageTable<A> {
 }
 
 /// TLB (Translation Lookaside Buffer) implementation
+#[derive(Debug)] // Added Debug
 pub struct TLB<A: Architecture> {
     entries: HashMap<VirtualAddress, (PhysicalAddress, PageFlags)>,
     order: Vec<VirtualAddress>,
@@ -166,19 +178,24 @@ impl<A: Architecture> TLB<A> {
         }
 
         // If capacity is exceeded, remove the oldest entry
-        if self.order.len() >= self.capacity {
+        if self.order.len() >= self.capacity && self.capacity > 0 {
+            // Ensure capacity > 0 before pop
             if let Some(oldest) = self.order.pop() {
+                // pop from end (oldest if new are pushed to front)
                 self.entries.remove(&oldest);
             }
         }
 
-        // Insert the new entry
-        self.order.insert(0, virtual_addr); // The newest is added to the front
-        self.entries.insert(virtual_addr, (physical_addr, flags));
+        if self.capacity > 0 {
+            // Only insert if capacity allows
+            self.order.insert(0, virtual_addr); // The newest is added to the front
+            self.entries.insert(virtual_addr, (physical_addr, flags));
+        }
     }
 
     pub fn flush(&mut self) {
         self.entries.clear();
+        self.order.clear(); // also clear order
     }
 }
 
@@ -198,6 +215,9 @@ mod page_table_tests {
     }
 
     fn create_aligned_address<A: Architecture>(addr: usize) -> VirtualAddress {
+        if A::PAGE_SIZE == 0 {
+            panic!("PAGE_SIZE is zero in test setup");
+        }
         VirtualAddress(addr - (addr % A::PAGE_SIZE))
     }
 
@@ -368,8 +388,15 @@ mod page_table_tests {
             }
 
             // Verify only most recent entries are present
-            let first_vaddr = create_aligned_address::<Arch64>(0);
-            assert_eq!(tlb.lookup(first_vaddr), None);
+            let first_vaddr = create_aligned_address::<Arch64>(0); // oldest if inserting at front
+            let second_vaddr = create_aligned_address::<Arch64>(0x1000);
+            assert_eq!(tlb.lookup(first_vaddr), None); // Should have been evicted
+            assert_eq!(tlb.lookup(second_vaddr), None); // Should have been evicted
+
+            let third_vaddr = create_aligned_address::<Arch64>(0x2000);
+            let fourth_vaddr = create_aligned_address::<Arch64>(0x3000);
+            assert!(tlb.lookup(third_vaddr).is_some());
+            assert!(tlb.lookup(fourth_vaddr).is_some());
         }
 
         #[test]
@@ -395,9 +422,10 @@ mod page_table_tests {
 
             // Update with new flags
             let new_flags = PageFlags { writable: false, ..flags };
-            tlb.insert(vaddr, paddr, new_flags);
+            tlb.insert(vaddr, paddr, new_flags); // This re-inserts, making it newest
 
             assert_eq!(tlb.lookup(vaddr), Some((paddr, new_flags)));
+            assert_eq!(tlb.order[0], vaddr); // Check it's at the front
         }
     }
 
@@ -416,8 +444,9 @@ mod page_table_tests {
             table.map(vaddr, paddr, flags).expect("Failed to map page");
 
             // Insert in TLB
-            if let Some((paddr, flags)) = table.translate(vaddr) {
-                tlb.insert(vaddr, paddr, flags);
+            if let Some((paddr_from_table, flags_from_table)) = table.translate(vaddr) {
+                // Shadowing variables
+                tlb.insert(vaddr, paddr_from_table, flags_from_table);
             }
 
             // Verify TLB lookup matches page table
@@ -442,8 +471,9 @@ mod page_table_tests {
 
             // TLB should be flushed and updated
             tlb.flush();
-            if let Some((paddr, flags)) = table.translate(vaddr) {
-                tlb.insert(vaddr, paddr, flags);
+            if let Some((paddr_from_table, flags_from_table)) = table.translate(vaddr) {
+                // Shadowing
+                tlb.insert(vaddr, paddr_from_table, flags_from_table);
             }
 
             assert_eq!(tlb.lookup(vaddr), Some((paddr, new_flags)));

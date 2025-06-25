@@ -41,7 +41,7 @@ use crate::{
     },
     vm::errors::VMError,
 };
-use std::{collections::HashMap, marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 /// Architecture-aware instruction registry trait
 pub trait ArchitectureRegistry<A: Architecture> {

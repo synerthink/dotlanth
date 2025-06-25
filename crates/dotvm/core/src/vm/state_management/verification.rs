@@ -19,11 +19,11 @@
 //! This module implements robust methods to verify state consistency and
 //! detect tampering through cryptographic checks and comparison with snapshots.
 
-use crate::vm::state_management::lib::{Error, Result, StateKey, StateValue};
+use crate::vm::state_management::lib::StateKey; // Removed Error, Result, StateValue
 use crate::vm::state_management::mvcc::{MVCCStore, Version};
-use crate::vm::state_management::snapshot::{Snapshot, SnapshotManager};
-use crate::vm::state_management::tree::{MerkleProof, MerkleTree, StateHash};
-use std::collections::{BTreeMap, HashSet};
+use crate::vm::state_management::snapshot::SnapshotManager; // Removed Snapshot
+use crate::vm::state_management::tree::{MerkleTree, StateHash}; // Removed MerkleProof
+use std::collections::HashSet; // Removed BTreeMap
 use std::sync::Arc;
 
 /// Type for verification result details
@@ -339,7 +339,8 @@ impl Validator {
         let new_state = self.store.get_state_at_version(to_version);
 
         // Build trees for both states
-        let old_tree = MerkleTree::build(&old_state).map_err(|e| VerificationError {
+        let _old_tree = MerkleTree::build(&old_state).map_err(|e| VerificationError {
+            // Prefixed with _
             code: VerificationErrorCode::VerificationFailed,
             message: format!("Failed to build tree for version {}: {}", from_version, e),
             details: None,
@@ -391,6 +392,7 @@ impl Validator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vm::state_management::lib::StateValue; // Added StateValue import
     use tempfile::tempdir;
 
     fn setup_test_environment() -> (Arc<MVCCStore>, Arc<SnapshotManager>) {
@@ -505,7 +507,7 @@ mod tests {
 
         // Attempt to validate an invalid transition (from > to)
         let current_version = store.current_version();
-        let result = validator.validate_state_transition(current_version, current_version - 1);
+        let result = validator.validate_state_transition(current_version, current_version.saturating_sub(1)); // Avoid underflow on 0
 
         // Should fail
         assert!(result.is_err());

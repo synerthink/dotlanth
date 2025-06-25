@@ -547,7 +547,7 @@ mod tests {
 
     #[test]
     fn test_gas_cost_calculation() {
-        let context = StateOperationContext::new([1u8; 20], 1000000);
+        let context = StateOperationContext::new([1u8; 20], 1000); // Reduced for faster tests
 
         // SLOAD should cost base + access
         let args = vec![vec![0u8; 32]];

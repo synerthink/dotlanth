@@ -24,6 +24,7 @@ use crate::opcode::architecture_opcodes::BigIntOpcode;
 use crate::vm::errors::VMError;
 use num_bigint::{BigInt, Sign};
 use num_traits::sign::Signed;
+// use num_integer::Roots; // This was the unused import
 
 /// BigInt arithmetic instruction
 /// Performs arbitrary precision integer operations
@@ -149,7 +150,7 @@ impl Instruction for BigIntInstruction {
                         }
 
                         // Use integer square root
-                        use num_integer::Roots;
+                        use num_integer::Roots; // Moved import here, as it's only used by this specific arm
                         let sqrt_result = magnitude.sqrt();
                         Ok(BigInt::from(sqrt_result))
                     }
@@ -207,10 +208,13 @@ impl Instruction for BigIntInstruction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vm::multi_arch_executor::{Executor128, ExecutorFactory};
+    use crate::bytecode::VmArchitecture;
+    use crate::memory::Arch128; // Assuming BigInt instructions are for Arch128+
+    use crate::vm::multi_arch_executor::MultiArchExecutor; // Adjusted import for tests
 
-    fn create_test_executor() -> Executor128 {
-        ExecutorFactory::create_128bit_executor().expect("Failed to create executor")
+    fn create_test_executor() -> MultiArchExecutor<Arch128> {
+        // Changed return type
+        MultiArchExecutor::<Arch128>::new(VmArchitecture::Arch128, VmArchitecture::Arch128).expect("Failed to create executor")
     }
 
     #[test]

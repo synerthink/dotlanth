@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::state_transitions::{State, TransitionError};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::Mutex; // Removed MutexGuard
 
 /// Trait for managing rollback of state transitions.
 pub trait RollbackManager {

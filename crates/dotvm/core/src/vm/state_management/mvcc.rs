@@ -19,7 +19,7 @@
 //! This module provides the foundation for handling concurrent state
 //! operations by maintaining multiple versions of state entries.
 
-use crate::vm::state_management::lib::{Error, Result, SharedMap, StateKey, StateValue, current_timestamp, new_shared_map};
+use crate::vm::state_management::lib::{Result, SharedMap, StateKey, StateValue, new_shared_map}; // Removed Error, current_timestamp
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 

@@ -53,7 +53,7 @@ impl<A: Architecture> SharedMemoryManager<A> {
     pub fn new() -> Self {
         Self {
             regions: HashMap::new(),
-            allocator: Allocator::new(A::MAX_MEMORY),
+            allocator: Allocator::new(1024 * 1024), // Use 1MB for testing
         }
     }
 

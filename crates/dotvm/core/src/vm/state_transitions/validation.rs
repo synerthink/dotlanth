@@ -59,7 +59,8 @@ pub fn check_state_invariants(current: &State) -> Result<(), TransitionError> {
 pub fn validate_event(event: &Event) -> Result<(), TransitionError> {
     match event {
         Event::Start | Event::Pause | Event::Resume | Event::Stop | Event::Fail => Ok(()),
-        _ => Err(TransitionError::InvalidTransition), // For unsupported events
+        // All variants of Event are covered above, so a wildcard match is not needed
+        // and would be unreachable. If Event enum grows, this match needs to be updated.
     }
 }
 

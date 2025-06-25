@@ -25,6 +25,7 @@ pub struct PoolBlock {
 }
 
 /// Memory pool for fixed-size allocations
+#[derive(Debug)] // Added Debug
 pub struct MemoryPool {
     block_size: usize,
     total_blocks: usize,
@@ -119,8 +120,9 @@ pub struct PoolStats {
 }
 
 /// Memory pool manager handling multiple pools
+#[derive(Debug)] // Added Debug
 pub struct PoolManager {
-    pools: Vec<MemoryPool>,
+    pools: Vec<MemoryPool>, // MemoryPool is Debug
     size_classes: Vec<usize>,
 }
 

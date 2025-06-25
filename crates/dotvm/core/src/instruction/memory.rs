@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::memory::MemoryManagement;
-use crate::memory::{MemoryHandle, VirtualAddress};
-use crate::opcode::memory_opcodes::MemoryOpcode;
-use crate::operand::operands::Operand;
+// use crate::memory::MemoryManagement; // Unused
+use crate::memory::MemoryHandle; // VirtualAddress removed
+// use crate::opcode::memory_opcodes::MemoryOpcode; // Unused
+// use crate::operand::operands::Operand; // Unused
 use crate::vm::errors::VMError;
 
-use std::fmt;
+// use std::fmt; // Unused
 
 use super::instruction::{ExecutorInterface, Instruction};
 

@@ -16,7 +16,7 @@
 
 use super::state_storage::StateStorageError;
 use serde::{Deserialize, Serialize};
-use std::fmt; // assuming StateStorageError is defined in mod.rs
+// use std::fmt; // Unused
 
 /// The current/latest version that our system supports.
 pub const LATEST_VERSION: u32 = 2;

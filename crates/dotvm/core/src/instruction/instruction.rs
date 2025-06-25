@@ -15,9 +15,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::vm::errors::VMError;
+use std::fmt::Debug; // Import Debug
 
 /// Trait for types that can execute instructions (executor interface)
-pub trait ExecutorInterface {
+pub trait ExecutorInterface: Debug {
+    // Add Debug supertrait
     /// Push an operand onto the stack
     fn push_operand(&mut self, value: f64);
 
@@ -30,10 +32,18 @@ pub trait ExecutorInterface {
     /// Get access to memory manager for memory operations
     /// Returns a trait object that can handle memory operations
     fn get_memory_manager_mut(&mut self) -> &mut dyn MemoryManagerInterface;
+
+    /// Gets the architecture for which the currently running bytecode was intended.
+    /// This may differ from the actual execution architecture if in compatibility mode.
+    fn get_guest_architecture(&self) -> crate::bytecode::VmArchitecture;
+
+    /// Checks if the executor is currently running in compatibility mode.
+    fn is_compatibility_mode(&self) -> bool;
 }
 
 /// Trait for memory manager interface that instructions can use
-pub trait MemoryManagerInterface {
+pub trait MemoryManagerInterface: Debug {
+    // Add Debug supertrait
     /// Allocate memory and return a handle
     fn allocate(&mut self, size: usize) -> Result<crate::memory::MemoryHandle, VMError>;
 

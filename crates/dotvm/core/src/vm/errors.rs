@@ -33,7 +33,9 @@ pub enum VMError {
     CryptoError(String),
     InvalidOperand(String),
     IntegerOverflow,
-    // Add more error variants as needed
+    ArchitectureMismatch(String), // For when a VmArchitecture label doesn't match a generic Arch type
+    ConfigurationError(String),   // For general VM or component configuration issues
+                                  // Add more error variants as needed
 }
 
 impl fmt::Display for VMError {
@@ -55,6 +57,8 @@ impl fmt::Display for VMError {
             VMError::CryptoError(msg) => write!(f, "Cryptographic error: {}", msg),
             VMError::InvalidOperand(msg) => write!(f, "Invalid operand: {}", msg),
             VMError::IntegerOverflow => write!(f, "Integer overflow occurred"),
+            VMError::ArchitectureMismatch(msg) => write!(f, "Architecture mismatch: {}", msg),
+            VMError::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
         }
     }
 }

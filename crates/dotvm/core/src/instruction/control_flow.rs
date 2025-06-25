@@ -15,10 +15,10 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::instruction::{ExecutorInterface, Instruction};
-use crate::opcode::control_flow_opcodes::ControlFlowOpcode;
+// use crate::opcode::control_flow_opcodes::ControlFlowOpcode; // Unused
 use crate::vm::errors::VMError;
 
-use std::sync::Arc;
+// use std::sync::Arc; // Unused
 
 /// Struct representing a conditional branch (`IfElse`) instruction.
 pub struct IfElseInstruction {
@@ -78,6 +78,7 @@ pub enum LoopType {
 pub struct LoopInstruction {
     loop_type: LoopType,
     condition_start: usize,
+    #[allow(dead_code)] // body_start might be used later or for more complex loops
     body_start: usize,
 }
 
