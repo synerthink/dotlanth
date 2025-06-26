@@ -101,8 +101,7 @@ impl BytecodeHeader {
         // if bytes[5] > Self::CURRENT_VERSION {
         //     return Err("Unsupported bytecode version");
         // }
-        let architecture = VmArchitecture::from_u8(bytes[6])
-            .ok_or("Invalid architecture byte")?;
+        let architecture = VmArchitecture::from_u8(bytes[6]).ok_or("Invalid architecture byte")?;
 
         let mut reserved_bytes = [0u8; 2];
         reserved_bytes.copy_from_slice(&bytes[7..9]);

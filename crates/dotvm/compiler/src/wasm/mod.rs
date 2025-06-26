@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod codegen;
-pub mod dependency_analysis;
-pub mod optimizer;
+pub mod ast;
+pub mod opcode_mapper;
 pub mod parser;
-pub mod transpiler;
-pub mod wasm;
+
+pub use ast::*;
+pub use opcode_mapper::*;
+pub use parser::*;

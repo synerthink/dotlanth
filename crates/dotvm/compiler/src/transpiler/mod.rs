@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod codegen;
-pub mod dependency_analysis;
-pub mod optimizer;
-pub mod parser;
-pub mod transpiler;
-pub mod wasm;
+//! Transpiler module for converting WASM to DotVM bytecode
+//!
+//! This module contains the core transpilation engine that converts
+//! WebAssembly modules into DotVM bytecode.
+
+pub mod engine;
+
+pub use engine::*;

@@ -5,7 +5,10 @@ edition.workspace = true
 
 [dependencies]
 dotvm-common = { path = "../common" }
+dotvm-core = { path = "../core" }
 tokio.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+wasmparser = "0.121"
+wasm-encoder = "0.39"
