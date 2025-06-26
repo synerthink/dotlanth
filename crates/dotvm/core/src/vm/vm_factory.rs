@@ -99,7 +99,7 @@ impl VMFactory for SimpleVMFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruction::instruction::{Instruction, ExecutorInterface};
+    use crate::instruction::instruction::{ExecutorInterface, Instruction};
     // use std::sync::Arc; // Arc is used via MultiArchExecutor tests, not directly here for FactoryTestPushInstruction if not loaded
     // use crate::vm::architecture_detector::ArchitectureDetector; // Unused in these specific tests
 

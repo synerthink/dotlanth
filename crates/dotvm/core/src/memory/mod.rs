@@ -248,7 +248,7 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
         let memory_size = 1024 * 1024; // 1MB for testing
         #[cfg(not(test))]
         let memory_size = A::MAX_MEMORY;
-        
+
         Ok(Self {
             allocator: Allocator::new(memory_size),
             page_table: PageTable::new(),
@@ -566,7 +566,8 @@ mod memory_tests {
             // Keep allocating until we run out of memory (limited for faster tests)
             let mut allocation_count = 0;
             loop {
-                if allocation_count >= 10 { // Limit to 10 allocations for faster tests
+                if allocation_count >= 10 {
+                    // Limit to 10 allocations for faster tests
                     break;
                 }
                 match mm.allocate(1024 * 1024) {
@@ -574,7 +575,7 @@ mod memory_tests {
                     Ok(handle) => {
                         handles.push(handle);
                         allocation_count += 1;
-                    },
+                    }
                     Err(MemoryError::OutOfMemory { .. }) => break,        // More specific match
                     Err(MemoryError::AllocationTooLarge { .. }) => break, // Could also be this if Arch32::MAX_MEMORY is small
                     Err(e) => panic!("Unexpected error: {:?}", e),

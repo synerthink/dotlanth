@@ -41,7 +41,6 @@ pub enum AllocationStrategy {
 #[derive(Debug)] // Added Debug
 pub struct Allocator<A: Architecture> {
     blocks: BTreeMap<PhysicalAddress, Block>, // Block needs to be Debug
-    #[allow(dead_code)] // strategy might be used in future for dynamic switching
     strategy: AllocationStrategy,
     total_memory: usize,
     used_memory: AtomicUsize,
@@ -50,13 +49,18 @@ pub struct Allocator<A: Architecture> {
 }
 
 impl<A: Architecture> Allocator<A> {
-    /// Constructor to create a new Allocator instance
+    /// Constructor to create a new Allocator instance with default FirstFit strategy
     pub fn new(total_memory: usize) -> Self {
+        Self::with_strategy(total_memory, AllocationStrategy::FirstFit)
+    }
+
+    /// Constructor to create a new Allocator instance with a specific strategy
+    pub fn with_strategy(total_memory: usize, strategy: AllocationStrategy) -> Self {
         if total_memory == 0 {
             // Special case for zero-sized memory
             return Self {
                 blocks: BTreeMap::new(),
-                strategy: AllocationStrategy::FirstFit,
+                strategy,
                 total_memory: 0,
                 used_memory: AtomicUsize::new(0),
                 last_address: memory::PhysicalAddress(0),
@@ -78,7 +82,7 @@ impl<A: Architecture> Allocator<A> {
         // Return an instance of the Allocator with the initial state
         Self {
             blocks,
-            strategy: AllocationStrategy::FirstFit, // Default allocation strategy
+            strategy,
             total_memory,
             used_memory: AtomicUsize::new(0), // No memory is used yet
             last_address: memory::PhysicalAddress(0),
@@ -133,8 +137,12 @@ impl<A: Architecture> Allocator<A> {
             return Err(MemoryError::FragmentationError(format!("Maximum contiguous block size: {}", max_contiguous)));
         }
 
-        // Using FirstFit directly as strategy field is not currently used to switch
-        self.first_fit_allocate(size)
+        // Use the strategy field to determine which allocation method to use
+        match self.strategy {
+            AllocationStrategy::FirstFit => self.first_fit_allocate(size),
+            AllocationStrategy::BestFit => self.best_fit_allocate(size),
+            AllocationStrategy::NextFit => self.next_fit_allocate(size),
+        }
     }
 
     // New helper method
@@ -160,7 +168,6 @@ impl<A: Architecture> Allocator<A> {
         }
     }
 
-    #[allow(dead_code)] // Keep for potential future use
     fn best_fit_allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
         let mut best_fit = None;
         let mut smallest_difference = usize::MAX;
@@ -183,7 +190,6 @@ impl<A: Architecture> Allocator<A> {
         }
     }
 
-    #[allow(dead_code)] // Keep for potential future use
     fn next_fit_allocate(&mut self, size: usize) -> Result<MemoryHandle, MemoryError> {
         let mut allocation_info = None;
 
@@ -206,7 +212,9 @@ impl<A: Architecture> Allocator<A> {
         }
 
         if let Some((address, block_size)) = allocation_info {
-            self.last_address = address;
+            // Update last_address to point to the end of the allocated block
+            // This ensures next allocation starts searching from after this block
+            self.last_address = PhysicalAddress(address.as_usize() + size);
             self.allocate_block(address, block_size, size)
         } else {
             Err(self.create_out_of_memory_error(size))
@@ -361,9 +369,8 @@ mod allocator_tests {
 
     const TEST_MEMORY_SIZE: usize = 1024 * 1024; // 1MB for testing
 
-    fn create_allocator<A: Architecture>(_strategy: AllocationStrategy) -> Allocator<A> {
-        // strategy param unused now
-        Allocator::new(TEST_MEMORY_SIZE)
+    fn create_allocator<A: Architecture>(strategy: AllocationStrategy) -> Allocator<A> {
+        Allocator::with_strategy(TEST_MEMORY_SIZE, strategy)
     }
 
     mod initialization_tests {
@@ -409,10 +416,8 @@ mod allocator_tests {
         }
 
         #[test]
-        #[ignore] // BestFit not currently used by allocate() directly
         fn test_best_fit_strategy() {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::BestFit);
-            allocator.strategy = AllocationStrategy::BestFit; // Manually set strategy for test
 
             // Create gaps of different sizes
             let handle1 = allocator.allocate(1024).expect("First allocation failed");
@@ -433,10 +438,8 @@ mod allocator_tests {
         }
 
         #[test]
-        #[ignore] // NextFit not currently used by allocate() directly
         fn test_next_fit_strategy() {
             let mut allocator = create_allocator::<Arch64>(AllocationStrategy::NextFit);
-            allocator.strategy = AllocationStrategy::NextFit; // Manually set strategy for test
 
             // Create several blocks
             let handles: Vec<_> = (0..5).map(|i| allocator.allocate(1024).expect(&format!("Allocation {} failed", i))).collect();
@@ -452,6 +455,44 @@ mod allocator_tests {
             allocator.allocate(1024).expect("New allocation failed");
             let stats = allocator.get_stats();
             assert!(stats.allocation_count > 0);
+        }
+
+        #[test]
+        fn test_next_fit_behavior() {
+            let mut allocator = create_allocator::<Arch64>(AllocationStrategy::NextFit);
+
+            // Allocate four blocks to create a specific pattern
+            let handle1 = allocator.allocate(1024).expect("First allocation failed");
+            let handle2 = allocator.allocate(1024).expect("Second allocation failed");
+            let handle3 = allocator.allocate(1024).expect("Third allocation failed");
+            let handle4 = allocator.allocate(1024).expect("Fourth allocation failed");
+
+            // Free the first and third blocks, leaving the second and fourth allocated
+            // This creates: [FREE 1024][ALLOCATED 1024][FREE 1024][ALLOCATED 1024][FREE remaining]
+            allocator.deallocate(handle1).expect("First deallocation failed");
+            allocator.deallocate(handle3).expect("Third deallocation failed");
+
+            // The last_address should be pointing after the fourth block
+            // Now allocate a small block - with next fit, it should use the free space after the fourth block
+            // rather than the first or third free blocks
+            let handle5 = allocator.allocate(512).expect("Fifth allocation failed");
+
+            // Verify that the new allocation used next fit correctly
+            // It should have an address >= handle4's address (after the fourth block)
+            assert!(
+                handle5.0 >= handle4.0,
+                "Next fit should allocate after the last allocation, got handle5={} but handle4={}",
+                handle5.0,
+                handle4.0
+            );
+
+            // Also verify it didn't use the first free block
+            assert!(
+                handle5.0 != handle1.0,
+                "Next fit should not reuse the first free block, but it did: handle5={} == handle1={}",
+                handle5.0,
+                handle1.0
+            );
         }
     }
 
@@ -493,25 +534,25 @@ mod allocator_tests {
             let mut handles = Vec::new();
 
             let block_size = Arch64::ALIGNMENT; // 8 bytes
-            
+
             // Strategy: Create a pattern where freed blocks are separated by allocated blocks
             // Pattern: [ALLOC][FREE][ALLOC][FREE][ALLOC]...
-            
+
             // First, allocate blocks to create a specific pattern
             let num_blocks = 20; // 20 * 8 = 160 bytes
             for _ in 0..num_blocks {
                 handles.push(allocator.allocate(block_size).expect("Small allocation failed"));
             }
-            
+
             // Now free every other block, but skip the first and last to ensure separation
             // Free blocks at indices 1, 3, 5, 7, 9, 11, 13, 15, 17
-            for i in (1..handles.len()-1).step_by(2) {
+            for i in (1..handles.len() - 1).step_by(2) {
                 allocator.deallocate(handles[i]).expect("Deallocation failed");
             }
-            
+
             // Now we have fragmented memory: some 8-byte free blocks separated by allocated blocks
             // Plus some free space at the end (256 - 160 = 96 bytes)
-            
+
             // Allocate the remaining large block at the end to ensure only small fragmented blocks remain
             // We need to allocate exactly the remaining contiguous space
             let remaining_space = 256 - 160; // 96 bytes

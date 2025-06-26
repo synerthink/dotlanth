@@ -112,7 +112,7 @@ impl WorkStealingScheduler {
         // Add a counter to prevent infinite loops in tests
         let mut iteration_count = 0;
         let max_iterations = if cfg!(test) { 100 } else { usize::MAX };
-        
+
         loop {
             iteration_count += 1;
             if iteration_count > max_iterations {
