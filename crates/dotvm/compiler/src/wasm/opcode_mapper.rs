@@ -429,7 +429,7 @@ impl OpcodeMapper {
             // Conversion instructions
             WasmInstruction::F32ConvertI32S => Ok(vec![MappedInstruction {
                 opcode: self.map_to_arch(Opcode64::Arithmetic(ArithmeticOpcode::Add))?, // Use Add as placeholder for conversion
-                operands: vec![32, 32], // Convert from i32 to f32
+                operands: vec![32, 32],                                                 // Convert from i32 to f32
                 metadata: InstructionMetadata {
                     stack_effect: (1, 1),
                     ..Default::default()
@@ -447,7 +447,7 @@ impl OpcodeMapper {
 
             WasmInstruction::MemorySize => Ok(vec![MappedInstruction {
                 opcode: self.map_to_arch(Opcode64::Memory(MemoryOpcode::Load))?, // Use Load as placeholder
-                operands: vec![0], // Memory index
+                operands: vec![0],                                               // Memory index
                 metadata: InstructionMetadata {
                     stack_effect: (0, 1),
                     ..Default::default()
@@ -456,7 +456,7 @@ impl OpcodeMapper {
 
             WasmInstruction::MemoryGrow => Ok(vec![MappedInstruction {
                 opcode: self.map_to_arch(Opcode64::Memory(MemoryOpcode::Allocate))?, // Use Allocate for grow
-                operands: vec![0], // Memory index
+                operands: vec![0],                                                   // Memory index
                 metadata: InstructionMetadata {
                     stack_effect: (1, 1),
                     ..Default::default()

@@ -19,7 +19,7 @@
 //! Main entry point for the DotVM command-line interface.
 
 use clap::{Parser, Subcommand};
-use dotvm_tools::cli::transpile::{run_transpile_cli, TranspileArgs};
+use dotvm_tools::cli::transpile::{TranspileArgs, run_transpile_cli};
 
 #[derive(Parser)]
 #[command(name = "dotvm")]
@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 keep_intermediate: args.keep_intermediate,
                 target_dir: args.target_dir,
             };
-            
+
             let pipeline = dotvm_tools::TranspilationPipeline::new(transpile_args);
             pipeline.execute()?;
         }

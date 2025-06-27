@@ -21,7 +21,7 @@
 
 use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
 use dotvm_core::opcode::control_flow_opcodes::ControlFlowOpcode;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 /// Dead code eliminator for DotVM bytecode
 pub struct DeadCodeEliminator {
@@ -32,30 +32,22 @@ pub struct DeadCodeEliminator {
 impl DeadCodeEliminator {
     /// Create a new dead code eliminator
     pub fn new() -> Self {
-        Self {
-            stats: EliminationStats::default(),
-        }
+        Self { stats: EliminationStats::default() }
     }
 
     /// Eliminate dead code from a list of functions
     pub fn eliminate(&mut self, functions: Vec<TranspiledFunction>) -> Vec<TranspiledFunction> {
         // First pass: eliminate dead functions
         let live_functions = self.eliminate_dead_functions(functions);
-        
+
         // Second pass: eliminate dead code within functions
-        live_functions
-            .into_iter()
-            .map(|func| self.eliminate_dead_code_in_function(func))
-            .collect()
+        live_functions.into_iter().map(|func| self.eliminate_dead_code_in_function(func)).collect()
     }
 
     /// Eliminate entire functions that are never called
     fn eliminate_dead_functions(&mut self, functions: Vec<TranspiledFunction>) -> Vec<TranspiledFunction> {
         let mut live_functions = HashSet::new();
-        let function_map: HashMap<String, &TranspiledFunction> = functions
-            .iter()
-            .map(|f| (f.name.clone(), f))
-            .collect();
+        let function_map: HashMap<String, &TranspiledFunction> = functions.iter().map(|f| (f.name.clone(), f)).collect();
 
         // Start with entry points (functions that might be called externally)
         for function in &functions {
@@ -69,7 +61,7 @@ impl DeadCodeEliminator {
         while changed {
             changed = false;
             let current_live: Vec<String> = live_functions.iter().cloned().collect();
-            
+
             for func_name in &current_live {
                 if let Some(function) = function_map.get(func_name) {
                     for called_func in self.find_called_functions(function) {
@@ -82,10 +74,7 @@ impl DeadCodeEliminator {
         }
 
         let original_count = functions.len();
-        let live_functions_vec: Vec<TranspiledFunction> = functions
-            .into_iter()
-            .filter(|f| live_functions.contains(&f.name))
-            .collect();
+        let live_functions_vec: Vec<TranspiledFunction> = functions.into_iter().filter(|f| live_functions.contains(&f.name)).collect();
 
         self.stats.dead_functions_eliminated = original_count - live_functions_vec.len();
         live_functions_vec
@@ -97,24 +86,19 @@ impl DeadCodeEliminator {
 
         // Build control flow graph
         let cfg = self.build_control_flow_graph(&function.instructions);
-        
+
         // Find reachable instructions
         let reachable = self.find_reachable_instructions(&cfg);
-        
+
         // Remove unreachable instructions
-        function.instructions = function.instructions
-            .into_iter()
-            .enumerate()
-            .filter(|(i, _)| reachable.contains(i))
-            .map(|(_, inst)| inst)
-            .collect();
+        function.instructions = function.instructions.into_iter().enumerate().filter(|(i, _)| reachable.contains(i)).map(|(_, inst)| inst).collect();
 
         // Eliminate unused local variables
         function = self.eliminate_unused_locals(function);
 
         let eliminated_instructions = original_instruction_count - function.instructions.len();
         self.stats.dead_instructions_eliminated += eliminated_instructions;
-        
+
         if eliminated_instructions > 0 {
             self.stats.functions_with_dead_code += 1;
         }
@@ -128,7 +112,7 @@ impl DeadCodeEliminator {
         // 1. Are named "main" or "_start"
         // 2. Are exported (would need export information from Wasm)
         // 3. Are marked with special attributes
-        
+
         matches!(function_name, "main" | "_start") || 
         function_name.starts_with("export_") ||
         function_name.starts_with("__wasm_") ||
@@ -139,7 +123,7 @@ impl DeadCodeEliminator {
     /// Find all functions called by a given function
     fn find_called_functions(&self, function: &TranspiledFunction) -> Vec<String> {
         let mut called_functions = Vec::new();
-        
+
         for instruction in &function.instructions {
             // Look for function call instructions
             // This would need to be adapted based on the actual instruction format
@@ -147,7 +131,7 @@ impl DeadCodeEliminator {
                 called_functions.push(called_func);
             }
         }
-        
+
         called_functions
     }
 
@@ -161,13 +145,13 @@ impl DeadCodeEliminator {
     /// Build a control flow graph for the function
     fn build_control_flow_graph(&self, instructions: &[TranspiledInstruction]) -> ControlFlowGraph {
         let mut cfg = ControlFlowGraph::new(instructions.len());
-        
+
         for (i, instruction) in instructions.iter().enumerate() {
             // Add edge to next instruction (fall-through)
             if i + 1 < instructions.len() {
                 cfg.add_edge(i, i + 1);
             }
-            
+
             // Add edges for control flow instructions
             if let Some(targets) = self.get_jump_targets(instruction, i) {
                 for target in targets {
@@ -177,7 +161,7 @@ impl DeadCodeEliminator {
                 }
             }
         }
-        
+
         cfg
     }
 
@@ -192,7 +176,7 @@ impl DeadCodeEliminator {
     fn find_reachable_instructions(&self, cfg: &ControlFlowGraph) -> HashSet<usize> {
         let mut reachable = HashSet::new();
         let mut stack = vec![0]; // Start from first instruction
-        
+
         while let Some(node) = stack.pop() {
             if reachable.insert(node) {
                 // First time visiting this node
@@ -201,7 +185,7 @@ impl DeadCodeEliminator {
                 }
             }
         }
-        
+
         reachable
     }
 
@@ -209,27 +193,27 @@ impl DeadCodeEliminator {
     fn eliminate_unused_locals(&mut self, mut function: TranspiledFunction) -> TranspiledFunction {
         let used_locals = self.find_used_locals(&function.instructions);
         let original_local_count = function.local_count;
-        
+
         // Count how many locals are actually used
         let max_used_local = used_locals.iter().max().copied().unwrap_or(0);
         function.local_count = (max_used_local + 1).min(function.local_count);
-        
+
         self.stats.dead_locals_eliminated += original_local_count - function.local_count;
-        
+
         function
     }
 
     /// Find all local variables that are used
     fn find_used_locals(&self, instructions: &[TranspiledInstruction]) -> HashSet<usize> {
         let mut used_locals = HashSet::new();
-        
+
         for instruction in instructions {
             // Extract local variable references from instruction
             if let Some(locals) = self.extract_local_references(instruction) {
                 used_locals.extend(locals);
             }
         }
-        
+
         used_locals
     }
 
@@ -266,11 +250,9 @@ struct ControlFlowGraph {
 
 impl ControlFlowGraph {
     fn new(node_count: usize) -> Self {
-        Self {
-            edges: vec![Vec::new(); node_count],
-        }
+        Self { edges: vec![Vec::new(); node_count] }
     }
-    
+
     fn add_edge(&mut self, from: usize, to: usize) {
         if from < self.edges.len() {
             self.edges[from].push(to);
@@ -328,7 +310,7 @@ mod tests {
         cfg.add_edge(0, 1);
         cfg.add_edge(1, 2);
         cfg.add_edge(0, 2);
-        
+
         assert_eq!(cfg.edges[0], vec![1, 2]);
         assert_eq!(cfg.edges[1], vec![2]);
         assert_eq!(cfg.edges[2], Vec::<usize>::new());
@@ -340,7 +322,7 @@ mod tests {
         stats.dead_functions_eliminated = 2;
         stats.dead_instructions_eliminated = 10;
         stats.dead_locals_eliminated = 5;
-        
+
         assert_eq!(stats.total_eliminated(), 17);
         assert_eq!(stats.instruction_elimination_ratio(100), 0.1);
     }

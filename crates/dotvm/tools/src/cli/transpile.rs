@@ -23,7 +23,7 @@ use clap::{Parser, ValueEnum};
 use dotvm_compiler::{
     codegen::dotvm_generator::DotVMGenerator,
     transpiler::engine::TranspilationEngine,
-    wasm::{parser::WasmParser, ast::WasmModule},
+    wasm::{ast::WasmModule, parser::WasmParser},
 };
 use dotvm_core::bytecode::VmArchitecture;
 use std::{
@@ -144,11 +144,7 @@ impl TranspilationPipeline {
         let input_path = &self.args.input;
         let is_project = input_path.is_dir() && input_path.join("Cargo.toml").exists();
 
-        let wasm_output = if is_project {
-            self.compile_rust_project()?
-        } else {
-            self.compile_rust_file()?
-        };
+        let wasm_output = if is_project { self.compile_rust_project()? } else { self.compile_rust_file()? };
 
         if self.args.verbose {
             println!("Wasm compilation completed: {:?}", wasm_output);
@@ -160,30 +156,32 @@ impl TranspilationPipeline {
     /// Compile a Rust project to Wasm
     fn compile_rust_project(&self) -> Result<PathBuf, TranspilationError> {
         let project_dir = &self.args.input;
-        let target_dir = self.args.target_dir
+        let target_dir = self
+            .args
+            .target_dir
             .as_ref()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| project_dir.join("target").to_string_lossy().to_string());
 
         let mut cmd = Command::new("cargo");
-        cmd.current_dir(project_dir)
-            .args(&[
-                "build",
-                "--target", "wasm32-unknown-unknown",
-                "--target-dir", &target_dir,
-            ]);
+        cmd.current_dir(project_dir).args(&["build", "--target", "wasm32-unknown-unknown", "--target-dir", &target_dir]);
 
         // Add optimization level
         match self.args.opt_level {
-            0 => {}, // Debug build (default)
-            1 => { cmd.arg("--release"); },
-            2 => { cmd.args(&["--release"]); },
-            3 => { cmd.args(&["--release"]); },
+            0 => {} // Debug build (default)
+            1 => {
+                cmd.arg("--release");
+            }
+            2 => {
+                cmd.args(&["--release"]);
+            }
+            3 => {
+                cmd.args(&["--release"]);
+            }
             _ => return Err(TranspilationError::InvalidOptLevel(self.args.opt_level)),
         }
 
-        let output = cmd.output()
-            .map_err(|e| TranspilationError::RustCompilation(format!("Failed to run cargo: {}", e)))?;
+        let output = cmd.output().map_err(|e| TranspilationError::RustCompilation(format!("Failed to run cargo: {}", e)))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -192,9 +190,7 @@ impl TranspilationPipeline {
 
         // Find the generated Wasm file
         let profile = if self.args.opt_level == 0 { "debug" } else { "release" };
-        let wasm_dir = Path::new(&target_dir)
-            .join("wasm32-unknown-unknown")
-            .join(profile);
+        let wasm_dir = Path::new(&target_dir).join("wasm32-unknown-unknown").join(profile);
 
         // Look for .wasm files in the target directory
         let wasm_files: Vec<_> = fs::read_dir(&wasm_dir)
@@ -202,11 +198,7 @@ impl TranspilationPipeline {
             .filter_map(|entry| {
                 let entry = entry.ok()?;
                 let path = entry.path();
-                if path.extension()? == "wasm" {
-                    Some(path)
-                } else {
-                    None
-                }
+                if path.extension()? == "wasm" { Some(path) } else { None }
             })
             .collect();
 
@@ -222,30 +214,30 @@ impl TranspilationPipeline {
     fn compile_rust_file(&self) -> Result<PathBuf, TranspilationError> {
         let input_file = &self.args.input;
         let temp_dir = std::env::temp_dir().join("dotvm_transpile");
-        fs::create_dir_all(&temp_dir)
-            .map_err(|e| TranspilationError::FileSystem(format!("Cannot create temp directory: {}", e)))?;
+        fs::create_dir_all(&temp_dir).map_err(|e| TranspilationError::FileSystem(format!("Cannot create temp directory: {}", e)))?;
 
         let wasm_output = temp_dir.join("output.wasm");
 
         let mut cmd = Command::new("rustc");
         cmd.arg(input_file)
-            .args(&[
-                "--target", "wasm32-unknown-unknown",
-                "--crate-type", "cdylib",
-                "-o", wasm_output.to_str().unwrap(),
-            ]);
+            .args(&["--target", "wasm32-unknown-unknown", "--crate-type", "cdylib", "-o", wasm_output.to_str().unwrap()]);
 
         // Add optimization flags
         match self.args.opt_level {
-            0 => {},
-            1 => { cmd.arg("-O"); },
-            2 => { cmd.args(&["-O", "-C", "opt-level=2"]); },
-            3 => { cmd.args(&["-O", "-C", "opt-level=3"]); },
+            0 => {}
+            1 => {
+                cmd.arg("-O");
+            }
+            2 => {
+                cmd.args(&["-O", "-C", "opt-level=2"]);
+            }
+            3 => {
+                cmd.args(&["-O", "-C", "opt-level=3"]);
+            }
             _ => return Err(TranspilationError::InvalidOptLevel(self.args.opt_level)),
         }
 
-        let output = cmd.output()
-            .map_err(|e| TranspilationError::RustCompilation(format!("Failed to run rustc: {}", e)))?;
+        let output = cmd.output().map_err(|e| TranspilationError::RustCompilation(format!("Failed to run rustc: {}", e)))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -261,12 +253,10 @@ impl TranspilationPipeline {
             println!("Step 2: Parsing Wasm to AST...");
         }
 
-        let wasm_bytes = fs::read(wasm_path)
-            .map_err(|e| TranspilationError::FileSystem(format!("Cannot read Wasm file: {}", e)))?;
+        let wasm_bytes = fs::read(wasm_path).map_err(|e| TranspilationError::FileSystem(format!("Cannot read Wasm file: {}", e)))?;
 
         let parser = WasmParser::new();
-        let module = parser.parse(&wasm_bytes)
-            .map_err(|e| TranspilationError::WasmParsing(format!("Wasm parsing failed: {:?}", e)))?;
+        let module = parser.parse(&wasm_bytes).map_err(|e| TranspilationError::WasmParsing(format!("Wasm parsing failed: {:?}", e)))?;
 
         if self.args.verbose {
             println!("Wasm parsing completed. Functions: {}", module.functions.len());
@@ -282,13 +272,15 @@ impl TranspilationPipeline {
         }
 
         let target_arch = VmArchitecture::from(self.args.architecture.clone());
-        
+
         let mut transpiler = TranspilationEngine::with_architecture(target_arch);
-        let transpiled_module = transpiler.transpile_module(wasm_module)
+        let transpiled_module = transpiler
+            .transpile_module(wasm_module)
             .map_err(|e| TranspilationError::Transpilation(format!("Transpilation failed: {:?}", e)))?;
 
         let mut generator = DotVMGenerator::with_architecture(target_arch);
-        let generated_bytecode = generator.generate(&transpiled_module)
+        let generated_bytecode = generator
+            .generate(&transpiled_module)
             .map_err(|e| TranspilationError::BytecodeGeneration(format!("Bytecode generation failed: {:?}", e)))?;
 
         if self.args.verbose {
@@ -306,12 +298,10 @@ impl TranspilationPipeline {
 
         // Create output directory if it doesn't exist
         if let Some(parent) = self.args.output.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| TranspilationError::FileSystem(format!("Cannot create output directory: {}", e)))?;
+            fs::create_dir_all(parent).map_err(|e| TranspilationError::FileSystem(format!("Cannot create output directory: {}", e)))?;
         }
 
-        fs::write(&self.args.output, bytecode)
-            .map_err(|e| TranspilationError::FileSystem(format!("Cannot write output file: {}", e)))?;
+        fs::write(&self.args.output, bytecode).map_err(|e| TranspilationError::FileSystem(format!("Cannot write output file: {}", e)))?;
 
         if self.args.verbose {
             println!("Bytecode written to: {:?}", self.args.output);

@@ -22,12 +22,7 @@
 use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
 use dotvm_core::{
     bytecode::VmArchitecture,
-    opcode::{
-        arithmetic_opcodes::ArithmeticOpcode,
-        bigint_opcodes::BigIntOpcode,
-        control_flow_opcodes::ControlFlowOpcode,
-        memory_opcodes::MemoryOpcode,
-    },
+    opcode::{arithmetic_opcodes::ArithmeticOpcode, bigint_opcodes::BigIntOpcode, control_flow_opcodes::ControlFlowOpcode, memory_opcodes::MemoryOpcode},
 };
 use std::collections::HashMap;
 
@@ -50,10 +45,7 @@ impl PeepholeOptimizer {
 
     /// Optimize a list of transpiled functions
     pub fn optimize(&mut self, functions: Vec<TranspiledFunction>) -> Vec<TranspiledFunction> {
-        functions
-            .into_iter()
-            .map(|func| self.optimize_function(func))
-            .collect()
+        functions.into_iter().map(|func| self.optimize_function(func)).collect()
     }
 
     /// Optimize a single function
@@ -82,7 +74,7 @@ impl PeepholeOptimizer {
         while i < instructions.len() {
             // Look for patterns like: LOAD const1, LOAD const2, ADD -> LOAD (const1 + const2)
             if i + 2 < instructions.len() {
-                if let Some(folded) = self.try_fold_arithmetic_constants(&instructions[i..i+3]) {
+                if let Some(folded) = self.try_fold_arithmetic_constants(&instructions[i..i + 3]) {
                     optimized.push(folded);
                     self.stats.arithmetic_optimizations += 1;
                     i += 3;
@@ -123,7 +115,7 @@ impl PeepholeOptimizer {
         while i < instructions.len() {
             // Look for redundant LOAD/STORE sequences
             if i + 1 < instructions.len() {
-                if let Some(merged) = self.try_merge_memory_operations(&instructions[i..i+2]) {
+                if let Some(merged) = self.try_merge_memory_operations(&instructions[i..i + 2]) {
                     optimized.extend(merged);
                     self.stats.memory_optimizations += 1;
                     i += 2;
@@ -324,11 +316,7 @@ impl OptimizationStats {
 
     /// Total optimizations performed
     pub fn total_optimizations(&self) -> usize {
-        self.arithmetic_optimizations
-            + self.memory_optimizations
-            + self.control_flow_optimizations
-            + self.redundant_eliminations
-            + self.strength_reductions
+        self.arithmetic_optimizations + self.memory_optimizations + self.control_flow_optimizations + self.redundant_eliminations + self.strength_reductions
     }
 }
 

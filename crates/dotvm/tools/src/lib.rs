@@ -23,4 +23,4 @@ pub mod cli;
 pub mod utils;
 
 // Re-export main CLI functions for easy access
-pub use cli::transpile::{run_transpile_cli, TranspileArgs, TranspilationPipeline};
+pub use cli::transpile::{TranspilationPipeline, TranspileArgs, run_transpile_cli};

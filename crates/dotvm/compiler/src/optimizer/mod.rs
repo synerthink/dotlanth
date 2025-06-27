@@ -110,8 +110,6 @@ pub struct OptimizationStats {
 impl OptimizationStats {
     /// Calculate total optimizations performed
     pub fn total_optimizations(&self) -> usize {
-        self.peephole.total_optimizations() +
-        self.dead_code.total_eliminated() +
-        self.constant_folding.total_optimizations()
+        self.peephole.total_optimizations() + self.dead_code.total_eliminated() + self.constant_folding.total_optimizations()
     }
 }

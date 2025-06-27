@@ -20,11 +20,7 @@
 //! optimizations that evaluate constant expressions at compile time.
 
 use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
-use dotvm_core::opcode::{
-    arithmetic_opcodes::ArithmeticOpcode,
-    bigint_opcodes::BigIntOpcode,
-    memory_opcodes::MemoryOpcode,
-};
+use dotvm_core::opcode::{arithmetic_opcodes::ArithmeticOpcode, bigint_opcodes::BigIntOpcode, memory_opcodes::MemoryOpcode};
 use std::collections::HashMap;
 
 /// Constant folder for DotVM bytecode
@@ -36,17 +32,12 @@ pub struct ConstantFolder {
 impl ConstantFolder {
     /// Create a new constant folder
     pub fn new() -> Self {
-        Self {
-            stats: FoldingStats::default(),
-        }
+        Self { stats: FoldingStats::default() }
     }
 
     /// Perform constant folding on a list of functions
     pub fn fold(&mut self, functions: Vec<TranspiledFunction>) -> Vec<TranspiledFunction> {
-        functions
-            .into_iter()
-            .map(|func| self.fold_function(func))
-            .collect()
+        functions.into_iter().map(|func| self.fold_function(func)).collect()
     }
 
     /// Perform constant folding on a single function
@@ -65,11 +56,13 @@ impl ConstantFolder {
                instruction.opcode.contains("CONST") ||
                instruction.opcode.contains("Allocate") || // Our mapper uses Allocate for constants
                instruction.opcode.contains("Add") ||      // Arithmetic operations that could be folded
-               instruction.opcode.contains("Load") {      // Memory operations
+               instruction.opcode.contains("Load")
+            {
+                // Memory operations
                 found_constants += 1;
             }
         }
-        
+
         // Always report at least one optimization for functions with instructions
         if function.instructions.len() > 0 {
             self.stats.functions_optimized += 1;
@@ -125,10 +118,7 @@ impl ConstantFolder {
     fn try_fold_arithmetic(&self, instructions: &[TranspiledInstruction], index: usize, context: &ConstantContext) -> Option<(Vec<TranspiledInstruction>, usize)> {
         // Look for patterns like: CONST a, CONST b, ADD -> CONST (a + b)
         if index + 2 < instructions.len() {
-            if let (Some(const_a), Some(const_b)) = (
-                self.extract_constant(&instructions[index]),
-                self.extract_constant(&instructions[index + 1])
-            ) {
+            if let (Some(const_a), Some(const_b)) = (self.extract_constant(&instructions[index]), self.extract_constant(&instructions[index + 1])) {
                 if let Some(folded_const) = self.fold_binary_operation(&instructions[index + 2], const_a, const_b) {
                     return Some((vec![folded_const], 3));
                 }
@@ -151,16 +141,10 @@ impl ConstantFolder {
     fn try_fold_memory(&self, instructions: &[TranspiledInstruction], index: usize, context: &ConstantContext) -> Option<(Vec<TranspiledInstruction>, usize)> {
         // Look for STORE followed by LOAD of same address
         if index + 1 < instructions.len() {
-            if let (Some(store_addr), Some(load_addr)) = (
-                self.extract_store_address(&instructions[index]),
-                self.extract_load_address(&instructions[index + 1])
-            ) {
+            if let (Some(store_addr), Some(load_addr)) = (self.extract_store_address(&instructions[index]), self.extract_load_address(&instructions[index + 1])) {
                 if store_addr == load_addr {
                     // STORE addr, LOAD addr -> DUP, STORE addr
-                    return Some((vec![
-                        self.create_dup_instruction(),
-                        instructions[index].clone()
-                    ], 2));
+                    return Some((vec![self.create_dup_instruction(), instructions[index].clone()], 2));
                 }
             }
         }
@@ -299,9 +283,7 @@ struct ConstantContext {
 
 impl ConstantContext {
     fn new() -> Self {
-        Self {
-            constants: HashMap::new(),
-        }
+        Self { constants: HashMap::new() }
     }
 
     fn get_constant(&self, var_id: usize) -> Option<ConstantValue> {
@@ -365,10 +347,10 @@ mod tests {
     fn test_constant_context() {
         let mut context = ConstantContext::new();
         context.set_constant(0, ConstantValue::Integer(42));
-        
+
         assert!(matches!(context.get_constant(0), Some(ConstantValue::Integer(42))));
         assert!(context.get_constant(1).is_none());
-        
+
         context.invalidate(0);
         assert!(context.get_constant(0).is_none());
     }
@@ -378,7 +360,7 @@ mod tests {
         let int_val = ConstantValue::Integer(42);
         let float_val = ConstantValue::Float(3.14);
         let bool_val = ConstantValue::Boolean(true);
-        
+
         assert!(matches!(int_val, ConstantValue::Integer(42)));
         assert!(matches!(float_val, ConstantValue::Float(f) if (f - 3.14).abs() < f64::EPSILON));
         assert!(matches!(bool_val, ConstantValue::Boolean(true)));
@@ -391,7 +373,7 @@ mod tests {
         stats.arithmetic_folds = 5;
         stats.memory_folds = 2;
         stats.constant_propagations = 3;
-        
+
         assert_eq!(stats.folding_ratio(100), 0.1);
         assert_eq!(stats.total_optimizations(), 10);
     }
@@ -399,11 +381,11 @@ mod tests {
     #[test]
     fn test_create_constant_instruction() {
         let folder = ConstantFolder::new();
-        
+
         let int_inst = folder.create_constant_instruction(ConstantValue::Integer(42));
         assert_eq!(int_inst.opcode, "CONST_I32");
         assert_eq!(int_inst.operands, vec!["42"]);
-        
+
         let bool_inst = folder.create_constant_instruction(ConstantValue::Boolean(true));
         assert_eq!(bool_inst.opcode, "CONST_I32");
         assert_eq!(bool_inst.operands, vec!["1"]);

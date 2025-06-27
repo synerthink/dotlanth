@@ -335,7 +335,6 @@ impl BytecodeGenerator {
         let mut entries = Vec::new();
         let mut wasm_to_dotvm_map = HashMap::new();
 
-
         // Write function table header
         self.write_u32(functions.len() as u32)?;
 
@@ -343,8 +342,8 @@ impl BytecodeGenerator {
             let entry = FunctionEntry {
                 id: dotvm_id as u32,
                 wasm_index: dotvm_id as u32, // Use dotvm_id as wasm_index for simplicity
-                offset: 0, // Will be filled during code generation
-                size: 0,   // Will be calculated during code generation
+                offset: 0,                   // Will be filled during code generation
+                size: 0,                     // Will be calculated during code generation
                 local_count: function.local_count as u32,
                 max_stack_depth: 32, // Default stack depth
                 flags: FunctionFlags {
@@ -428,7 +427,7 @@ impl BytecodeGenerator {
     fn hash_opcode(&self, opcode: &str) -> u16 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         opcode.hash(&mut hasher);
         (hasher.finish() as u16) % 0x1000 // Keep it in a reasonable range
@@ -517,7 +516,6 @@ impl BytecodeGenerator {
         let mut name_lookup = HashMap::new();
 
         for (index, export) in exports.iter().enumerate() {
-            
             let internal_index = match export.kind {
                 ExportKind::Function => function_table
                     .wasm_to_dotvm_map
