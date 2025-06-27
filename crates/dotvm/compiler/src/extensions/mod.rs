@@ -14,10 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod codegen;
-pub mod dependency_analysis;
-pub mod extensions;
-pub mod optimizer;
-pub mod parser;
-pub mod transpiler;
-pub mod wasm;
+//! DotVM-specific extensions for the transpiler
+//!
+//! This module provides advanced transpilation features that go beyond standard
+//! WebAssembly capabilities, including BigInt arithmetic, SIMD operations,
+//! and vector processing for high-performance computing.
+
+pub mod detector;
+pub mod math_ops;
+pub mod simd;
+pub mod vector;
+
+pub use detector::{ExtensionDetector, ExtensionRequirement, ExtensionType};
+pub use math_ops::{MathExtension, MathOperation};
+pub use simd::{SimdExtension, SimdOperation};
+pub use vector::{VectorExtension, VectorOperation};

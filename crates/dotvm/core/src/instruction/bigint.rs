@@ -20,7 +20,7 @@
 //! integer operations that are available in 128-bit and higher architectures.
 
 use super::instruction::{ExecutorInterface, Instruction};
-use crate::opcode::architecture_opcodes::BigIntOpcode;
+use crate::opcode::bigint_opcodes::BigIntOpcode;
 use crate::vm::errors::VMError;
 use num_bigint::{BigInt, Sign};
 use num_traits::sign::Signed;
@@ -116,11 +116,11 @@ impl Instruction for BigIntInstruction {
     fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         match self.opcode {
             BigIntOpcode::Add => self.execute_binary_op(executor, |a, b| Ok(a + b)),
-            BigIntOpcode::Subtract => self.execute_binary_op(executor, |a, b| Ok(a - b)),
-            BigIntOpcode::Multiply => self.execute_binary_op(executor, |a, b| Ok(a * b)),
-            BigIntOpcode::Divide => self.execute_binary_op(executor, |a, b| if b.sign() == Sign::NoSign { Err(VMError::DivisionByZero) } else { Ok(a / b) }),
-            BigIntOpcode::Modulus => self.execute_binary_op(executor, |a, b| if b.sign() == Sign::NoSign { Err(VMError::DivisionByZero) } else { Ok(a % b) }),
-            BigIntOpcode::Power => {
+            BigIntOpcode::Sub => self.execute_binary_op(executor, |a, b| Ok(a - b)),
+            BigIntOpcode::Mul => self.execute_binary_op(executor, |a, b| Ok(a * b)),
+            BigIntOpcode::Div => self.execute_binary_op(executor, |a, b| if b.sign() == Sign::NoSign { Err(VMError::DivisionByZero) } else { Ok(a / b) }),
+            BigIntOpcode::Mod => self.execute_binary_op(executor, |a, b| if b.sign() == Sign::NoSign { Err(VMError::DivisionByZero) } else { Ok(a % b) }),
+            BigIntOpcode::Pow => {
                 self.execute_binary_op(executor, |a, b| {
                     // Convert b to u32 for exponentiation
                     if b.sign() == Sign::Minus {
@@ -138,7 +138,7 @@ impl Instruction for BigIntInstruction {
                     }
                 })
             }
-            BigIntOpcode::SquareRoot => {
+            BigIntOpcode::Factorial => {
                 self.execute_unary_op(executor, |a| {
                     if a.sign() == Sign::Minus {
                         Err(VMError::InvalidOperand("Square root of negative number".to_string()))
@@ -164,7 +164,7 @@ impl Instruction for BigIntInstruction {
                 use num_integer::Integer;
                 Ok(a.lcm(&b))
             }),
-            BigIntOpcode::FromInt => {
+            BigIntOpcode::FromI64 => {
                 // Convert regular integer (already on stack as f64) to BigInt representation
                 // This is essentially a no-op in our current representation, but marks the intent
                 let value = executor.pop_operand()?;
@@ -173,7 +173,7 @@ impl Instruction for BigIntInstruction {
                 executor.push_operand(result);
                 Ok(())
             }
-            BigIntOpcode::ToInt => {
+            BigIntOpcode::ToI64 => {
                 // Convert BigInt to regular integer with overflow check
                 let bigint = Self::stack_to_bigint(executor.pop_operand()?)?;
 
@@ -190,7 +190,7 @@ impl Instruction for BigIntInstruction {
                 executor.push_operand(result as f64);
                 Ok(())
             }
-            BigIntOpcode::Compare => self.execute_comparison(executor, |a, b| {
+            BigIntOpcode::Cmp => self.execute_comparison(executor, |a, b| {
                 use std::cmp::Ordering;
                 match a.cmp(b) {
                     Ordering::Less => -1.0,
@@ -199,8 +199,10 @@ impl Instruction for BigIntInstruction {
                 }
             }),
             BigIntOpcode::IsZero => self.execute_predicate(executor, |a| a.sign() == Sign::NoSign),
-            BigIntOpcode::IsNegative => self.execute_predicate(executor, |a| a.sign() == Sign::Minus),
+            BigIntOpcode::IsOdd => self.execute_predicate(executor, |a| a.sign() == Sign::Minus),
+            BigIntOpcode::Not => self.execute_unary_op(executor, |a| Ok(!a)),
             BigIntOpcode::Abs => self.execute_unary_op(executor, |a| Ok(a.abs())),
+            _ => Err(VMError::UnknownOpcode),
         }
     }
 }

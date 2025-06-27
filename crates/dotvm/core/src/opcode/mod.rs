@@ -16,8 +16,13 @@
 
 pub mod architecture_opcodes;
 pub mod arithmetic_opcodes;
+pub mod bigint_opcodes;
 pub mod control_flow_opcodes;
 pub mod crypto_opcodes;
+pub mod math_opcodes;
 pub mod memory_opcodes;
+pub mod parallel_opcodes;
+pub mod simd_opcodes;
 pub mod state_opcodes;
 pub mod system_call_opcodes;
+pub mod vector_opcodes;

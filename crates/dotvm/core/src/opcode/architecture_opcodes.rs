@@ -20,7 +20,18 @@
 //! Each higher architecture includes all opcodes from lower architectures plus
 //! architecture-specific extensions.
 
-use super::{arithmetic_opcodes::ArithmeticOpcode, control_flow_opcodes::ControlFlowOpcode, crypto_opcodes::CryptoOpcode, memory_opcodes::MemoryOpcode, system_call_opcodes::SystemCallOpcode};
+use super::{
+    arithmetic_opcodes::ArithmeticOpcode, 
+    bigint_opcodes::BigIntOpcode,
+    control_flow_opcodes::ControlFlowOpcode, 
+    crypto_opcodes::CryptoOpcode, 
+    math_opcodes::MathOpcode,
+    memory_opcodes::MemoryOpcode, 
+    parallel_opcodes::ParallelOpcode,
+    simd_opcodes::SimdOpcode,
+    system_call_opcodes::SystemCallOpcode,
+    vector_opcodes::VectorOpcode,
+};
 use std::fmt;
 
 /// Base 64-bit architecture opcodes
@@ -113,7 +124,7 @@ impl Opcode128 {
     pub fn mnemonic(&self) -> String {
         match self {
             Opcode128::Base(op) => op.mnemonic(),
-            Opcode128::BigInt(op) => format!("BIGINT.{}", op.to_mnemonic()),
+            Opcode128::BigInt(op) => format!("BIGINT.{}", op),
         }
     }
 
@@ -129,119 +140,117 @@ impl fmt::Display for Opcode128 {
     }
 }
 
-/// Big integer opcodes for 128-bit+ architectures
-/// These operations work with arbitrary precision integers
+/// 256-bit architecture opcodes
+/// Includes all 128-bit opcodes plus SIMD and advanced mathematical operations
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum BigIntOpcode {
-    /// Add two big integers
-    Add = 0x01,
-    /// Subtract two big integers
-    Subtract = 0x02,
-    /// Multiply two big integers
-    Multiply = 0x03,
-    /// Divide two big integers
-    Divide = 0x04,
-    /// Modulus operation on big integers
-    Modulus = 0x05,
-    /// Power operation (base^exponent)
-    Power = 0x06,
-    /// Square root of big integer
-    SquareRoot = 0x07,
-    /// Greatest common divisor
-    Gcd = 0x08,
-    /// Least common multiple
-    Lcm = 0x09,
-    /// Convert from regular integer to big integer
-    FromInt = 0x0A,
-    /// Convert big integer to regular integer (with overflow check)
-    ToInt = 0x0B,
-    /// Compare two big integers (-1, 0, 1)
-    Compare = 0x0C,
-    /// Check if big integer is zero
-    IsZero = 0x0D,
-    /// Check if big integer is negative
-    IsNegative = 0x0E,
-    /// Absolute value of big integer
-    Abs = 0x0F,
+pub enum Opcode256 {
+    /// All base 128-bit opcodes are available
+    Base(Opcode128),
+    /// SIMD operations for 256-bit vectors
+    Simd(SimdOpcode),
+    /// Advanced mathematical operations
+    Math(MathOpcode),
 }
 
-impl BigIntOpcode {
-    /// Convert from mnemonic string to opcode
-    pub fn from_mnemonic(mnemonic: &str) -> Option<Self> {
-        match mnemonic.to_uppercase().as_str() {
-            "ADD" => Some(Self::Add),
-            "SUB" => Some(Self::Subtract),
-            "MUL" => Some(Self::Multiply),
-            "DIV" => Some(Self::Divide),
-            "MOD" => Some(Self::Modulus),
-            "POW" => Some(Self::Power),
-            "SQRT" => Some(Self::SquareRoot),
-            "GCD" => Some(Self::Gcd),
-            "LCM" => Some(Self::Lcm),
-            "FROMINT" => Some(Self::FromInt),
-            "TOINT" => Some(Self::ToInt),
-            "CMP" => Some(Self::Compare),
-            "ISZERO" => Some(Self::IsZero),
-            "ISNEG" => Some(Self::IsNegative),
-            "ABS" => Some(Self::Abs),
-            _ => None,
-        }
-    }
-
-    /// Convert opcode to mnemonic string
-    pub fn to_mnemonic(&self) -> &'static str {
+impl Opcode256 {
+    /// Get the opcode's numerical value for bytecode generation
+    pub fn as_u16(&self) -> u16 {
         match self {
-            BigIntOpcode::Add => "ADD",
-            BigIntOpcode::Subtract => "SUB",
-            BigIntOpcode::Multiply => "MUL",
-            BigIntOpcode::Divide => "DIV",
-            BigIntOpcode::Modulus => "MOD",
-            BigIntOpcode::Power => "POW",
-            BigIntOpcode::SquareRoot => "SQRT",
-            BigIntOpcode::Gcd => "GCD",
-            BigIntOpcode::Lcm => "LCM",
-            BigIntOpcode::FromInt => "FROMINT",
-            BigIntOpcode::ToInt => "TOINT",
-            BigIntOpcode::Compare => "CMP",
-            BigIntOpcode::IsZero => "ISZERO",
-            BigIntOpcode::IsNegative => "ISNEG",
-            BigIntOpcode::Abs => "ABS",
+            Opcode256::Base(op) => op.as_u16(),
+            Opcode256::Simd(op) => 0x2000 + *op as u16,
+            Opcode256::Math(op) => 0x3000 + *op as u16,
         }
-    }
-
-    /// Get the opcode's numerical value
-    pub fn as_u8(&self) -> u8 {
-        *self as u8
     }
 
     /// Convert from numerical value back to opcode
-    pub fn from_u8(value: u8) -> Option<Self> {
-        match value {
-            0x01 => Some(Self::Add),
-            0x02 => Some(Self::Subtract),
-            0x03 => Some(Self::Multiply),
-            0x04 => Some(Self::Divide),
-            0x05 => Some(Self::Modulus),
-            0x06 => Some(Self::Power),
-            0x07 => Some(Self::SquareRoot),
-            0x08 => Some(Self::Gcd),
-            0x09 => Some(Self::Lcm),
-            0x0A => Some(Self::FromInt),
-            0x0B => Some(Self::ToInt),
-            0x0C => Some(Self::Compare),
-            0x0D => Some(Self::IsZero),
-            0x0E => Some(Self::IsNegative),
-            0x0F => Some(Self::Abs),
+    pub fn from_u16(value: u16) -> Option<Self> {
+        match value & 0xF000 {
+            0x0000..=0x1FFF => Opcode128::from_u16(value).map(Opcode256::Base),
+            0x2000 => Some(Opcode256::Simd(SimdOpcode::from((value & 0xFF) as u8))),
+            0x3000 => Some(Opcode256::Math(MathOpcode::from((value & 0xFF) as u8))),
             _ => None,
         }
     }
-}
 
-impl fmt::Display for BigIntOpcode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_mnemonic())
+    /// Get human-readable mnemonic for the opcode
+    pub fn mnemonic(&self) -> String {
+        match self {
+            Opcode256::Base(op) => op.mnemonic(),
+            Opcode256::Simd(op) => format!("SIMD.{}", op),
+            Opcode256::Math(op) => format!("MATH.{}", op),
+        }
+    }
+
+    /// Check if this opcode is available in 128-bit architecture
+    pub fn is_128bit_compatible(&self) -> bool {
+        matches!(self, Opcode256::Base(_))
     }
 }
+
+impl fmt::Display for Opcode256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.mnemonic())
+    }
+}
+
+/// 512-bit architecture opcodes
+/// Includes all 256-bit opcodes plus vector processing and parallel operations
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum Opcode512 {
+    /// All base 256-bit opcodes are available
+    Base(Opcode256),
+    /// Vector processing operations for 512-bit vectors
+    Vector(VectorOpcode),
+    /// Parallel processing operations
+    Parallel(ParallelOpcode),
+    /// Advanced cryptographic operations
+    Crypto(CryptoOpcode),
+}
+
+impl Opcode512 {
+    /// Get the opcode's numerical value for bytecode generation
+    pub fn as_u16(&self) -> u16 {
+        match self {
+            Opcode512::Base(op) => op.as_u16(),
+            Opcode512::Vector(op) => 0x4000 + *op as u16,
+            Opcode512::Parallel(op) => 0x5000 + *op as u16,
+            Opcode512::Crypto(op) => 0x6000 + *op as u16,
+        }
+    }
+
+    /// Convert from numerical value back to opcode
+    pub fn from_u16(value: u16) -> Option<Self> {
+        match value & 0xF000 {
+            0x0000..=0x3FFF => Opcode256::from_u16(value).map(Opcode512::Base),
+            0x4000 => Some(Opcode512::Vector(VectorOpcode::from((value & 0xFF) as u8))),
+            0x5000 => Some(Opcode512::Parallel(ParallelOpcode::from((value & 0xFF) as u8))),
+            0x6000 => CryptoOpcode::from_u8((value & 0xFF) as u8).map(Opcode512::Crypto),
+            _ => None,
+        }
+    }
+
+    /// Get human-readable mnemonic for the opcode
+    pub fn mnemonic(&self) -> String {
+        match self {
+            Opcode512::Base(op) => op.mnemonic(),
+            Opcode512::Vector(op) => format!("VEC.{}", op),
+            Opcode512::Parallel(op) => format!("PAR.{}", op),
+            Opcode512::Crypto(op) => format!("CRYPTO.{}", op),
+        }
+    }
+
+    /// Check if this opcode is available in 256-bit architecture
+    pub fn is_256bit_compatible(&self) -> bool {
+        matches!(self, Opcode512::Base(_))
+    }
+}
+
+impl fmt::Display for Opcode512 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.mnemonic())
+    }
+}
+
 
 /// Architecture trait for opcode support
 pub trait ArchitectureOpcodes {
@@ -292,6 +301,44 @@ impl ArchitectureOpcodes for Arch128Opcodes {
 
     fn architecture_name() -> &'static str {
         "128-bit"
+    }
+}
+
+/// 256-bit architecture opcode support
+pub struct Arch256Opcodes;
+
+impl ArchitectureOpcodes for Arch256Opcodes {
+    type Opcode = Opcode256;
+
+    fn supports_opcode(_opcode: &Self::Opcode) -> bool {
+        true // All Opcode256 variants are supported
+    }
+
+    fn max_opcode_value() -> u16 {
+        0x3FFF // Math opcodes are the highest in 256-bit
+    }
+
+    fn architecture_name() -> &'static str {
+        "256-bit"
+    }
+}
+
+/// 512-bit architecture opcode support
+pub struct Arch512Opcodes;
+
+impl ArchitectureOpcodes for Arch512Opcodes {
+    type Opcode = Opcode512;
+
+    fn supports_opcode(_opcode: &Self::Opcode) -> bool {
+        true // All Opcode512 variants are supported
+    }
+
+    fn max_opcode_value() -> u16 {
+        0x6FFF // Crypto opcodes are the highest in 512-bit
+    }
+
+    fn architecture_name() -> &'static str {
+        "512-bit"
     }
 }
 
