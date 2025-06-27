@@ -21,10 +21,7 @@
 //! primitives, matrix operations, and advanced vector processing.
 
 use crate::wasm::ast::{WasmFunction, WasmInstruction, WasmValueType};
-use dotvm_core::{
-    bytecode::VmArchitecture,
-    opcode::architecture_opcodes::Opcode512,
-};
+use dotvm_core::{bytecode::VmArchitecture, opcode::architecture_opcodes::Opcode512};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -36,11 +33,7 @@ pub enum VectorExtensionError {
     #[error("Unsupported vector operation: {0}")]
     UnsupportedOperation(String),
     #[error("Matrix dimension mismatch: {operation} requires {expected_dims}, got {actual_dims}")]
-    MatrixDimensionMismatch {
-        operation: String,
-        expected_dims: String,
-        actual_dims: String,
-    },
+    MatrixDimensionMismatch { operation: String, expected_dims: String, actual_dims: String },
     #[error("Vector length mismatch: expected {expected}, got {actual}")]
     VectorLengthMismatch { expected: usize, actual: usize },
     #[error("Parallel operation overflow: operation exceeds processing capacity")]
@@ -55,42 +48,42 @@ pub enum VectorExtensionError {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum VectorDataType {
     // Basic vector types
-    Vector2D,    // 2D vector (x, y)
-    Vector3D,    // 3D vector (x, y, z)
-    Vector4D,    // 4D vector (x, y, z, w)
-    
+    Vector2D, // 2D vector (x, y)
+    Vector3D, // 3D vector (x, y, z)
+    Vector4D, // 4D vector (x, y, z, w)
+
     // Matrix types
-    Matrix2x2,   // 2x2 matrix
-    Matrix3x3,   // 3x3 matrix
-    Matrix4x4,   // 4x4 matrix
-    MatrixNxM,   // Variable size matrix
-    
+    Matrix2x2, // 2x2 matrix
+    Matrix3x3, // 3x3 matrix
+    Matrix4x4, // 4x4 matrix
+    MatrixNxM, // Variable size matrix
+
     // Tensor types
-    Tensor1D,    // 1D tensor (vector)
-    Tensor2D,    // 2D tensor (matrix)
-    Tensor3D,    // 3D tensor
-    Tensor4D,    // 4D tensor
-    TensorND,    // N-dimensional tensor
-    
+    Tensor1D, // 1D tensor (vector)
+    Tensor2D, // 2D tensor (matrix)
+    Tensor3D, // 3D tensor
+    Tensor4D, // 4D tensor
+    TensorND, // N-dimensional tensor
+
     // Specialized types
-    Quaternion,  // Quaternion for 3D rotations
-    Complex,     // Complex number
-    Polynomial,  // Polynomial coefficients
+    Quaternion, // Quaternion for 3D rotations
+    Complex,    // Complex number
+    Polynomial, // Polynomial coefficients
 }
 
 impl VectorDataType {
     /// Get the memory size in bytes for this data type
     pub fn memory_size(&self) -> usize {
         match self {
-            VectorDataType::Vector2D => 2 * 8,      // 2 x f64
-            VectorDataType::Vector3D => 3 * 8,      // 3 x f64
-            VectorDataType::Vector4D => 4 * 8,      // 4 x f64
-            VectorDataType::Matrix2x2 => 4 * 8,     // 4 x f64
-            VectorDataType::Matrix3x3 => 9 * 8,     // 9 x f64
-            VectorDataType::Matrix4x4 => 16 * 8,    // 16 x f64
-            VectorDataType::Quaternion => 4 * 8,    // 4 x f64
-            VectorDataType::Complex => 2 * 8,       // 2 x f64
-            _ => 64, // Default size for variable types
+            VectorDataType::Vector2D => 2 * 8,   // 2 x f64
+            VectorDataType::Vector3D => 3 * 8,   // 3 x f64
+            VectorDataType::Vector4D => 4 * 8,   // 4 x f64
+            VectorDataType::Matrix2x2 => 4 * 8,  // 4 x f64
+            VectorDataType::Matrix3x3 => 9 * 8,  // 9 x f64
+            VectorDataType::Matrix4x4 => 16 * 8, // 16 x f64
+            VectorDataType::Quaternion => 4 * 8, // 4 x f64
+            VectorDataType::Complex => 2 * 8,    // 2 x f64
+            _ => 64,                             // Default size for variable types
         }
     }
 
@@ -114,26 +107,26 @@ pub enum VectorOperation {
     // Basic vector operations
     VectorAdd,
     VectorSub,
-    VectorMul,      // Element-wise multiplication
-    VectorDiv,      // Element-wise division
+    VectorMul, // Element-wise multiplication
+    VectorDiv, // Element-wise division
     DotProduct,
     CrossProduct,
     VectorNorm,
     VectorNormalize,
     VectorDistance,
     VectorAngle,
-    
+
     // Matrix operations
     MatrixAdd,
     MatrixSub,
-    MatrixMul,      // Matrix multiplication
+    MatrixMul, // Matrix multiplication
     MatrixTranspose,
     MatrixInverse,
     MatrixDeterminant,
     MatrixEigenvalues,
     MatrixEigenvectors,
     MatrixDecomposition, // LU, QR, SVD
-    
+
     // Tensor operations
     TensorAdd,
     TensorSub,
@@ -142,21 +135,21 @@ pub enum VectorOperation {
     TensorTranspose,
     TensorReshape,
     TensorSlice,
-    
+
     // Advanced operations
     ConvolutionND,
     FourierTransform,
     InverseFourierTransform,
     WaveletTransform,
     PrincipalComponentAnalysis,
-    
+
     // Parallel operations
     ParallelMap,
     ParallelReduce,
     ParallelFilter,
     ParallelSort,
     ParallelScan,
-    
+
     // Specialized operations
     QuaternionMul,
     QuaternionConjugate,
@@ -172,34 +165,34 @@ impl VectorOperation {
     pub fn min_operands(&self) -> usize {
         match self {
             // Unary operations
-            VectorOperation::VectorNorm |
-            VectorOperation::VectorNormalize |
-            VectorOperation::MatrixTranspose |
-            VectorOperation::MatrixInverse |
-            VectorOperation::MatrixDeterminant |
-            VectorOperation::MatrixEigenvalues |
-            VectorOperation::MatrixEigenvectors |
-            VectorOperation::QuaternionConjugate |
-            VectorOperation::QuaternionToMatrix |
-            VectorOperation::InverseFourierTransform |
-            VectorOperation::FourierTransform => 1,
-            
+            VectorOperation::VectorNorm
+            | VectorOperation::VectorNormalize
+            | VectorOperation::MatrixTranspose
+            | VectorOperation::MatrixInverse
+            | VectorOperation::MatrixDeterminant
+            | VectorOperation::MatrixEigenvalues
+            | VectorOperation::MatrixEigenvectors
+            | VectorOperation::QuaternionConjugate
+            | VectorOperation::QuaternionToMatrix
+            | VectorOperation::InverseFourierTransform
+            | VectorOperation::FourierTransform => 1,
+
             // Binary operations
-            VectorOperation::VectorAdd |
-            VectorOperation::VectorSub |
-            VectorOperation::VectorMul |
-            VectorOperation::VectorDiv |
-            VectorOperation::DotProduct |
-            VectorOperation::CrossProduct |
-            VectorOperation::VectorDistance |
-            VectorOperation::VectorAngle |
-            VectorOperation::MatrixAdd |
-            VectorOperation::MatrixSub |
-            VectorOperation::MatrixMul |
-            VectorOperation::QuaternionMul |
-            VectorOperation::ComplexMul |
-            VectorOperation::ComplexDiv => 2,
-            
+            VectorOperation::VectorAdd
+            | VectorOperation::VectorSub
+            | VectorOperation::VectorMul
+            | VectorOperation::VectorDiv
+            | VectorOperation::DotProduct
+            | VectorOperation::CrossProduct
+            | VectorOperation::VectorDistance
+            | VectorOperation::VectorAngle
+            | VectorOperation::MatrixAdd
+            | VectorOperation::MatrixSub
+            | VectorOperation::MatrixMul
+            | VectorOperation::QuaternionMul
+            | VectorOperation::ComplexMul
+            | VectorOperation::ComplexDiv => 2,
+
             // Variable operand operations
             _ => 1,
         }
@@ -207,21 +200,22 @@ impl VectorOperation {
 
     /// Check if this operation supports parallel execution
     pub fn supports_parallel(&self) -> bool {
-        matches!(self,
-            VectorOperation::VectorAdd |
-            VectorOperation::VectorSub |
-            VectorOperation::VectorMul |
-            VectorOperation::VectorDiv |
-            VectorOperation::MatrixAdd |
-            VectorOperation::MatrixSub |
-            VectorOperation::TensorAdd |
-            VectorOperation::TensorSub |
-            VectorOperation::ParallelMap |
-            VectorOperation::ParallelReduce |
-            VectorOperation::ParallelFilter |
-            VectorOperation::ParallelSort |
-            VectorOperation::ParallelScan |
-            VectorOperation::ConvolutionND
+        matches!(
+            self,
+            VectorOperation::VectorAdd
+                | VectorOperation::VectorSub
+                | VectorOperation::VectorMul
+                | VectorOperation::VectorDiv
+                | VectorOperation::MatrixAdd
+                | VectorOperation::MatrixSub
+                | VectorOperation::TensorAdd
+                | VectorOperation::TensorSub
+                | VectorOperation::ParallelMap
+                | VectorOperation::ParallelReduce
+                | VectorOperation::ParallelFilter
+                | VectorOperation::ParallelSort
+                | VectorOperation::ParallelScan
+                | VectorOperation::ConvolutionND
         )
     }
 }
@@ -257,10 +251,10 @@ pub struct ParallelConfig {
 /// Memory access patterns for optimization
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MemoryPattern {
-    Sequential,    // Sequential access
-    Strided,       // Strided access with fixed stride
-    Random,        // Random access pattern
-    Blocked,       // Block-based access for cache efficiency
+    Sequential, // Sequential access
+    Strided,    // Strided access with fixed stride
+    Random,     // Random access pattern
+    Blocked,    // Block-based access for cache efficiency
 }
 
 /// Vector processing extension for DotVM
@@ -289,7 +283,7 @@ impl VectorExtension {
                 memory_pattern: MemoryPattern::Sequential,
             },
         };
-        
+
         extension.initialize_operation_mappings();
         Ok(extension)
     }
@@ -364,18 +358,10 @@ impl VectorExtension {
     }
 
     /// Create operation context from function signature
-    fn create_operation_context(
-        &self,
-        operation: &VectorOperation,
-        function: &WasmFunction,
-    ) -> Result<VectorOperationContext, VectorExtensionError> {
+    fn create_operation_context(&self, operation: &VectorOperation, function: &WasmFunction) -> Result<VectorOperationContext, VectorExtensionError> {
         let (input_types, output_type, dimensions) = self.infer_data_types(operation, function)?;
-        
-        let parallel_config = if operation.supports_parallel() {
-            Some(self.default_parallel_config.clone())
-        } else {
-            None
-        };
+
+        let parallel_config = if operation.supports_parallel() { Some(self.default_parallel_config.clone()) } else { None };
 
         Ok(VectorOperationContext {
             operation: operation.clone(),
@@ -388,39 +374,32 @@ impl VectorExtension {
     }
 
     /// Infer data types and dimensions from operation and function signature
-    fn infer_data_types(
-        &self,
-        operation: &VectorOperation,
-        function: &WasmFunction,
-    ) -> Result<(Vec<VectorDataType>, VectorDataType, Vec<usize>), VectorExtensionError> {
+    fn infer_data_types(&self, operation: &VectorOperation, function: &WasmFunction) -> Result<(Vec<VectorDataType>, VectorDataType, Vec<usize>), VectorExtensionError> {
         match operation {
             // Vector operations
-            VectorOperation::VectorAdd | VectorOperation::VectorSub |
-            VectorOperation::VectorMul | VectorOperation::VectorDiv => {
+            VectorOperation::VectorAdd | VectorOperation::VectorSub | VectorOperation::VectorMul | VectorOperation::VectorDiv => {
                 let vector_type = self.infer_vector_type_from_params(&function.signature.params)?;
                 Ok((vec![vector_type.clone(), vector_type.clone()], vector_type, vec![]))
             }
-            
+
             VectorOperation::DotProduct => {
                 let vector_type = self.infer_vector_type_from_params(&function.signature.params)?;
                 Ok((vec![vector_type.clone(), vector_type], VectorDataType::Vector2D, vec![]))
             }
-            
-            VectorOperation::CrossProduct => {
-                Ok((vec![VectorDataType::Vector3D, VectorDataType::Vector3D], VectorDataType::Vector3D, vec![]))
-            }
-            
+
+            VectorOperation::CrossProduct => Ok((vec![VectorDataType::Vector3D, VectorDataType::Vector3D], VectorDataType::Vector3D, vec![])),
+
             // Matrix operations
             VectorOperation::MatrixMul => {
                 let matrix_type = self.infer_matrix_type_from_params(&function.signature.params)?;
                 Ok((vec![matrix_type.clone(), matrix_type.clone()], matrix_type, vec![]))
             }
-            
+
             VectorOperation::MatrixTranspose => {
                 let matrix_type = self.infer_matrix_type_from_params(&function.signature.params)?;
                 Ok((vec![matrix_type.clone()], matrix_type, vec![]))
             }
-            
+
             // Default case
             _ => {
                 let default_type = VectorDataType::Vector4D;
@@ -482,17 +461,9 @@ impl VectorExtension {
     /// Check if instruction sequence indicates matrix multiplication
     fn has_matrix_multiplication_pattern(&self, instructions: &[WasmInstruction]) -> bool {
         // Look for nested loops with multiply-accumulate operations
-        let mul_ops = instructions.iter()
-            .filter(|inst| matches!(inst, 
-                WasmInstruction::F64Mul | WasmInstruction::F32Mul
-            ))
-            .count();
-        
-        let add_ops = instructions.iter()
-            .filter(|inst| matches!(inst,
-                WasmInstruction::F64Add | WasmInstruction::F32Add
-            ))
-            .count();
+        let mul_ops = instructions.iter().filter(|inst| matches!(inst, WasmInstruction::F64Mul | WasmInstruction::F32Mul)).count();
+
+        let add_ops = instructions.iter().filter(|inst| matches!(inst, WasmInstruction::F64Add | WasmInstruction::F32Add)).count();
 
         // Heuristic: matrix multiplication has many multiply-add pairs
         mul_ops >= 16 && add_ops >= 16 && (mul_ops as f32 / add_ops as f32).abs() < 2.0
@@ -502,13 +473,21 @@ impl VectorExtension {
     fn has_parallel_processing_pattern(&self, instructions: &[WasmInstruction]) -> bool {
         // Look for repetitive operations that could benefit from parallelization
         let total_ops = instructions.len();
-        let arithmetic_ops = instructions.iter()
-            .filter(|inst| matches!(inst,
-                WasmInstruction::F64Add | WasmInstruction::F64Sub |
-                WasmInstruction::F64Mul | WasmInstruction::F64Div |
-                WasmInstruction::F32Add | WasmInstruction::F32Sub |
-                WasmInstruction::F32Mul | WasmInstruction::F32Div
-            ))
+        let arithmetic_ops = instructions
+            .iter()
+            .filter(|inst| {
+                matches!(
+                    inst,
+                    WasmInstruction::F64Add
+                        | WasmInstruction::F64Sub
+                        | WasmInstruction::F64Mul
+                        | WasmInstruction::F64Div
+                        | WasmInstruction::F32Add
+                        | WasmInstruction::F32Sub
+                        | WasmInstruction::F32Mul
+                        | WasmInstruction::F32Div
+                )
+            })
             .count();
 
         // Heuristic: if >50% of instructions are arithmetic, it might benefit from parallelization
@@ -521,7 +500,7 @@ impl VectorExtension {
 
         // Add operation metadata
         bytecode.push(self.encode_vector_operation(&context.operation)?);
-        
+
         // Add data type information
         for input_type in &context.input_types {
             bytecode.push(self.encode_data_type(input_type)?);
@@ -552,9 +531,7 @@ impl VectorExtension {
             VectorOperation::ParallelMap => {
                 bytecode.push((Opcode512::Parallel(dotvm_core::opcode::parallel_opcodes::ParallelOpcode::Map).as_u16() & 0xFF) as u8);
             }
-            _ => return Err(VectorExtensionError::UnsupportedOperation(
-                format!("{:?} not yet implemented", context.operation)
-            )),
+            _ => return Err(VectorExtensionError::UnsupportedOperation(format!("{:?} not yet implemented", context.operation))),
         }
 
         Ok(bytecode)
@@ -574,9 +551,7 @@ impl VectorExtension {
             VectorOperation::FourierTransform => Ok(0x20),
             VectorOperation::ParallelMap => Ok(0x30),
             VectorOperation::ParallelReduce => Ok(0x31),
-            _ => Err(VectorExtensionError::UnsupportedOperation(
-                format!("Encoding not implemented for {:?}", operation)
-            )),
+            _ => Err(VectorExtensionError::UnsupportedOperation(format!("Encoding not implemented for {:?}", operation))),
         }
     }
 
@@ -615,7 +590,7 @@ mod tests {
         let extension = VectorExtension::new(VmArchitecture::Arch512).unwrap();
         assert!(extension.operation_mappings.contains_key("vector_add"));
         assert!(extension.operation_mappings.contains_key("matrix_mul"));
-        
+
         let result = VectorExtension::new(VmArchitecture::Arch256);
         assert!(result.is_err());
     }
@@ -638,7 +613,7 @@ mod tests {
     #[test]
     fn test_operation_detection() {
         let extension = VectorExtension::new(VmArchitecture::Arch512).unwrap();
-        
+
         let function = WasmFunction {
             signature: crate::wasm::ast::WasmFunctionType {
                 params: vec![WasmValueType::F64, WasmValueType::F64, WasmValueType::F64],
@@ -656,13 +631,13 @@ mod tests {
     #[test]
     fn test_parallel_config() {
         let mut extension = VectorExtension::new(VmArchitecture::Arch512).unwrap();
-        
+
         let new_config = ParallelConfig {
             thread_count: 16,
             chunk_size: 2048,
             memory_pattern: MemoryPattern::Blocked,
         };
-        
+
         extension.set_parallel_config(new_config.clone());
         assert_eq!(extension.default_parallel_config.thread_count, 16);
         assert_eq!(extension.default_parallel_config.chunk_size, 2048);

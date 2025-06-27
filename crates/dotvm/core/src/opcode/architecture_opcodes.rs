@@ -21,16 +21,8 @@
 //! architecture-specific extensions.
 
 use super::{
-    arithmetic_opcodes::ArithmeticOpcode, 
-    bigint_opcodes::BigIntOpcode,
-    control_flow_opcodes::ControlFlowOpcode, 
-    crypto_opcodes::CryptoOpcode, 
-    math_opcodes::MathOpcode,
-    memory_opcodes::MemoryOpcode, 
-    parallel_opcodes::ParallelOpcode,
-    simd_opcodes::SimdOpcode,
-    system_call_opcodes::SystemCallOpcode,
-    vector_opcodes::VectorOpcode,
+    arithmetic_opcodes::ArithmeticOpcode, bigint_opcodes::BigIntOpcode, control_flow_opcodes::ControlFlowOpcode, crypto_opcodes::CryptoOpcode, math_opcodes::MathOpcode, memory_opcodes::MemoryOpcode,
+    parallel_opcodes::ParallelOpcode, simd_opcodes::SimdOpcode, system_call_opcodes::SystemCallOpcode, vector_opcodes::VectorOpcode,
 };
 use std::fmt;
 
@@ -250,7 +242,6 @@ impl fmt::Display for Opcode512 {
         write!(f, "{}", self.mnemonic())
     }
 }
-
 
 /// Architecture trait for opcode support
 pub trait ArchitectureOpcodes {

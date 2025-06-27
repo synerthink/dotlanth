@@ -33,8 +33,8 @@ use crate::{
     memory::{Arch64, Arch128, Architecture},
     opcode::{
         architecture_opcodes::{Arch64Opcodes, Arch128Opcodes, ArchitectureOpcodes, Opcode64, Opcode128},
-        bigint_opcodes::BigIntOpcode,
         arithmetic_opcodes::ArithmeticOpcode,
+        bigint_opcodes::BigIntOpcode,
         control_flow_opcodes::ControlFlowOpcode,
         crypto_opcodes::CryptoOpcode,
         memory_opcodes::MemoryOpcode,

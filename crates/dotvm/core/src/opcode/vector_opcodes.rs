@@ -25,82 +25,82 @@ use std::fmt;
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum VectorOpcode {
     // 512-bit vector arithmetic
-    AddF32x16 = 0x01,        // Add 16 x f32
-    SubF32x16 = 0x02,        // Subtract 16 x f32
-    MulF32x16 = 0x03,        // Multiply 16 x f32
-    DivF32x16 = 0x04,        // Divide 16 x f32
-    
-    AddF64x8 = 0x10,         // Add 8 x f64
-    SubF64x8 = 0x11,         // Subtract 8 x f64
-    MulF64x8 = 0x12,         // Multiply 8 x f64
-    DivF64x8 = 0x13,         // Divide 8 x f64
-    
+    AddF32x16 = 0x01, // Add 16 x f32
+    SubF32x16 = 0x02, // Subtract 16 x f32
+    MulF32x16 = 0x03, // Multiply 16 x f32
+    DivF32x16 = 0x04, // Divide 16 x f32
+
+    AddF64x8 = 0x10, // Add 8 x f64
+    SubF64x8 = 0x11, // Subtract 8 x f64
+    MulF64x8 = 0x12, // Multiply 8 x f64
+    DivF64x8 = 0x13, // Divide 8 x f64
+
     // Vector operations
-    VectorAdd = 0x20,        // Generic vector addition
-    VectorSub = 0x21,        // Generic vector subtraction
-    VectorMul = 0x22,        // Element-wise vector multiplication
-    VectorDiv = 0x23,        // Element-wise vector division
-    DotProduct = 0x24,       // Vector dot product
-    CrossProduct = 0x25,     // Vector cross product
-    VectorNorm = 0x26,       // Vector norm/magnitude
-    VectorNormalize = 0x27,  // Vector normalization
-    
+    VectorAdd = 0x20,       // Generic vector addition
+    VectorSub = 0x21,       // Generic vector subtraction
+    VectorMul = 0x22,       // Element-wise vector multiplication
+    VectorDiv = 0x23,       // Element-wise vector division
+    DotProduct = 0x24,      // Vector dot product
+    CrossProduct = 0x25,    // Vector cross product
+    VectorNorm = 0x26,      // Vector norm/magnitude
+    VectorNormalize = 0x27, // Vector normalization
+
     // Matrix operations
-    MatrixMul = 0x30,        // Matrix multiplication
-    MatrixTranspose = 0x31,  // Matrix transpose
-    MatrixInverse = 0x32,    // Matrix inverse
+    MatrixMul = 0x30,         // Matrix multiplication
+    MatrixTranspose = 0x31,   // Matrix transpose
+    MatrixInverse = 0x32,     // Matrix inverse
     MatrixDeterminant = 0x33, // Matrix determinant
-    MatrixTrace = 0x34,      // Matrix trace
-    
+    MatrixTrace = 0x34,       // Matrix trace
+
     // Advanced vector operations
-    DotProductF32x16 = 0x40, // Dot product of 16 x f32 vectors
+    DotProductF32x16 = 0x40,   // Dot product of 16 x f32 vectors
     CrossProductF32x16 = 0x41, // Cross product (3D vectors in 16-element format)
-    NormalizeF32x16 = 0x42,  // Normalize 16 x f32 vector
-    MagnitudeF32x16 = 0x43,  // Calculate magnitude of 16 x f32 vector
-    
+    NormalizeF32x16 = 0x42,    // Normalize 16 x f32 vector
+    MagnitudeF32x16 = 0x43,    // Calculate magnitude of 16 x f32 vector
+
     // Reduction operations
-    SumF32x16 = 0x50,        // Sum all elements in 16 x f32
-    ProductF32x16 = 0x51,    // Product of all elements in 16 x f32
-    MinF32x16 = 0x52,        // Find minimum in 16 x f32
-    MaxF32x16 = 0x53,        // Find maximum in 16 x f32
-    
+    SumF32x16 = 0x50,     // Sum all elements in 16 x f32
+    ProductF32x16 = 0x51, // Product of all elements in 16 x f32
+    MinF32x16 = 0x52,     // Find minimum in 16 x f32
+    MaxF32x16 = 0x53,     // Find maximum in 16 x f32
+
     // Transform operations
-    FFT = 0x60,              // Fast Fourier Transform
-    IFFT = 0x61,             // Inverse Fast Fourier Transform
-    Convolution = 0x62,      // Convolution operation
-    Correlation = 0x63,      // Correlation operation
-    
+    FFT = 0x60,         // Fast Fourier Transform
+    IFFT = 0x61,        // Inverse Fast Fourier Transform
+    Convolution = 0x62, // Convolution operation
+    Correlation = 0x63, // Correlation operation
+
     // Memory operations
-    LoadVector = 0x70,       // Load vector from memory
-    StoreVector = 0x71,      // Store vector to memory
-    GatherVector = 0x72,     // Gather vector elements
-    ScatterVector = 0x73,    // Scatter vector elements
-    
+    LoadVector = 0x70,    // Load vector from memory
+    StoreVector = 0x71,   // Store vector to memory
+    GatherVector = 0x72,  // Gather vector elements
+    ScatterVector = 0x73, // Scatter vector elements
+
     // Comparison operations
-    CompareEq = 0x80,        // Vector equality comparison
-    CompareNe = 0x81,        // Vector inequality comparison
-    CompareLt = 0x82,        // Vector less than comparison
-    CompareLe = 0x83,        // Vector less equal comparison
-    CompareGt = 0x84,        // Vector greater than comparison
-    CompareGe = 0x85,        // Vector greater equal comparison
-    
+    CompareEq = 0x80, // Vector equality comparison
+    CompareNe = 0x81, // Vector inequality comparison
+    CompareLt = 0x82, // Vector less than comparison
+    CompareLe = 0x83, // Vector less equal comparison
+    CompareGt = 0x84, // Vector greater than comparison
+    CompareGe = 0x85, // Vector greater equal comparison
+
     // Conversion operations
-    ConvertF32x16ToF64x8 = 0x90, // Convert 16 x f32 to 8 x f64
-    ConvertF64x8ToF32x16 = 0x91, // Convert 8 x f64 to 16 x f32
+    ConvertF32x16ToF64x8 = 0x90,  // Convert 16 x f32 to 8 x f64
+    ConvertF64x8ToF32x16 = 0x91,  // Convert 8 x f64 to 16 x f32
     ConvertI32x16ToF32x16 = 0x92, // Convert 16 x i32 to 16 x f32
     ConvertF32x16ToI32x16 = 0x93, // Convert 16 x f32 to 16 x i32
-    
+
     // Shuffle and permute
-    ShuffleF32x16 = 0xA0,    // Shuffle 16 x f32 elements
-    PermuteF32x16 = 0xA1,    // Permute 16 x f32 elements
-    BlendF32x16 = 0xA2,      // Blend two 16 x f32 vectors
-    SelectF32x16 = 0xA3,     // Select elements from two 16 x f32 vectors
-    
+    ShuffleF32x16 = 0xA0, // Shuffle 16 x f32 elements
+    PermuteF32x16 = 0xA1, // Permute 16 x f32 elements
+    BlendF32x16 = 0xA2,   // Blend two 16 x f32 vectors
+    SelectF32x16 = 0xA3,  // Select elements from two 16 x f32 vectors
+
     // Specialized operations
-    Polynomial = 0xB0,       // Polynomial evaluation
-    Interpolate = 0xB1,      // Vector interpolation
-    Extrapolate = 0xB2,      // Vector extrapolation
-    Smooth = 0xB3,           // Vector smoothing
+    Polynomial = 0xB0,  // Polynomial evaluation
+    Interpolate = 0xB1, // Vector interpolation
+    Extrapolate = 0xB2, // Vector extrapolation
+    Smooth = 0xB3,      // Vector smoothing
 }
 
 impl VectorOpcode {
@@ -108,65 +108,62 @@ impl VectorOpcode {
     pub fn operand_count(&self) -> usize {
         match self {
             // Unary operations
-            VectorOpcode::VectorNorm |
-            VectorOpcode::VectorNormalize |
-            VectorOpcode::MatrixTranspose |
-            VectorOpcode::MatrixInverse |
-            VectorOpcode::MatrixDeterminant |
-            VectorOpcode::MatrixTrace |
-            VectorOpcode::NormalizeF32x16 |
-            VectorOpcode::MagnitudeF32x16 |
-            VectorOpcode::SumF32x16 |
-            VectorOpcode::ProductF32x16 |
-            VectorOpcode::MinF32x16 |
-            VectorOpcode::MaxF32x16 |
-            VectorOpcode::FFT |
-            VectorOpcode::IFFT |
-            VectorOpcode::LoadVector |
-            VectorOpcode::ConvertF32x16ToF64x8 |
-            VectorOpcode::ConvertF64x8ToF32x16 |
-            VectorOpcode::ConvertI32x16ToF32x16 |
-            VectorOpcode::ConvertF32x16ToI32x16 |
-            VectorOpcode::Polynomial |
-            VectorOpcode::Smooth => 1,
-            
+            VectorOpcode::VectorNorm
+            | VectorOpcode::VectorNormalize
+            | VectorOpcode::MatrixTranspose
+            | VectorOpcode::MatrixInverse
+            | VectorOpcode::MatrixDeterminant
+            | VectorOpcode::MatrixTrace
+            | VectorOpcode::NormalizeF32x16
+            | VectorOpcode::MagnitudeF32x16
+            | VectorOpcode::SumF32x16
+            | VectorOpcode::ProductF32x16
+            | VectorOpcode::MinF32x16
+            | VectorOpcode::MaxF32x16
+            | VectorOpcode::FFT
+            | VectorOpcode::IFFT
+            | VectorOpcode::LoadVector
+            | VectorOpcode::ConvertF32x16ToF64x8
+            | VectorOpcode::ConvertF64x8ToF32x16
+            | VectorOpcode::ConvertI32x16ToF32x16
+            | VectorOpcode::ConvertF32x16ToI32x16
+            | VectorOpcode::Polynomial
+            | VectorOpcode::Smooth => 1,
+
             // Binary operations
-            VectorOpcode::AddF32x16 |
-            VectorOpcode::SubF32x16 |
-            VectorOpcode::MulF32x16 |
-            VectorOpcode::DivF32x16 |
-            VectorOpcode::AddF64x8 |
-            VectorOpcode::SubF64x8 |
-            VectorOpcode::MulF64x8 |
-            VectorOpcode::DivF64x8 |
-            VectorOpcode::VectorAdd |
-            VectorOpcode::VectorSub |
-            VectorOpcode::VectorMul |
-            VectorOpcode::VectorDiv |
-            VectorOpcode::DotProduct |
-            VectorOpcode::CrossProduct |
-            VectorOpcode::MatrixMul |
-            VectorOpcode::DotProductF32x16 |
-            VectorOpcode::CrossProductF32x16 |
-            VectorOpcode::Convolution |
-            VectorOpcode::Correlation |
-            VectorOpcode::StoreVector |
-            VectorOpcode::GatherVector |
-            VectorOpcode::ScatterVector |
-            VectorOpcode::CompareEq |
-            VectorOpcode::CompareNe |
-            VectorOpcode::CompareLt |
-            VectorOpcode::CompareLe |
-            VectorOpcode::CompareGt |
-            VectorOpcode::CompareGe |
-            VectorOpcode::Interpolate |
-            VectorOpcode::Extrapolate => 2,
-            
+            VectorOpcode::AddF32x16
+            | VectorOpcode::SubF32x16
+            | VectorOpcode::MulF32x16
+            | VectorOpcode::DivF32x16
+            | VectorOpcode::AddF64x8
+            | VectorOpcode::SubF64x8
+            | VectorOpcode::MulF64x8
+            | VectorOpcode::DivF64x8
+            | VectorOpcode::VectorAdd
+            | VectorOpcode::VectorSub
+            | VectorOpcode::VectorMul
+            | VectorOpcode::VectorDiv
+            | VectorOpcode::DotProduct
+            | VectorOpcode::CrossProduct
+            | VectorOpcode::MatrixMul
+            | VectorOpcode::DotProductF32x16
+            | VectorOpcode::CrossProductF32x16
+            | VectorOpcode::Convolution
+            | VectorOpcode::Correlation
+            | VectorOpcode::StoreVector
+            | VectorOpcode::GatherVector
+            | VectorOpcode::ScatterVector
+            | VectorOpcode::CompareEq
+            | VectorOpcode::CompareNe
+            | VectorOpcode::CompareLt
+            | VectorOpcode::CompareLe
+            | VectorOpcode::CompareGt
+            | VectorOpcode::CompareGe
+            | VectorOpcode::Interpolate
+            | VectorOpcode::Extrapolate => 2,
+
             // Ternary operations
-            VectorOpcode::ShuffleF32x16 |
-            VectorOpcode::PermuteF32x16 |
-            VectorOpcode::BlendF32x16 |
-            VectorOpcode::SelectF32x16 => 3,
+            VectorOpcode::ShuffleF32x16 | VectorOpcode::PermuteF32x16 | VectorOpcode::BlendF32x16 | VectorOpcode::SelectF32x16 => 3,
         }
     }
 
@@ -177,39 +174,41 @@ impl VectorOpcode {
 
     /// Check if this operation is commutative
     pub fn is_commutative(&self) -> bool {
-        matches!(self,
-            VectorOpcode::AddF32x16 |
-            VectorOpcode::MulF32x16 |
-            VectorOpcode::AddF64x8 |
-            VectorOpcode::MulF64x8 |
-            VectorOpcode::VectorAdd |
-            VectorOpcode::VectorMul |
-            VectorOpcode::DotProduct |
-            VectorOpcode::DotProductF32x16 |
-            VectorOpcode::CompareEq |
-            VectorOpcode::CompareNe
+        matches!(
+            self,
+            VectorOpcode::AddF32x16
+                | VectorOpcode::MulF32x16
+                | VectorOpcode::AddF64x8
+                | VectorOpcode::MulF64x8
+                | VectorOpcode::VectorAdd
+                | VectorOpcode::VectorMul
+                | VectorOpcode::DotProduct
+                | VectorOpcode::DotProductF32x16
+                | VectorOpcode::CompareEq
+                | VectorOpcode::CompareNe
         )
     }
 
     /// Check if this operation supports parallel execution
     pub fn supports_parallel(&self) -> bool {
-        matches!(self,
-            VectorOpcode::AddF32x16 |
-            VectorOpcode::SubF32x16 |
-            VectorOpcode::MulF32x16 |
-            VectorOpcode::DivF32x16 |
-            VectorOpcode::AddF64x8 |
-            VectorOpcode::SubF64x8 |
-            VectorOpcode::MulF64x8 |
-            VectorOpcode::DivF64x8 |
-            VectorOpcode::VectorAdd |
-            VectorOpcode::VectorSub |
-            VectorOpcode::VectorMul |
-            VectorOpcode::VectorDiv |
-            VectorOpcode::MatrixMul |
-            VectorOpcode::Convolution |
-            VectorOpcode::FFT |
-            VectorOpcode::IFFT
+        matches!(
+            self,
+            VectorOpcode::AddF32x16
+                | VectorOpcode::SubF32x16
+                | VectorOpcode::MulF32x16
+                | VectorOpcode::DivF32x16
+                | VectorOpcode::AddF64x8
+                | VectorOpcode::SubF64x8
+                | VectorOpcode::MulF64x8
+                | VectorOpcode::DivF64x8
+                | VectorOpcode::VectorAdd
+                | VectorOpcode::VectorSub
+                | VectorOpcode::VectorMul
+                | VectorOpcode::VectorDiv
+                | VectorOpcode::MatrixMul
+                | VectorOpcode::Convolution
+                | VectorOpcode::FFT
+                | VectorOpcode::IFFT
         )
     }
 
@@ -217,39 +216,34 @@ impl VectorOpcode {
     pub fn complexity(&self) -> ComputationalComplexity {
         match self {
             // Linear operations
-            VectorOpcode::AddF32x16 |
-            VectorOpcode::SubF32x16 |
-            VectorOpcode::AddF64x8 |
-            VectorOpcode::SubF64x8 |
-            VectorOpcode::VectorAdd |
-            VectorOpcode::VectorSub |
-            VectorOpcode::LoadVector |
-            VectorOpcode::StoreVector => ComputationalComplexity::Linear,
-            
+            VectorOpcode::AddF32x16
+            | VectorOpcode::SubF32x16
+            | VectorOpcode::AddF64x8
+            | VectorOpcode::SubF64x8
+            | VectorOpcode::VectorAdd
+            | VectorOpcode::VectorSub
+            | VectorOpcode::LoadVector
+            | VectorOpcode::StoreVector => ComputationalComplexity::Linear,
+
             // Quadratic operations
-            VectorOpcode::MulF32x16 |
-            VectorOpcode::DivF32x16 |
-            VectorOpcode::MulF64x8 |
-            VectorOpcode::DivF64x8 |
-            VectorOpcode::VectorMul |
-            VectorOpcode::VectorDiv |
-            VectorOpcode::DotProduct |
-            VectorOpcode::DotProductF32x16 => ComputationalComplexity::Quadratic,
-            
+            VectorOpcode::MulF32x16
+            | VectorOpcode::DivF32x16
+            | VectorOpcode::MulF64x8
+            | VectorOpcode::DivF64x8
+            | VectorOpcode::VectorMul
+            | VectorOpcode::VectorDiv
+            | VectorOpcode::DotProduct
+            | VectorOpcode::DotProductF32x16 => ComputationalComplexity::Quadratic,
+
             // Cubic operations
-            VectorOpcode::MatrixMul |
-            VectorOpcode::MatrixInverse |
-            VectorOpcode::MatrixDeterminant => ComputationalComplexity::Cubic,
-            
+            VectorOpcode::MatrixMul | VectorOpcode::MatrixInverse | VectorOpcode::MatrixDeterminant => ComputationalComplexity::Cubic,
+
             // Logarithmic operations
-            VectorOpcode::FFT |
-            VectorOpcode::IFFT => ComputationalComplexity::Logarithmic,
-            
+            VectorOpcode::FFT | VectorOpcode::IFFT => ComputationalComplexity::Logarithmic,
+
             // Complex operations
-            VectorOpcode::Convolution |
-            VectorOpcode::Correlation |
-            VectorOpcode::Polynomial => ComputationalComplexity::Exponential,
-            
+            VectorOpcode::Convolution | VectorOpcode::Correlation | VectorOpcode::Polynomial => ComputationalComplexity::Exponential,
+
             // Simple operations
             _ => ComputationalComplexity::Constant,
         }
@@ -259,12 +253,12 @@ impl VectorOpcode {
 /// Computational complexity categories for vector operations
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ComputationalComplexity {
-    Constant,      // O(1)
-    Logarithmic,   // O(log n)
-    Linear,        // O(n)
-    Quadratic,     // O(n²)
-    Cubic,         // O(n³)
-    Exponential,   // O(2^n)
+    Constant,    // O(1)
+    Logarithmic, // O(log n)
+    Linear,      // O(n)
+    Quadratic,   // O(n²)
+    Cubic,       // O(n³)
+    Exponential, // O(2^n)
 }
 
 impl fmt::Display for VectorOpcode {

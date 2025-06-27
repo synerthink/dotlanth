@@ -49,42 +49,39 @@ pub enum SimdExtensionError {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SimdVectorType {
     // 128-bit vectors (WebAssembly v128)
-    I8x16,   // 16 x 8-bit integers
-    I16x8,   // 8 x 16-bit integers
-    I32x4,   // 4 x 32-bit integers
-    I64x2,   // 2 x 64-bit integers
-    F32x4,   // 4 x 32-bit floats
-    F64x2,   // 2 x 64-bit floats
-    
+    I8x16, // 16 x 8-bit integers
+    I16x8, // 8 x 16-bit integers
+    I32x4, // 4 x 32-bit integers
+    I64x2, // 2 x 64-bit integers
+    F32x4, // 4 x 32-bit floats
+    F64x2, // 2 x 64-bit floats
+
     // 256-bit vectors (DotVM extension)
-    I8x32,   // 32 x 8-bit integers
-    I16x16,  // 16 x 16-bit integers
-    I32x8,   // 8 x 32-bit integers
-    I64x4,   // 4 x 64-bit integers
-    F32x8,   // 8 x 32-bit floats
-    F64x4,   // 4 x 64-bit floats
-    
+    I8x32,  // 32 x 8-bit integers
+    I16x16, // 16 x 16-bit integers
+    I32x8,  // 8 x 32-bit integers
+    I64x4,  // 4 x 64-bit integers
+    F32x8,  // 8 x 32-bit floats
+    F64x4,  // 4 x 64-bit floats
+
     // 512-bit vectors (DotVM extension)
-    I8x64,   // 64 x 8-bit integers
-    I16x32,  // 32 x 16-bit integers
-    I32x16,  // 16 x 32-bit integers
-    I64x8,   // 8 x 64-bit integers
-    F32x16,  // 16 x 32-bit floats
-    F64x8,   // 8 x 64-bit floats
+    I8x64,  // 64 x 8-bit integers
+    I16x32, // 32 x 16-bit integers
+    I32x16, // 16 x 32-bit integers
+    I64x8,  // 8 x 64-bit integers
+    F32x16, // 16 x 32-bit floats
+    F64x8,  // 8 x 64-bit floats
 }
 
 impl SimdVectorType {
     /// Get the bit width of this vector type
     pub fn bit_width(&self) -> u32 {
         match self {
-            SimdVectorType::I8x16 | SimdVectorType::I16x8 | SimdVectorType::I32x4 |
-            SimdVectorType::I64x2 | SimdVectorType::F32x4 | SimdVectorType::F64x2 => 128,
-            
-            SimdVectorType::I8x32 | SimdVectorType::I16x16 | SimdVectorType::I32x8 |
-            SimdVectorType::I64x4 | SimdVectorType::F32x8 | SimdVectorType::F64x4 => 256,
-            
-            SimdVectorType::I8x64 | SimdVectorType::I16x32 | SimdVectorType::I32x16 |
-            SimdVectorType::I64x8 | SimdVectorType::F32x16 | SimdVectorType::F64x8 => 512,
+            SimdVectorType::I8x16 | SimdVectorType::I16x8 | SimdVectorType::I32x4 | SimdVectorType::I64x2 | SimdVectorType::F32x4 | SimdVectorType::F64x2 => 128,
+
+            SimdVectorType::I8x32 | SimdVectorType::I16x16 | SimdVectorType::I32x8 | SimdVectorType::I64x4 | SimdVectorType::F32x8 | SimdVectorType::F64x4 => 256,
+
+            SimdVectorType::I8x64 | SimdVectorType::I16x32 | SimdVectorType::I32x16 | SimdVectorType::I64x8 | SimdVectorType::F32x16 | SimdVectorType::F64x8 => 512,
         }
     }
 
@@ -97,14 +94,14 @@ impl SimdVectorType {
             SimdVectorType::I64x2 => 2,
             SimdVectorType::F32x4 => 4,
             SimdVectorType::F64x2 => 2,
-            
+
             SimdVectorType::I8x32 => 32,
             SimdVectorType::I16x16 => 16,
             SimdVectorType::I32x8 => 8,
             SimdVectorType::I64x4 => 4,
             SimdVectorType::F32x8 => 8,
             SimdVectorType::F64x4 => 4,
-            
+
             SimdVectorType::I8x64 => 64,
             SimdVectorType::I16x32 => 32,
             SimdVectorType::I32x16 => 16,
@@ -138,13 +135,13 @@ pub enum SimdOperation {
     Sub,
     Mul,
     Div,
-    
+
     // Logical operations
     And,
     Or,
     Xor,
     Not,
-    
+
     // Comparison operations
     Equal,
     NotEqual,
@@ -152,26 +149,26 @@ pub enum SimdOperation {
     LessEqual,
     GreaterThan,
     GreaterEqual,
-    
+
     // Data movement operations
     Load,
     Store,
     Extract,
     Insert,
     Shuffle,
-    
+
     // Reduction operations
     Sum,
     Product,
     Min,
     Max,
-    
+
     // Advanced operations
     DotProduct,
     CrossProduct,
     Normalize,
     Magnitude,
-    
+
     // Conversion operations
     Convert,
     Broadcast,
@@ -210,7 +207,7 @@ impl SimdExtension {
             target_architecture,
             operation_mappings: HashMap::new(),
         };
-        
+
         extension.initialize_operation_mappings();
         Ok(extension)
     }
@@ -223,17 +220,17 @@ impl SimdExtension {
             self.operation_mappings.insert("simd_add_i32x8".to_string(), (SimdOperation::Add, SimdVectorType::I32x8));
             self.operation_mappings.insert("simd_sub_i32x8".to_string(), (SimdOperation::Sub, SimdVectorType::I32x8));
             self.operation_mappings.insert("simd_mul_i32x8".to_string(), (SimdOperation::Mul, SimdVectorType::I32x8));
-            
+
             // Float operations
             self.operation_mappings.insert("simd_add_f32x8".to_string(), (SimdOperation::Add, SimdVectorType::F32x8));
             self.operation_mappings.insert("simd_sub_f32x8".to_string(), (SimdOperation::Sub, SimdVectorType::F32x8));
             self.operation_mappings.insert("simd_mul_f32x8".to_string(), (SimdOperation::Mul, SimdVectorType::F32x8));
             self.operation_mappings.insert("simd_div_f32x8".to_string(), (SimdOperation::Div, SimdVectorType::F32x8));
-            
+
             // Double precision
             self.operation_mappings.insert("simd_add_f64x4".to_string(), (SimdOperation::Add, SimdVectorType::F64x4));
             self.operation_mappings.insert("simd_mul_f64x4".to_string(), (SimdOperation::Mul, SimdVectorType::F64x4));
-            
+
             // Logical operations
             self.operation_mappings.insert("simd_and_i32x8".to_string(), (SimdOperation::And, SimdVectorType::I32x8));
             self.operation_mappings.insert("simd_or_i32x8".to_string(), (SimdOperation::Or, SimdVectorType::I32x8));
@@ -247,7 +244,7 @@ impl SimdExtension {
             self.operation_mappings.insert("simd_mul_f32x16".to_string(), (SimdOperation::Mul, SimdVectorType::F32x16));
             self.operation_mappings.insert("simd_add_f64x8".to_string(), (SimdOperation::Add, SimdVectorType::F64x8));
             self.operation_mappings.insert("simd_mul_f64x8".to_string(), (SimdOperation::Mul, SimdVectorType::F64x8));
-            
+
             // Advanced operations
             self.operation_mappings.insert("simd_dot_f32x16".to_string(), (SimdOperation::DotProduct, SimdVectorType::F32x16));
             self.operation_mappings.insert("simd_sum_f32x16".to_string(), (SimdOperation::Sum, SimdVectorType::F32x16));
@@ -274,12 +271,7 @@ impl SimdExtension {
     }
 
     /// Create operation context from function signature
-    fn create_operation_context(
-        &self,
-        operation: &SimdOperation,
-        vector_type: &SimdVectorType,
-        function: &WasmFunction,
-    ) -> Result<SimdOperationContext, SimdExtensionError> {
+    fn create_operation_context(&self, operation: &SimdOperation, vector_type: &SimdVectorType, function: &WasmFunction) -> Result<SimdOperationContext, SimdExtensionError> {
         // Validate architecture compatibility
         if !vector_type.is_compatible_with(self.target_architecture) {
             return Err(SimdExtensionError::SimdArchitectureRequired);
@@ -297,36 +289,28 @@ impl SimdExtension {
     }
 
     /// Infer vector types from operation and function signature
-    fn infer_vector_types(
-        &self,
-        operation: &SimdOperation,
-        default_type: &SimdVectorType,
-        function: &WasmFunction,
-    ) -> Result<(Vec<SimdVectorType>, SimdVectorType), SimdExtensionError> {
+    fn infer_vector_types(&self, operation: &SimdOperation, default_type: &SimdVectorType, function: &WasmFunction) -> Result<(Vec<SimdVectorType>, SimdVectorType), SimdExtensionError> {
         match operation {
             // Binary operations: two inputs of same type, one output
-            SimdOperation::Add | SimdOperation::Sub | SimdOperation::Mul | SimdOperation::Div |
-            SimdOperation::And | SimdOperation::Or | SimdOperation::Xor => {
+            SimdOperation::Add | SimdOperation::Sub | SimdOperation::Mul | SimdOperation::Div | SimdOperation::And | SimdOperation::Or | SimdOperation::Xor => {
                 Ok((vec![default_type.clone(), default_type.clone()], default_type.clone()))
             }
-            
+
             // Unary operations: one input, one output
-            SimdOperation::Not | SimdOperation::Normalize | SimdOperation::Magnitude => {
-                Ok((vec![default_type.clone()], default_type.clone()))
-            }
-            
+            SimdOperation::Not | SimdOperation::Normalize | SimdOperation::Magnitude => Ok((vec![default_type.clone()], default_type.clone())),
+
             // Reduction operations: one vector input, scalar output
             SimdOperation::Sum | SimdOperation::Product | SimdOperation::Min | SimdOperation::Max => {
                 let scalar_type = self.vector_to_scalar_type(default_type)?;
                 Ok((vec![default_type.clone()], scalar_type))
             }
-            
+
             // Dot product: two vectors, scalar output
             SimdOperation::DotProduct => {
                 let scalar_type = self.vector_to_scalar_type(default_type)?;
                 Ok((vec![default_type.clone(), default_type.clone()], scalar_type))
             }
-            
+
             // Default case
             _ => Ok((vec![default_type.clone()], default_type.clone())),
         }
@@ -358,7 +342,7 @@ impl SimdExtension {
                         parameters: [("detected_via".to_string(), "v128_load".to_string())].into(),
                     });
                 }
-                
+
                 WasmInstruction::I32Store { .. } => {
                     operations.push(SimdOperationContext {
                         operation: SimdOperation::Store,
@@ -367,7 +351,7 @@ impl SimdExtension {
                         parameters: [("detected_via".to_string(), "v128_store".to_string())].into(),
                     });
                 }
-                
+
                 // Look for patterns that suggest SIMD operations
                 WasmInstruction::F32Add | WasmInstruction::F64Add => {
                     if self.is_vectorizable_pattern(&function.body) {
@@ -379,7 +363,7 @@ impl SimdExtension {
                         });
                     }
                 }
-                
+
                 _ => {}
             }
         }
@@ -399,13 +383,21 @@ impl SimdExtension {
     /// Check if instruction sequence is vectorizable
     fn is_vectorizable_pattern(&self, instructions: &[WasmInstruction]) -> bool {
         // Look for repetitive arithmetic operations that could benefit from SIMD
-        let arithmetic_ops = instructions.iter()
-            .filter(|inst| matches!(inst,
-                WasmInstruction::F32Add | WasmInstruction::F32Sub |
-                WasmInstruction::F32Mul | WasmInstruction::F32Div |
-                WasmInstruction::F64Add | WasmInstruction::F64Sub |
-                WasmInstruction::F64Mul | WasmInstruction::F64Div
-            ))
+        let arithmetic_ops = instructions
+            .iter()
+            .filter(|inst| {
+                matches!(
+                    inst,
+                    WasmInstruction::F32Add
+                        | WasmInstruction::F32Sub
+                        | WasmInstruction::F32Mul
+                        | WasmInstruction::F32Div
+                        | WasmInstruction::F64Add
+                        | WasmInstruction::F64Sub
+                        | WasmInstruction::F64Mul
+                        | WasmInstruction::F64Div
+                )
+            })
             .count();
 
         // Heuristic: if there are many arithmetic operations, it might benefit from SIMD
@@ -438,9 +430,12 @@ impl SimdExtension {
             (SimdOperation::Add, SimdVectorType::F64x4) => {
                 bytecode.push((Opcode256::Simd(dotvm_core::opcode::simd_opcodes::SimdOpcode::AddF64x4).as_u16() & 0xFF) as u8);
             }
-            _ => return Err(SimdExtensionError::UnsupportedOperation(
-                format!("{:?} with {:?} not supported on 256-bit", context.operation, context.output_type)
-            )),
+            _ => {
+                return Err(SimdExtensionError::UnsupportedOperation(format!(
+                    "{:?} with {:?} not supported on 256-bit",
+                    context.operation, context.output_type
+                )));
+            }
         }
 
         Ok(bytecode)
@@ -464,7 +459,7 @@ impl SimdExtension {
             (SimdOperation::DotProduct, SimdVectorType::F32x16) => {
                 bytecode.push((Opcode512::Vector(dotvm_core::opcode::vector_opcodes::VectorOpcode::DotProductF32x16).as_u16() & 0xFF) as u8);
             }
-            
+
             // Fallback to 256-bit operations if available
             _ => return self.generate_256bit_simd_bytecode(context),
         }
@@ -482,7 +477,7 @@ impl SimdExtension {
             SimdVectorType::I64x2 => Ok(0x13),
             SimdVectorType::F32x4 => Ok(0x14),
             SimdVectorType::F64x2 => Ok(0x15),
-            
+
             // 256-bit vectors
             SimdVectorType::I8x32 => Ok(0x20),
             SimdVectorType::I16x16 => Ok(0x21),
@@ -490,7 +485,7 @@ impl SimdExtension {
             SimdVectorType::I64x4 => Ok(0x23),
             SimdVectorType::F32x8 => Ok(0x24),
             SimdVectorType::F64x4 => Ok(0x25),
-            
+
             // 512-bit vectors
             SimdVectorType::I8x64 => Ok(0x30),
             SimdVectorType::I16x32 => Ok(0x31),
@@ -505,21 +500,33 @@ impl SimdExtension {
     pub fn get_supported_vector_types(&self) -> Vec<SimdVectorType> {
         let mut types = vec![
             // 128-bit types (always supported)
-            SimdVectorType::I8x16, SimdVectorType::I16x8, SimdVectorType::I32x4,
-            SimdVectorType::I64x2, SimdVectorType::F32x4, SimdVectorType::F64x2,
+            SimdVectorType::I8x16,
+            SimdVectorType::I16x8,
+            SimdVectorType::I32x4,
+            SimdVectorType::I64x2,
+            SimdVectorType::F32x4,
+            SimdVectorType::F64x2,
         ];
 
         if self.target_architecture >= VmArchitecture::Arch256 {
             types.extend(vec![
-                SimdVectorType::I8x32, SimdVectorType::I16x16, SimdVectorType::I32x8,
-                SimdVectorType::I64x4, SimdVectorType::F32x8, SimdVectorType::F64x4,
+                SimdVectorType::I8x32,
+                SimdVectorType::I16x16,
+                SimdVectorType::I32x8,
+                SimdVectorType::I64x4,
+                SimdVectorType::F32x8,
+                SimdVectorType::F64x4,
             ]);
         }
 
         if self.target_architecture >= VmArchitecture::Arch512 {
             types.extend(vec![
-                SimdVectorType::I8x64, SimdVectorType::I16x32, SimdVectorType::I32x16,
-                SimdVectorType::I64x8, SimdVectorType::F32x16, SimdVectorType::F64x8,
+                SimdVectorType::I8x64,
+                SimdVectorType::I16x32,
+                SimdVectorType::I32x16,
+                SimdVectorType::I64x8,
+                SimdVectorType::F32x16,
+                SimdVectorType::F64x8,
             ]);
         }
 
@@ -549,7 +556,7 @@ mod tests {
     fn test_simd_extension_creation() {
         let extension = SimdExtension::new(VmArchitecture::Arch256).unwrap();
         assert!(extension.operation_mappings.contains_key("simd_add_f32x8"));
-        
+
         let result = SimdExtension::new(VmArchitecture::Arch64);
         assert!(result.is_err());
     }
@@ -557,7 +564,7 @@ mod tests {
     #[test]
     fn test_operation_detection() {
         let extension = SimdExtension::new(VmArchitecture::Arch256).unwrap();
-        
+
         let function = WasmFunction {
             signature: crate::wasm::ast::WasmFunctionType {
                 params: vec![WasmValueType::V128, WasmValueType::V128],
@@ -575,7 +582,7 @@ mod tests {
     #[test]
     fn test_vector_type_encoding() {
         let extension = SimdExtension::new(VmArchitecture::Arch256).unwrap();
-        
+
         assert_eq!(extension.encode_vector_type(&SimdVectorType::F32x8).unwrap(), 0x24);
         assert_eq!(extension.encode_vector_type(&SimdVectorType::F64x4).unwrap(), 0x25);
     }

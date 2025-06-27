@@ -25,84 +25,84 @@ use std::fmt;
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum MathOpcode {
     // High-precision arithmetic (256-bit+)
-    HighPrecisionAdd = 0x01,     // High-precision addition
-    HighPrecisionSub = 0x02,     // High-precision subtraction
-    HighPrecisionMul = 0x03,     // High-precision multiplication
-    HighPrecisionDiv = 0x04,     // High-precision division
-    HighPrecisionMod = 0x05,     // High-precision modulo
-    
+    HighPrecisionAdd = 0x01, // High-precision addition
+    HighPrecisionSub = 0x02, // High-precision subtraction
+    HighPrecisionMul = 0x03, // High-precision multiplication
+    HighPrecisionDiv = 0x04, // High-precision division
+    HighPrecisionMod = 0x05, // High-precision modulo
+
     // High-precision elementary functions
-    HighPrecisionSqrt = 0x10,    // High-precision square root
-    HighPrecisionPow = 0x11,     // High-precision power
-    HighPrecisionExp = 0x12,     // High-precision exponential
-    HighPrecisionLog = 0x13,     // High-precision natural logarithm
-    HighPrecisionLog10 = 0x14,   // High-precision base-10 logarithm
-    HighPrecisionLog2 = 0x15,    // High-precision base-2 logarithm
-    
+    HighPrecisionSqrt = 0x10,  // High-precision square root
+    HighPrecisionPow = 0x11,   // High-precision power
+    HighPrecisionExp = 0x12,   // High-precision exponential
+    HighPrecisionLog = 0x13,   // High-precision natural logarithm
+    HighPrecisionLog10 = 0x14, // High-precision base-10 logarithm
+    HighPrecisionLog2 = 0x15,  // High-precision base-2 logarithm
+
     // High-precision trigonometric functions
-    HighPrecisionSin = 0x20,     // High-precision sine
-    HighPrecisionCos = 0x21,     // High-precision cosine
-    HighPrecisionTan = 0x22,     // High-precision tangent
-    HighPrecisionAsin = 0x23,    // High-precision arcsine
-    HighPrecisionAcos = 0x24,    // High-precision arccosine
-    HighPrecisionAtan = 0x25,    // High-precision arctangent
-    HighPrecisionAtan2 = 0x26,   // High-precision two-argument arctangent
-    
+    HighPrecisionSin = 0x20,   // High-precision sine
+    HighPrecisionCos = 0x21,   // High-precision cosine
+    HighPrecisionTan = 0x22,   // High-precision tangent
+    HighPrecisionAsin = 0x23,  // High-precision arcsine
+    HighPrecisionAcos = 0x24,  // High-precision arccosine
+    HighPrecisionAtan = 0x25,  // High-precision arctangent
+    HighPrecisionAtan2 = 0x26, // High-precision two-argument arctangent
+
     // High-precision hyperbolic functions
-    HighPrecisionSinh = 0x30,    // High-precision hyperbolic sine
-    HighPrecisionCosh = 0x31,    // High-precision hyperbolic cosine
-    HighPrecisionTanh = 0x32,    // High-precision hyperbolic tangent
-    HighPrecisionAsinh = 0x33,   // High-precision inverse hyperbolic sine
-    HighPrecisionAcosh = 0x34,   // High-precision inverse hyperbolic cosine
-    HighPrecisionAtanh = 0x35,   // High-precision inverse hyperbolic tangent
-    
+    HighPrecisionSinh = 0x30,  // High-precision hyperbolic sine
+    HighPrecisionCosh = 0x31,  // High-precision hyperbolic cosine
+    HighPrecisionTanh = 0x32,  // High-precision hyperbolic tangent
+    HighPrecisionAsinh = 0x33, // High-precision inverse hyperbolic sine
+    HighPrecisionAcosh = 0x34, // High-precision inverse hyperbolic cosine
+    HighPrecisionAtanh = 0x35, // High-precision inverse hyperbolic tangent
+
     // Special mathematical functions
-    Gamma = 0x40,                // Gamma function
-    LogGamma = 0x41,             // Log gamma function
-    Beta = 0x42,                 // Beta function
-    Erf = 0x43,                  // Error function
-    Erfc = 0x44,                 // Complementary error function
-    Bessel = 0x45,               // Bessel functions
-    
+    Gamma = 0x40,    // Gamma function
+    LogGamma = 0x41, // Log gamma function
+    Beta = 0x42,     // Beta function
+    Erf = 0x43,      // Error function
+    Erfc = 0x44,     // Complementary error function
+    Bessel = 0x45,   // Bessel functions
+
     // Number theory functions
-    ModularExp = 0x50,           // Modular exponentiation
-    DiscreteLog = 0x51,          // Discrete logarithm
-    Jacobi = 0x52,               // Jacobi symbol
-    Legendre = 0x53,             // Legendre symbol
-    
+    ModularExp = 0x50,  // Modular exponentiation
+    DiscreteLog = 0x51, // Discrete logarithm
+    Jacobi = 0x52,      // Jacobi symbol
+    Legendre = 0x53,    // Legendre symbol
+
     // Statistical functions
-    Mean = 0x60,                 // Arithmetic mean
-    GeometricMean = 0x61,        // Geometric mean
-    HarmonicMean = 0x62,         // Harmonic mean
-    Variance = 0x63,             // Variance
-    StandardDeviation = 0x64,    // Standard deviation
-    Skewness = 0x65,             // Skewness
-    Kurtosis = 0x66,             // Kurtosis
-    Correlation = 0x67,          // Correlation coefficient
-    Covariance = 0x68,           // Covariance
-    
+    Mean = 0x60,              // Arithmetic mean
+    GeometricMean = 0x61,     // Geometric mean
+    HarmonicMean = 0x62,      // Harmonic mean
+    Variance = 0x63,          // Variance
+    StandardDeviation = 0x64, // Standard deviation
+    Skewness = 0x65,          // Skewness
+    Kurtosis = 0x66,          // Kurtosis
+    Correlation = 0x67,       // Correlation coefficient
+    Covariance = 0x68,        // Covariance
+
     // Linear algebra functions
-    Determinant = 0x70,          // Matrix determinant
-    Trace = 0x71,                // Matrix trace
-    Rank = 0x72,                 // Matrix rank
-    Eigenvalues = 0x73,          // Matrix eigenvalues
-    Eigenvectors = 0x74,         // Matrix eigenvectors
-    SingularValues = 0x75,       // Singular value decomposition
-    
+    Determinant = 0x70,    // Matrix determinant
+    Trace = 0x71,          // Matrix trace
+    Rank = 0x72,           // Matrix rank
+    Eigenvalues = 0x73,    // Matrix eigenvalues
+    Eigenvectors = 0x74,   // Matrix eigenvectors
+    SingularValues = 0x75, // Singular value decomposition
+
     // Optimization functions
-    Minimize = 0x80,             // Function minimization
-    Maximize = 0x81,             // Function maximization
-    FindRoot = 0x82,             // Root finding
-    Integrate = 0x83,            // Numerical integration
-    Differentiate = 0x84,        // Numerical differentiation
-    
+    Minimize = 0x80,      // Function minimization
+    Maximize = 0x81,      // Function maximization
+    FindRoot = 0x82,      // Root finding
+    Integrate = 0x83,     // Numerical integration
+    Differentiate = 0x84, // Numerical differentiation
+
     // Precision control
-    SetPrecision = 0x90,         // Set working precision
-    GetPrecision = 0x91,         // Get current precision
-    RoundToNearest = 0x92,       // Round to nearest
-    RoundUp = 0x93,              // Round up (ceiling)
-    RoundDown = 0x94,            // Round down (floor)
-    Truncate = 0x95,             // Truncate
+    SetPrecision = 0x90,   // Set working precision
+    GetPrecision = 0x91,   // Get current precision
+    RoundToNearest = 0x92, // Round to nearest
+    RoundUp = 0x93,        // Round up (ceiling)
+    RoundDown = 0x94,      // Round down (floor)
+    Truncate = 0x95,       // Truncate
 }
 
 impl MathOpcode {
@@ -110,74 +110,64 @@ impl MathOpcode {
     pub fn operand_count(&self) -> usize {
         match self {
             // Unary operations
-            MathOpcode::HighPrecisionSqrt |
-            MathOpcode::HighPrecisionExp |
-            MathOpcode::HighPrecisionLog |
-            MathOpcode::HighPrecisionLog10 |
-            MathOpcode::HighPrecisionLog2 |
-            MathOpcode::HighPrecisionSin |
-            MathOpcode::HighPrecisionCos |
-            MathOpcode::HighPrecisionTan |
-            MathOpcode::HighPrecisionAsin |
-            MathOpcode::HighPrecisionAcos |
-            MathOpcode::HighPrecisionAtan |
-            MathOpcode::HighPrecisionSinh |
-            MathOpcode::HighPrecisionCosh |
-            MathOpcode::HighPrecisionTanh |
-            MathOpcode::HighPrecisionAsinh |
-            MathOpcode::HighPrecisionAcosh |
-            MathOpcode::HighPrecisionAtanh |
-            MathOpcode::Gamma |
-            MathOpcode::LogGamma |
-            MathOpcode::Erf |
-            MathOpcode::Erfc |
-            MathOpcode::Determinant |
-            MathOpcode::Trace |
-            MathOpcode::Rank |
-            MathOpcode::Eigenvalues |
-            MathOpcode::Eigenvectors |
-            MathOpcode::SingularValues |
-            MathOpcode::GetPrecision |
-            MathOpcode::RoundToNearest |
-            MathOpcode::RoundUp |
-            MathOpcode::RoundDown |
-            MathOpcode::Truncate => 1,
-            
+            MathOpcode::HighPrecisionSqrt
+            | MathOpcode::HighPrecisionExp
+            | MathOpcode::HighPrecisionLog
+            | MathOpcode::HighPrecisionLog10
+            | MathOpcode::HighPrecisionLog2
+            | MathOpcode::HighPrecisionSin
+            | MathOpcode::HighPrecisionCos
+            | MathOpcode::HighPrecisionTan
+            | MathOpcode::HighPrecisionAsin
+            | MathOpcode::HighPrecisionAcos
+            | MathOpcode::HighPrecisionAtan
+            | MathOpcode::HighPrecisionSinh
+            | MathOpcode::HighPrecisionCosh
+            | MathOpcode::HighPrecisionTanh
+            | MathOpcode::HighPrecisionAsinh
+            | MathOpcode::HighPrecisionAcosh
+            | MathOpcode::HighPrecisionAtanh
+            | MathOpcode::Gamma
+            | MathOpcode::LogGamma
+            | MathOpcode::Erf
+            | MathOpcode::Erfc
+            | MathOpcode::Determinant
+            | MathOpcode::Trace
+            | MathOpcode::Rank
+            | MathOpcode::Eigenvalues
+            | MathOpcode::Eigenvectors
+            | MathOpcode::SingularValues
+            | MathOpcode::GetPrecision
+            | MathOpcode::RoundToNearest
+            | MathOpcode::RoundUp
+            | MathOpcode::RoundDown
+            | MathOpcode::Truncate => 1,
+
             // Binary operations
-            MathOpcode::HighPrecisionAdd |
-            MathOpcode::HighPrecisionSub |
-            MathOpcode::HighPrecisionMul |
-            MathOpcode::HighPrecisionDiv |
-            MathOpcode::HighPrecisionMod |
-            MathOpcode::HighPrecisionPow |
-            MathOpcode::HighPrecisionAtan2 |
-            MathOpcode::Beta |
-            MathOpcode::Bessel |
-            MathOpcode::DiscreteLog |
-            MathOpcode::Jacobi |
-            MathOpcode::Legendre |
-            MathOpcode::Correlation |
-            MathOpcode::Covariance |
-            MathOpcode::SetPrecision => 2,
-            
+            MathOpcode::HighPrecisionAdd
+            | MathOpcode::HighPrecisionSub
+            | MathOpcode::HighPrecisionMul
+            | MathOpcode::HighPrecisionDiv
+            | MathOpcode::HighPrecisionMod
+            | MathOpcode::HighPrecisionPow
+            | MathOpcode::HighPrecisionAtan2
+            | MathOpcode::Beta
+            | MathOpcode::Bessel
+            | MathOpcode::DiscreteLog
+            | MathOpcode::Jacobi
+            | MathOpcode::Legendre
+            | MathOpcode::Correlation
+            | MathOpcode::Covariance
+            | MathOpcode::SetPrecision => 2,
+
             // Ternary operations
             MathOpcode::ModularExp => 3,
-            
+
             // Variable operand operations (array-based)
-            MathOpcode::Mean |
-            MathOpcode::GeometricMean |
-            MathOpcode::HarmonicMean |
-            MathOpcode::Variance |
-            MathOpcode::StandardDeviation |
-            MathOpcode::Skewness |
-            MathOpcode::Kurtosis => 1, // Takes array as single operand
-            
+            MathOpcode::Mean | MathOpcode::GeometricMean | MathOpcode::HarmonicMean | MathOpcode::Variance | MathOpcode::StandardDeviation | MathOpcode::Skewness | MathOpcode::Kurtosis => 1, // Takes array as single operand
+
             // Complex operations
-            MathOpcode::Minimize |
-            MathOpcode::Maximize |
-            MathOpcode::FindRoot |
-            MathOpcode::Integrate |
-            MathOpcode::Differentiate => 2, // Function + parameters
+            MathOpcode::Minimize | MathOpcode::Maximize | MathOpcode::FindRoot | MathOpcode::Integrate | MathOpcode::Differentiate => 2, // Function + parameters
         }
     }
 
@@ -185,42 +175,34 @@ impl MathOpcode {
     pub fn minimum_precision(&self) -> u32 {
         match self {
             // Standard precision operations
-            MathOpcode::HighPrecisionAdd |
-            MathOpcode::HighPrecisionSub |
-            MathOpcode::HighPrecisionMul |
-            MathOpcode::HighPrecisionDiv => 128,
-            
+            MathOpcode::HighPrecisionAdd | MathOpcode::HighPrecisionSub | MathOpcode::HighPrecisionMul | MathOpcode::HighPrecisionDiv => 128,
+
             // High precision operations
-            MathOpcode::HighPrecisionSqrt |
-            MathOpcode::HighPrecisionPow |
-            MathOpcode::HighPrecisionExp |
-            MathOpcode::HighPrecisionLog |
-            MathOpcode::HighPrecisionLog10 |
-            MathOpcode::HighPrecisionLog2 => 256,
-            
+            MathOpcode::HighPrecisionSqrt
+            | MathOpcode::HighPrecisionPow
+            | MathOpcode::HighPrecisionExp
+            | MathOpcode::HighPrecisionLog
+            | MathOpcode::HighPrecisionLog10
+            | MathOpcode::HighPrecisionLog2 => 256,
+
             // Very high precision operations
-            MathOpcode::HighPrecisionSin |
-            MathOpcode::HighPrecisionCos |
-            MathOpcode::HighPrecisionTan |
-            MathOpcode::HighPrecisionAsin |
-            MathOpcode::HighPrecisionAcos |
-            MathOpcode::HighPrecisionAtan |
-            MathOpcode::HighPrecisionAtan2 |
-            MathOpcode::HighPrecisionSinh |
-            MathOpcode::HighPrecisionCosh |
-            MathOpcode::HighPrecisionTanh |
-            MathOpcode::HighPrecisionAsinh |
-            MathOpcode::HighPrecisionAcosh |
-            MathOpcode::HighPrecisionAtanh => 512,
-            
+            MathOpcode::HighPrecisionSin
+            | MathOpcode::HighPrecisionCos
+            | MathOpcode::HighPrecisionTan
+            | MathOpcode::HighPrecisionAsin
+            | MathOpcode::HighPrecisionAcos
+            | MathOpcode::HighPrecisionAtan
+            | MathOpcode::HighPrecisionAtan2
+            | MathOpcode::HighPrecisionSinh
+            | MathOpcode::HighPrecisionCosh
+            | MathOpcode::HighPrecisionTanh
+            | MathOpcode::HighPrecisionAsinh
+            | MathOpcode::HighPrecisionAcosh
+            | MathOpcode::HighPrecisionAtanh => 512,
+
             // Special functions requiring ultra-high precision
-            MathOpcode::Gamma |
-            MathOpcode::LogGamma |
-            MathOpcode::Beta |
-            MathOpcode::Erf |
-            MathOpcode::Erfc |
-            MathOpcode::Bessel => 1024,
-            
+            MathOpcode::Gamma | MathOpcode::LogGamma | MathOpcode::Beta | MathOpcode::Erf | MathOpcode::Erfc | MathOpcode::Bessel => 1024,
+
             // Other operations
             _ => 128,
         }
@@ -228,12 +210,9 @@ impl MathOpcode {
 
     /// Check if this operation is commutative
     pub fn is_commutative(&self) -> bool {
-        matches!(self,
-            MathOpcode::HighPrecisionAdd |
-            MathOpcode::HighPrecisionMul |
-            MathOpcode::Beta |
-            MathOpcode::Correlation |
-            MathOpcode::Covariance
+        matches!(
+            self,
+            MathOpcode::HighPrecisionAdd | MathOpcode::HighPrecisionMul | MathOpcode::Beta | MathOpcode::Correlation | MathOpcode::Covariance
         )
     }
 
@@ -241,47 +220,32 @@ impl MathOpcode {
     pub fn complexity(&self) -> ComputationalComplexity {
         match self {
             // Linear operations
-            MathOpcode::HighPrecisionAdd |
-            MathOpcode::HighPrecisionSub |
-            MathOpcode::Mean |
-            MathOpcode::Variance |
-            MathOpcode::StandardDeviation => ComputationalComplexity::Linear,
-            
+            MathOpcode::HighPrecisionAdd | MathOpcode::HighPrecisionSub | MathOpcode::Mean | MathOpcode::Variance | MathOpcode::StandardDeviation => ComputationalComplexity::Linear,
+
             // Quadratic operations
-            MathOpcode::HighPrecisionMul |
-            MathOpcode::HighPrecisionDiv |
-            MathOpcode::Correlation |
-            MathOpcode::Covariance => ComputationalComplexity::Quadratic,
-            
+            MathOpcode::HighPrecisionMul | MathOpcode::HighPrecisionDiv | MathOpcode::Correlation | MathOpcode::Covariance => ComputationalComplexity::Quadratic,
+
             // Cubic operations
-            MathOpcode::HighPrecisionPow |
-            MathOpcode::ModularExp |
-            MathOpcode::Determinant => ComputationalComplexity::Cubic,
-            
+            MathOpcode::HighPrecisionPow | MathOpcode::ModularExp | MathOpcode::Determinant => ComputationalComplexity::Cubic,
+
             // Logarithmic operations
-            MathOpcode::HighPrecisionSqrt |
-            MathOpcode::HighPrecisionLog |
-            MathOpcode::HighPrecisionLog10 |
-            MathOpcode::HighPrecisionLog2 => ComputationalComplexity::Logarithmic,
-            
+            MathOpcode::HighPrecisionSqrt | MathOpcode::HighPrecisionLog | MathOpcode::HighPrecisionLog10 | MathOpcode::HighPrecisionLog2 => ComputationalComplexity::Logarithmic,
+
             // Exponential operations
-            MathOpcode::HighPrecisionExp |
-            MathOpcode::HighPrecisionSin |
-            MathOpcode::HighPrecisionCos |
-            MathOpcode::HighPrecisionTan |
-            MathOpcode::Gamma |
-            MathOpcode::Bessel => ComputationalComplexity::Exponential,
-            
+            MathOpcode::HighPrecisionExp | MathOpcode::HighPrecisionSin | MathOpcode::HighPrecisionCos | MathOpcode::HighPrecisionTan | MathOpcode::Gamma | MathOpcode::Bessel => {
+                ComputationalComplexity::Exponential
+            }
+
             // Very complex operations
-            MathOpcode::Eigenvalues |
-            MathOpcode::Eigenvectors |
-            MathOpcode::SingularValues |
-            MathOpcode::Minimize |
-            MathOpcode::Maximize |
-            MathOpcode::FindRoot |
-            MathOpcode::Integrate |
-            MathOpcode::Differentiate => ComputationalComplexity::SuperExponential,
-            
+            MathOpcode::Eigenvalues
+            | MathOpcode::Eigenvectors
+            | MathOpcode::SingularValues
+            | MathOpcode::Minimize
+            | MathOpcode::Maximize
+            | MathOpcode::FindRoot
+            | MathOpcode::Integrate
+            | MathOpcode::Differentiate => ComputationalComplexity::SuperExponential,
+
             // Simple operations
             _ => ComputationalComplexity::Constant,
         }

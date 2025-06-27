@@ -25,36 +25,36 @@ use std::fmt;
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum BigIntOpcode {
     // Basic arithmetic operations
-    Add = 0x01,        // BigInt addition
-    Sub = 0x02,        // BigInt subtraction (also known as Subtract)
-    Mul = 0x03,        // BigInt multiplication (also known as Multiply)
-    Div = 0x04,        // BigInt division (also known as Divide)
-    Mod = 0x05,        // BigInt modulo
-    
+    Add = 0x01, // BigInt addition
+    Sub = 0x02, // BigInt subtraction (also known as Subtract)
+    Mul = 0x03, // BigInt multiplication (also known as Multiply)
+    Div = 0x04, // BigInt division (also known as Divide)
+    Mod = 0x05, // BigInt modulo
+
     // Power operations
-    Pow = 0x10,        // BigInt exponentiation (also known as Power)
-    ModPow = 0x11,     // Modular exponentiation
-    
+    Pow = 0x10,    // BigInt exponentiation (also known as Power)
+    ModPow = 0x11, // Modular exponentiation
+
     // Number theory operations
     Gcd = 0x20,        // Greatest common divisor
     Lcm = 0x21,        // Least common multiple
     ModInverse = 0x22, // Modular multiplicative inverse
-    
+
     // Comparison operations
-    Cmp = 0x30,        // Compare two BigInts (also known as Compare)
-    IsZero = 0x31,     // Check if BigInt is zero
-    IsOne = 0x32,      // Check if BigInt is one
-    IsEven = 0x33,     // Check if BigInt is even
-    IsOdd = 0x34,      // Check if BigInt is odd
-    
+    Cmp = 0x30,    // Compare two BigInts (also known as Compare)
+    IsZero = 0x31, // Check if BigInt is zero
+    IsOne = 0x32,  // Check if BigInt is one
+    IsEven = 0x33, // Check if BigInt is even
+    IsOdd = 0x34,  // Check if BigInt is odd
+
     // Bitwise operations
-    And = 0x40,        // Bitwise AND
-    Or = 0x41,         // Bitwise OR
-    Xor = 0x42,        // Bitwise XOR
-    Not = 0x43,        // Bitwise NOT
-    Shl = 0x44,        // Shift left
-    Shr = 0x45,        // Shift right
-    
+    And = 0x40, // Bitwise AND
+    Or = 0x41,  // Bitwise OR
+    Xor = 0x42, // Bitwise XOR
+    Not = 0x43, // Bitwise NOT
+    Shl = 0x44, // Shift left
+    Shr = 0x45, // Shift right
+
     // Conversion operations
     FromI64 = 0x50,    // Convert from i64
     ToI64 = 0x51,      // Convert to i64 (if possible)
@@ -62,20 +62,20 @@ pub enum BigIntOpcode {
     ToBytes = 0x53,    // Convert to byte array
     FromString = 0x54, // Parse from string
     ToString = 0x55,   // Convert to string
-    
+
     // Advanced operations
-    Factorial = 0x60,  // Factorial
-    Fibonacci = 0x61,  // Fibonacci number
-    IsPrime = 0x62,    // Primality test
-    NextPrime = 0x63,  // Next prime number
-    Random = 0x64,     // Generate random BigInt
-    Abs = 0x65,        // Absolute value
-    
+    Factorial = 0x60, // Factorial
+    Fibonacci = 0x61, // Fibonacci number
+    IsPrime = 0x62,   // Primality test
+    NextPrime = 0x63, // Next prime number
+    Random = 0x64,    // Generate random BigInt
+    Abs = 0x65,       // Absolute value
+
     // Memory operations
-    Load = 0x70,       // Load BigInt from memory
-    Store = 0x71,      // Store BigInt to memory
-    Copy = 0x72,       // Copy BigInt
-    Swap = 0x73,       // Swap two BigInts
+    Load = 0x70,  // Load BigInt from memory
+    Store = 0x71, // Store BigInt to memory
+    Copy = 0x72,  // Copy BigInt
+    Swap = 0x73,  // Swap two BigInts
 }
 
 // Compatibility aliases for common alternative names
@@ -92,47 +92,47 @@ impl BigIntOpcode {
     pub fn operand_count(&self) -> usize {
         match self {
             // Unary operations
-            BigIntOpcode::Not |
-            BigIntOpcode::IsZero |
-            BigIntOpcode::IsOne |
-            BigIntOpcode::IsEven |
-            BigIntOpcode::IsOdd |
-            BigIntOpcode::FromI64 |
-            BigIntOpcode::ToI64 |
-            BigIntOpcode::FromBytes |
-            BigIntOpcode::ToBytes |
-            BigIntOpcode::FromString |
-            BigIntOpcode::ToString |
-            BigIntOpcode::Factorial |
-            BigIntOpcode::Fibonacci |
-            BigIntOpcode::IsPrime |
-            BigIntOpcode::NextPrime |
-            BigIntOpcode::Load |
-            BigIntOpcode::Copy |
-            BigIntOpcode::Abs => 1,
-            
+            BigIntOpcode::Not
+            | BigIntOpcode::IsZero
+            | BigIntOpcode::IsOne
+            | BigIntOpcode::IsEven
+            | BigIntOpcode::IsOdd
+            | BigIntOpcode::FromI64
+            | BigIntOpcode::ToI64
+            | BigIntOpcode::FromBytes
+            | BigIntOpcode::ToBytes
+            | BigIntOpcode::FromString
+            | BigIntOpcode::ToString
+            | BigIntOpcode::Factorial
+            | BigIntOpcode::Fibonacci
+            | BigIntOpcode::IsPrime
+            | BigIntOpcode::NextPrime
+            | BigIntOpcode::Load
+            | BigIntOpcode::Copy
+            | BigIntOpcode::Abs => 1,
+
             // Binary operations
-            BigIntOpcode::Add |
-            BigIntOpcode::Sub |
-            BigIntOpcode::Mul |
-            BigIntOpcode::Div |
-            BigIntOpcode::Mod |
-            BigIntOpcode::Pow |
-            BigIntOpcode::Gcd |
-            BigIntOpcode::Lcm |
-            BigIntOpcode::ModInverse |
-            BigIntOpcode::Cmp |
-            BigIntOpcode::And |
-            BigIntOpcode::Or |
-            BigIntOpcode::Xor |
-            BigIntOpcode::Shl |
-            BigIntOpcode::Shr |
-            BigIntOpcode::Store |
-            BigIntOpcode::Swap => 2,
-            
+            BigIntOpcode::Add
+            | BigIntOpcode::Sub
+            | BigIntOpcode::Mul
+            | BigIntOpcode::Div
+            | BigIntOpcode::Mod
+            | BigIntOpcode::Pow
+            | BigIntOpcode::Gcd
+            | BigIntOpcode::Lcm
+            | BigIntOpcode::ModInverse
+            | BigIntOpcode::Cmp
+            | BigIntOpcode::And
+            | BigIntOpcode::Or
+            | BigIntOpcode::Xor
+            | BigIntOpcode::Shl
+            | BigIntOpcode::Shr
+            | BigIntOpcode::Store
+            | BigIntOpcode::Swap => 2,
+
             // Ternary operations
             BigIntOpcode::ModPow => 3,
-            
+
             // Special operations
             BigIntOpcode::Random => 1, // Takes bit length as parameter
         }
@@ -140,22 +140,14 @@ impl BigIntOpcode {
 
     /// Check if this operation modifies its operands
     pub fn is_mutating(&self) -> bool {
-        matches!(self,
-            BigIntOpcode::Store |
-            BigIntOpcode::Swap
-        )
+        matches!(self, BigIntOpcode::Store | BigIntOpcode::Swap)
     }
 
     /// Check if this operation is commutative
     pub fn is_commutative(&self) -> bool {
-        matches!(self,
-            BigIntOpcode::Add |
-            BigIntOpcode::Mul |
-            BigIntOpcode::Gcd |
-            BigIntOpcode::Lcm |
-            BigIntOpcode::And |
-            BigIntOpcode::Or |
-            BigIntOpcode::Xor
+        matches!(
+            self,
+            BigIntOpcode::Add | BigIntOpcode::Mul | BigIntOpcode::Gcd | BigIntOpcode::Lcm | BigIntOpcode::And | BigIntOpcode::Or | BigIntOpcode::Xor
         )
     }
 
@@ -260,53 +252,40 @@ impl BigIntOpcode {
     pub fn complexity(&self) -> ComputationalComplexity {
         match self {
             // O(1) operations
-            BigIntOpcode::IsZero |
-            BigIntOpcode::IsOne |
-            BigIntOpcode::IsEven |
-            BigIntOpcode::IsOdd |
-            BigIntOpcode::Load |
-            BigIntOpcode::Store |
-            BigIntOpcode::Copy |
-            BigIntOpcode::Swap => ComputationalComplexity::Constant,
-            
+            BigIntOpcode::IsZero | BigIntOpcode::IsOne | BigIntOpcode::IsEven | BigIntOpcode::IsOdd | BigIntOpcode::Load | BigIntOpcode::Store | BigIntOpcode::Copy | BigIntOpcode::Swap => {
+                ComputationalComplexity::Constant
+            }
+
             // O(n) operations
-            BigIntOpcode::Add |
-            BigIntOpcode::Sub |
-            BigIntOpcode::Cmp |
-            BigIntOpcode::And |
-            BigIntOpcode::Or |
-            BigIntOpcode::Xor |
-            BigIntOpcode::Not |
-            BigIntOpcode::Shl |
-            BigIntOpcode::Shr |
-            BigIntOpcode::FromI64 |
-            BigIntOpcode::ToI64 |
-            BigIntOpcode::FromBytes |
-            BigIntOpcode::ToBytes |
-            BigIntOpcode::FromString |
-            BigIntOpcode::ToString |
-            BigIntOpcode::Abs => ComputationalComplexity::Linear,
-            
+            BigIntOpcode::Add
+            | BigIntOpcode::Sub
+            | BigIntOpcode::Cmp
+            | BigIntOpcode::And
+            | BigIntOpcode::Or
+            | BigIntOpcode::Xor
+            | BigIntOpcode::Not
+            | BigIntOpcode::Shl
+            | BigIntOpcode::Shr
+            | BigIntOpcode::FromI64
+            | BigIntOpcode::ToI64
+            | BigIntOpcode::FromBytes
+            | BigIntOpcode::ToBytes
+            | BigIntOpcode::FromString
+            | BigIntOpcode::ToString
+            | BigIntOpcode::Abs => ComputationalComplexity::Linear,
+
             // O(n²) operations
-            BigIntOpcode::Mul |
-            BigIntOpcode::Div |
-            BigIntOpcode::Mod => ComputationalComplexity::Quadratic,
-            
+            BigIntOpcode::Mul | BigIntOpcode::Div | BigIntOpcode::Mod => ComputationalComplexity::Quadratic,
+
             // O(n³) operations
-            BigIntOpcode::Pow |
-            BigIntOpcode::ModPow => ComputationalComplexity::Cubic,
-            
+            BigIntOpcode::Pow | BigIntOpcode::ModPow => ComputationalComplexity::Cubic,
+
             // Complex operations
-            BigIntOpcode::Gcd |
-            BigIntOpcode::Lcm |
-            BigIntOpcode::ModInverse => ComputationalComplexity::Logarithmic,
-            
+            BigIntOpcode::Gcd | BigIntOpcode::Lcm | BigIntOpcode::ModInverse => ComputationalComplexity::Logarithmic,
+
             // Very complex operations
-            BigIntOpcode::Factorial |
-            BigIntOpcode::Fibonacci |
-            BigIntOpcode::IsPrime |
-            BigIntOpcode::NextPrime => ComputationalComplexity::Exponential,
-            
+            BigIntOpcode::Factorial | BigIntOpcode::Fibonacci | BigIntOpcode::IsPrime | BigIntOpcode::NextPrime => ComputationalComplexity::Exponential,
+
             BigIntOpcode::Random => ComputationalComplexity::Linear,
         }
     }
@@ -315,12 +294,12 @@ impl BigIntOpcode {
 /// Computational complexity categories for BigInt operations
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ComputationalComplexity {
-    Constant,      // O(1)
-    Logarithmic,   // O(log n)
-    Linear,        // O(n)
-    Quadratic,     // O(n²)
-    Cubic,         // O(n³)
-    Exponential,   // O(2^n) or worse
+    Constant,    // O(1)
+    Logarithmic, // O(log n)
+    Linear,      // O(n)
+    Quadratic,   // O(n²)
+    Cubic,       // O(n³)
+    Exponential, // O(2^n) or worse
 }
 
 impl fmt::Display for BigIntOpcode {

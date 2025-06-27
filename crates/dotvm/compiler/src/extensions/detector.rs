@@ -34,10 +34,7 @@ pub enum ExtensionDetectionError {
     #[error("Unsupported extension type: {0}")]
     UnsupportedExtension(String),
     #[error("Extension conflict: {extension1} conflicts with {extension2}")]
-    ExtensionConflict {
-        extension1: String,
-        extension2: String,
-    },
+    ExtensionConflict { extension1: String, extension2: String },
     #[error("Architecture incompatibility: {extension} requires {required_arch:?} but target is {target_arch:?}")]
     ArchitectureIncompatibility {
         extension: String,
@@ -205,9 +202,7 @@ impl ExtensionDetector {
         for instruction in &function.body {
             match instruction {
                 // Look for large integer operations
-                crate::wasm::ast::WasmInstruction::I64Add |
-                crate::wasm::ast::WasmInstruction::I64Mul |
-                crate::wasm::ast::WasmInstruction::I64DivS => {
+                crate::wasm::ast::WasmInstruction::I64Add | crate::wasm::ast::WasmInstruction::I64Mul | crate::wasm::ast::WasmInstruction::I64DivS => {
                     // Check if this might be part of a BigInt operation
                     if self.is_likely_bigint_operation(function) {
                         self.add_requirement(ExtensionRequirement {
@@ -219,8 +214,7 @@ impl ExtensionDetector {
                     }
                 }
                 // Look for SIMD-like patterns (using available instructions as placeholders)
-                crate::wasm::ast::WasmInstruction::I32Load { .. } |
-                crate::wasm::ast::WasmInstruction::I32Store { .. } => {
+                crate::wasm::ast::WasmInstruction::I32Load { .. } | crate::wasm::ast::WasmInstruction::I32Store { .. } => {
                     self.add_requirement(ExtensionRequirement {
                         extension_type: ExtensionType::Simd,
                         function_index,
@@ -238,14 +232,16 @@ impl ExtensionDetector {
     /// Check if a function is likely performing BigInt operations
     fn is_likely_bigint_operation(&self, function: &WasmFunction) -> bool {
         // Heuristic: functions with many integer operations and specific patterns
-        let int_ops = function.body.iter().filter(|inst| {
-            matches!(inst, 
-                crate::wasm::ast::WasmInstruction::I64Add |
-                crate::wasm::ast::WasmInstruction::I64Sub |
-                crate::wasm::ast::WasmInstruction::I64Mul |
-                crate::wasm::ast::WasmInstruction::I64DivS
-            )
-        }).count();
+        let int_ops = function
+            .body
+            .iter()
+            .filter(|inst| {
+                matches!(
+                    inst,
+                    crate::wasm::ast::WasmInstruction::I64Add | crate::wasm::ast::WasmInstruction::I64Sub | crate::wasm::ast::WasmInstruction::I64Mul | crate::wasm::ast::WasmInstruction::I64DivS
+                )
+            })
+            .count();
 
         // If there are many integer operations, it might be BigInt
         // Note: function.name is not available in WasmFunction, so we only check operation count
@@ -271,7 +267,7 @@ impl ExtensionDetector {
         // Extract the attribute name and parameters
         let attr = attr.trim_start_matches("#[").trim_end_matches("]");
         let parts: Vec<&str> = attr.split('(').collect();
-        
+
         if parts.is_empty() {
             return Err(ExtensionDetectionError::InvalidAttributeSyntax(attr.to_string()));
         }
@@ -295,10 +291,11 @@ impl ExtensionDetector {
     /// Add an extension requirement
     fn add_requirement(&mut self, requirement: ExtensionRequirement) {
         // Check for duplicates
-        if !self.requirements.iter().any(|r| {
-            r.extension_type == requirement.extension_type && 
-            r.function_index == requirement.function_index
-        }) {
+        if !self
+            .requirements
+            .iter()
+            .any(|r| r.extension_type == requirement.extension_type && r.function_index == requirement.function_index)
+        {
             self.requirements.push(requirement);
         }
     }
@@ -329,11 +326,7 @@ impl ExtensionDetector {
 
     /// Get the minimum architecture required for all detected extensions
     pub fn get_minimum_required_architecture(&self) -> VmArchitecture {
-        self.requirements
-            .iter()
-            .map(|r| r.extension_type.minimum_architecture())
-            .max()
-            .unwrap_or(VmArchitecture::Arch64)
+        self.requirements.iter().map(|r| r.extension_type.minimum_architecture()).max().unwrap_or(VmArchitecture::Arch64)
     }
 
     /// Check if a specific extension type was detected
@@ -376,10 +369,10 @@ mod tests {
     #[test]
     fn test_attribute_parsing() {
         let detector = ExtensionDetector::new(VmArchitecture::Arch256);
-        
+
         let attr = "#[dotvm::simd(width=256)]";
         let pattern = detector.parse_single_attribute(attr).unwrap().unwrap();
-        
+
         assert_eq!(pattern.name, "dotvm::simd");
         assert_eq!(pattern.parameters.get("width"), Some(&"256".to_string()));
     }
@@ -387,7 +380,7 @@ mod tests {
     #[test]
     fn test_function_signature_detection() {
         let mut detector = ExtensionDetector::new(VmArchitecture::Arch256);
-        
+
         let function = WasmFunction {
             signature: crate::wasm::ast::WasmFunctionType {
                 params: vec![WasmValueType::I64, WasmValueType::I64],
@@ -398,7 +391,7 @@ mod tests {
         };
 
         detector.analyze_function(0, &function).unwrap();
-        
+
         // Note: Function name detection is currently disabled since WasmFunction doesn't have a name field
         // The extension would need to be detected through other means (instruction patterns, etc.)
         // For now, we expect no extensions to be detected
@@ -408,19 +401,19 @@ mod tests {
     #[test]
     fn test_architecture_incompatibility() {
         let mut detector = ExtensionDetector::new(VmArchitecture::Arch64);
-        
+
         let requirement = ExtensionRequirement {
             extension_type: ExtensionType::Simd,
             function_index: 0,
             metadata: HashMap::new(),
             priority: 100,
         };
-        
+
         detector.add_requirement(requirement);
-        
+
         let result = detector.validate_architecture_compatibility();
         assert!(result.is_err());
-        
+
         if let Err(ExtensionDetectionError::ArchitectureIncompatibility { .. }) = result {
             // Expected error
         } else {

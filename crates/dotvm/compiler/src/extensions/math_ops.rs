@@ -24,8 +24,8 @@ use crate::wasm::ast::{WasmFunction, WasmInstruction, WasmValueType};
 use dotvm_core::{
     bytecode::VmArchitecture,
     opcode::{
-        arithmetic_opcodes::ArithmeticOpcode,
         architecture_opcodes::{Opcode128, Opcode256, Opcode512},
+        arithmetic_opcodes::ArithmeticOpcode,
     },
 };
 use std::collections::HashMap;
@@ -41,11 +41,7 @@ pub enum MathExtensionError {
     #[error("High-precision operation requires 256-bit+ architecture")]
     HighPrecisionArchitectureRequired,
     #[error("Invalid operand count for operation {operation}: expected {expected}, got {actual}")]
-    InvalidOperandCount {
-        operation: String,
-        expected: usize,
-        actual: usize,
-    },
+    InvalidOperandCount { operation: String, expected: usize, actual: usize },
     #[error("Type mismatch in mathematical operation: {details}")]
     TypeMismatch { details: String },
     #[error("Precision overflow: operation would exceed maximum precision")]
@@ -65,7 +61,7 @@ pub enum MathOperation {
     BigIntGcd,
     BigIntLcm,
     BigIntFactorial,
-    
+
     // High-precision floating point (256-bit+)
     HighPrecisionAdd,
     HighPrecisionSub,
@@ -78,7 +74,7 @@ pub enum MathOperation {
     HighPrecisionSin,
     HighPrecisionCos,
     HighPrecisionTan,
-    
+
     // Advanced mathematical functions
     ModularExponentiation,
     DiscreteLogarithm,
@@ -86,7 +82,7 @@ pub enum MathOperation {
     MillerRabinTest,
     EllipticCurveAdd,
     EllipticCurveMul,
-    
+
     // Statistical operations
     Mean,
     Variance,
@@ -100,44 +96,36 @@ impl MathOperation {
     pub fn minimum_architecture(&self) -> VmArchitecture {
         match self {
             // BigInt operations require 128-bit
-            MathOperation::BigIntAdd |
-            MathOperation::BigIntSub |
-            MathOperation::BigIntMul |
-            MathOperation::BigIntDiv |
-            MathOperation::BigIntMod |
-            MathOperation::BigIntPow |
-            MathOperation::BigIntGcd |
-            MathOperation::BigIntLcm |
-            MathOperation::BigIntFactorial => VmArchitecture::Arch128,
-            
+            MathOperation::BigIntAdd
+            | MathOperation::BigIntSub
+            | MathOperation::BigIntMul
+            | MathOperation::BigIntDiv
+            | MathOperation::BigIntMod
+            | MathOperation::BigIntPow
+            | MathOperation::BigIntGcd
+            | MathOperation::BigIntLcm
+            | MathOperation::BigIntFactorial => VmArchitecture::Arch128,
+
             // High-precision operations require 256-bit
-            MathOperation::HighPrecisionAdd |
-            MathOperation::HighPrecisionSub |
-            MathOperation::HighPrecisionMul |
-            MathOperation::HighPrecisionDiv |
-            MathOperation::HighPrecisionSqrt |
-            MathOperation::HighPrecisionPow |
-            MathOperation::HighPrecisionLog |
-            MathOperation::HighPrecisionExp |
-            MathOperation::HighPrecisionSin |
-            MathOperation::HighPrecisionCos |
-            MathOperation::HighPrecisionTan => VmArchitecture::Arch256,
-            
+            MathOperation::HighPrecisionAdd
+            | MathOperation::HighPrecisionSub
+            | MathOperation::HighPrecisionMul
+            | MathOperation::HighPrecisionDiv
+            | MathOperation::HighPrecisionSqrt
+            | MathOperation::HighPrecisionPow
+            | MathOperation::HighPrecisionLog
+            | MathOperation::HighPrecisionExp
+            | MathOperation::HighPrecisionSin
+            | MathOperation::HighPrecisionCos
+            | MathOperation::HighPrecisionTan => VmArchitecture::Arch256,
+
             // Advanced operations require 256-bit or 512-bit
-            MathOperation::ModularExponentiation |
-            MathOperation::DiscreteLogarithm |
-            MathOperation::PrimeFactorization |
-            MathOperation::MillerRabinTest => VmArchitecture::Arch256,
-            
-            MathOperation::EllipticCurveAdd |
-            MathOperation::EllipticCurveMul => VmArchitecture::Arch512,
-            
+            MathOperation::ModularExponentiation | MathOperation::DiscreteLogarithm | MathOperation::PrimeFactorization | MathOperation::MillerRabinTest => VmArchitecture::Arch256,
+
+            MathOperation::EllipticCurveAdd | MathOperation::EllipticCurveMul => VmArchitecture::Arch512,
+
             // Statistical operations require 256-bit for precision
-            MathOperation::Mean |
-            MathOperation::Variance |
-            MathOperation::StandardDeviation |
-            MathOperation::Correlation |
-            MathOperation::Regression => VmArchitecture::Arch256,
+            MathOperation::Mean | MathOperation::Variance | MathOperation::StandardDeviation | MathOperation::Correlation | MathOperation::Regression => VmArchitecture::Arch256,
         }
     }
 
@@ -145,41 +133,38 @@ impl MathOperation {
     pub fn operand_count(&self) -> usize {
         match self {
             // Unary operations
-            MathOperation::BigIntFactorial |
-            MathOperation::HighPrecisionSqrt |
-            MathOperation::HighPrecisionLog |
-            MathOperation::HighPrecisionExp |
-            MathOperation::HighPrecisionSin |
-            MathOperation::HighPrecisionCos |
-            MathOperation::HighPrecisionTan |
-            MathOperation::PrimeFactorization |
-            MathOperation::MillerRabinTest => 1,
-            
+            MathOperation::BigIntFactorial
+            | MathOperation::HighPrecisionSqrt
+            | MathOperation::HighPrecisionLog
+            | MathOperation::HighPrecisionExp
+            | MathOperation::HighPrecisionSin
+            | MathOperation::HighPrecisionCos
+            | MathOperation::HighPrecisionTan
+            | MathOperation::PrimeFactorization
+            | MathOperation::MillerRabinTest => 1,
+
             // Binary operations
-            MathOperation::BigIntAdd |
-            MathOperation::BigIntSub |
-            MathOperation::BigIntMul |
-            MathOperation::BigIntDiv |
-            MathOperation::BigIntMod |
-            MathOperation::BigIntPow |
-            MathOperation::BigIntGcd |
-            MathOperation::BigIntLcm |
-            MathOperation::HighPrecisionAdd |
-            MathOperation::HighPrecisionSub |
-            MathOperation::HighPrecisionMul |
-            MathOperation::HighPrecisionDiv |
-            MathOperation::HighPrecisionPow |
-            MathOperation::ModularExponentiation |
-            MathOperation::DiscreteLogarithm |
-            MathOperation::EllipticCurveAdd |
-            MathOperation::EllipticCurveMul |
-            MathOperation::Correlation => 2,
-            
+            MathOperation::BigIntAdd
+            | MathOperation::BigIntSub
+            | MathOperation::BigIntMul
+            | MathOperation::BigIntDiv
+            | MathOperation::BigIntMod
+            | MathOperation::BigIntPow
+            | MathOperation::BigIntGcd
+            | MathOperation::BigIntLcm
+            | MathOperation::HighPrecisionAdd
+            | MathOperation::HighPrecisionSub
+            | MathOperation::HighPrecisionMul
+            | MathOperation::HighPrecisionDiv
+            | MathOperation::HighPrecisionPow
+            | MathOperation::ModularExponentiation
+            | MathOperation::DiscreteLogarithm
+            | MathOperation::EllipticCurveAdd
+            | MathOperation::EllipticCurveMul
+            | MathOperation::Correlation => 2,
+
             // Variable operand operations (represented as array operations)
-            MathOperation::Mean |
-            MathOperation::Variance |
-            MathOperation::StandardDeviation |
-            MathOperation::Regression => 1, // Takes array as single operand
+            MathOperation::Mean | MathOperation::Variance | MathOperation::StandardDeviation | MathOperation::Regression => 1, // Takes array as single operand
         }
     }
 }
@@ -214,7 +199,7 @@ impl MathExtension {
             target_architecture,
             operation_mappings: HashMap::new(),
         };
-        
+
         extension.initialize_operation_mappings();
         extension
     }
@@ -332,7 +317,7 @@ impl MathExtension {
                         });
                     }
                 }
-                
+
                 // High-precision floating point patterns
                 WasmInstruction::F64Add => {
                     if self.is_high_precision_pattern(&function.body[i..]) {
@@ -345,7 +330,7 @@ impl MathExtension {
                         });
                     }
                 }
-                
+
                 _ => {}
             }
             i += 1;
@@ -357,16 +342,15 @@ impl MathExtension {
     /// Check if instruction sequence indicates BigInt operation
     fn is_bigint_pattern(&self, instructions: &[WasmInstruction]) -> bool {
         // Look for multiple consecutive integer operations
-        let consecutive_int_ops = instructions.iter()
+        let consecutive_int_ops = instructions
+            .iter()
             .take(10) // Look ahead up to 10 instructions
-            .filter(|inst| matches!(inst, 
-                WasmInstruction::I64Add |
-                WasmInstruction::I64Sub |
-                WasmInstruction::I64Mul |
-                WasmInstruction::I64And |
-                WasmInstruction::I64Or |
-                WasmInstruction::I64Xor
-            ))
+            .filter(|inst| {
+                matches!(
+                    inst,
+                    WasmInstruction::I64Add | WasmInstruction::I64Sub | WasmInstruction::I64Mul | WasmInstruction::I64And | WasmInstruction::I64Or | WasmInstruction::I64Xor
+                )
+            })
             .count();
 
         consecutive_int_ops >= 3 // Heuristic: 3+ consecutive operations suggest BigInt
@@ -375,16 +359,15 @@ impl MathExtension {
     /// Check if instruction sequence indicates high-precision operation
     fn is_high_precision_pattern(&self, instructions: &[WasmInstruction]) -> bool {
         // Look for complex floating point operation sequences
-        let fp_ops = instructions.iter()
+        let fp_ops = instructions
+            .iter()
             .take(15) // Look ahead up to 15 instructions
-            .filter(|inst| matches!(inst,
-                WasmInstruction::F64Add |
-                WasmInstruction::F64Sub |
-                WasmInstruction::F64Mul |
-                WasmInstruction::F64Div |
-                WasmInstruction::F64Sqrt |
-                WasmInstruction::F64Abs
-            ))
+            .filter(|inst| {
+                matches!(
+                    inst,
+                    WasmInstruction::F64Add | WasmInstruction::F64Sub | WasmInstruction::F64Mul | WasmInstruction::F64Div | WasmInstruction::F64Sqrt | WasmInstruction::F64Abs
+                )
+            })
             .count();
 
         fp_ops >= 5 // Heuristic: 5+ operations suggest high-precision computation
@@ -396,9 +379,10 @@ impl MathExtension {
             VmArchitecture::Arch128 => self.generate_128bit_bytecode(context),
             VmArchitecture::Arch256 => self.generate_256bit_bytecode(context),
             VmArchitecture::Arch512 => self.generate_512bit_bytecode(context),
-            _ => Err(MathExtensionError::UnsupportedOperation(
-                format!("Architecture {:?} not supported for math operations", self.target_architecture)
-            )),
+            _ => Err(MathExtensionError::UnsupportedOperation(format!(
+                "Architecture {:?} not supported for math operations",
+                self.target_architecture
+            ))),
         }
     }
 
@@ -416,9 +400,7 @@ impl MathExtension {
             MathOperation::BigIntDiv => {
                 bytecode.push((Opcode128::BigInt(dotvm_core::opcode::bigint_opcodes::BigIntOpcode::Div).as_u16() & 0xFF) as u8);
             }
-            _ => return Err(MathExtensionError::UnsupportedOperation(
-                format!("{:?} not supported on 128-bit architecture", context.operation)
-            )),
+            _ => return Err(MathExtensionError::UnsupportedOperation(format!("{:?} not supported on 128-bit architecture", context.operation))),
         }
 
         Ok(bytecode)
@@ -433,7 +415,7 @@ impl MathExtension {
             MathOperation::BigIntAdd => {
                 bytecode.push((Opcode256::Base(Opcode128::BigInt(dotvm_core::opcode::bigint_opcodes::BigIntOpcode::Add)).as_u16() & 0xFF) as u8);
             }
-            
+
             // High-precision operations
             MathOperation::HighPrecisionAdd => {
                 bytecode.push((Opcode256::Math(dotvm_core::opcode::math_opcodes::MathOpcode::HighPrecisionAdd).as_u16() & 0xFF) as u8);
@@ -441,10 +423,8 @@ impl MathExtension {
             MathOperation::HighPrecisionMul => {
                 bytecode.push((Opcode256::Math(dotvm_core::opcode::math_opcodes::MathOpcode::HighPrecisionMul).as_u16() & 0xFF) as u8);
             }
-            
-            _ => return Err(MathExtensionError::UnsupportedOperation(
-                format!("{:?} not supported on 256-bit architecture", context.operation)
-            )),
+
+            _ => return Err(MathExtensionError::UnsupportedOperation(format!("{:?} not supported on 256-bit architecture", context.operation))),
         }
 
         Ok(bytecode)
@@ -462,7 +442,7 @@ impl MathExtension {
             MathOperation::HighPrecisionAdd => {
                 bytecode.push((Opcode512::Base(Opcode256::Math(dotvm_core::opcode::math_opcodes::MathOpcode::HighPrecisionAdd)).as_u16() & 0xFF) as u8);
             }
-            
+
             // 512-bit specific operations (using available crypto opcodes as placeholders)
             MathOperation::EllipticCurveAdd => {
                 bytecode.push((Opcode512::Crypto(dotvm_core::opcode::crypto_opcodes::CryptoOpcode::Hash).as_u16() & 0xFF) as u8);
@@ -470,10 +450,8 @@ impl MathExtension {
             MathOperation::EllipticCurveMul => {
                 bytecode.push((Opcode512::Crypto(dotvm_core::opcode::crypto_opcodes::CryptoOpcode::Sign).as_u16() & 0xFF) as u8);
             }
-            
-            _ => return Err(MathExtensionError::UnsupportedOperation(
-                format!("{:?} not supported on 512-bit architecture", context.operation)
-            )),
+
+            _ => return Err(MathExtensionError::UnsupportedOperation(format!("{:?} not supported on 512-bit architecture", context.operation))),
         }
 
         Ok(bytecode)
@@ -481,11 +459,7 @@ impl MathExtension {
 
     /// Get supported operations for the current architecture
     pub fn get_supported_operations(&self) -> Vec<MathOperation> {
-        self.operation_mappings
-            .values()
-            .filter(|op| op.minimum_architecture() <= self.target_architecture)
-            .cloned()
-            .collect()
+        self.operation_mappings.values().filter(|op| op.minimum_architecture() <= self.target_architecture).cloned().collect()
     }
 }
 
@@ -517,7 +491,7 @@ mod tests {
     #[test]
     fn test_operation_detection() {
         let extension = MathExtension::new(VmArchitecture::Arch256);
-        
+
         let function = WasmFunction {
             signature: crate::wasm::ast::WasmFunctionType {
                 params: vec![WasmValueType::I64, WasmValueType::I64],
@@ -535,7 +509,7 @@ mod tests {
     #[test]
     fn test_architecture_validation() {
         let extension = MathExtension::new(VmArchitecture::Arch64);
-        
+
         let function = WasmFunction {
             signature: crate::wasm::ast::WasmFunctionType {
                 params: vec![WasmValueType::I64, WasmValueType::I64],
