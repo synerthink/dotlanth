@@ -7,15 +7,21 @@ edition.workspace = true
 dotvm-common = { path = "../common" }
 dotvm-core = { path = "../core" }
 dotvm-compiler = { path = "../compiler" }
-clap.workspace = true
+clap = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true }
+thiserror.workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["async_tokio"] }
 tokio-test = "0.4"
 test-case = "3.0"
+tempfile = "3.0"
+
+[[bin]]
+name = "dotvm"
+path = "src/main.rs"
 
 [[bench]]
 name = "benchmarks"

@@ -215,7 +215,7 @@ mod tests {
 
         fn apply_checkpoint(&self, checkpoint: &Checkpoint) -> RollbackResult<()> {
             // In a real implementation, this would apply the state to the system
-            let mut manager = self as *const Self as *mut MockCheckpointManager;
+            let manager = self as *const Self as *mut MockCheckpointManager;
             // This is unsafe but acceptable for test purposes
             unsafe {
                 (*manager).applied_checkpoint = Some(checkpoint.id.clone());

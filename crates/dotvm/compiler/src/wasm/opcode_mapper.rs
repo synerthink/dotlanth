@@ -23,7 +23,7 @@
 use crate::wasm::ast::WasmInstruction;
 use dotvm_core::bytecode::VmArchitecture;
 use dotvm_core::opcode::{
-    architecture_opcodes::{Opcode64, Opcode128},
+    architecture_opcodes::{Opcode64, Opcode128, Opcode256, Opcode512},
     arithmetic_opcodes::ArithmeticOpcode,
     control_flow_opcodes::ControlFlowOpcode,
     memory_opcodes::MemoryOpcode,
@@ -59,7 +59,8 @@ pub struct MappedInstruction {
 pub enum MappedOpcode {
     Arch64(Opcode64),
     Arch128(Opcode128),
-    // TODO: Add Arch256 and Arch512 when implemented
+    Arch256(Opcode256),
+    Arch512(Opcode512),
 }
 
 impl MappedOpcode {
@@ -68,6 +69,8 @@ impl MappedOpcode {
         match self {
             MappedOpcode::Arch64(op) => op.as_u16(),
             MappedOpcode::Arch128(op) => op.as_u16(),
+            MappedOpcode::Arch256(op) => op.as_u16(),
+            MappedOpcode::Arch512(op) => op.as_u16(),
         }
     }
 
@@ -76,6 +79,8 @@ impl MappedOpcode {
         match self {
             MappedOpcode::Arch64(_) => VmArchitecture::Arch64,
             MappedOpcode::Arch128(_) => VmArchitecture::Arch128,
+            MappedOpcode::Arch256(_) => VmArchitecture::Arch256,
+            MappedOpcode::Arch512(_) => VmArchitecture::Arch512,
         }
     }
 }
@@ -421,6 +426,43 @@ impl OpcodeMapper {
                 },
             }]),
 
+            // Conversion instructions
+            WasmInstruction::F32ConvertI32S => Ok(vec![MappedInstruction {
+                opcode: self.map_to_arch(Opcode64::Arithmetic(ArithmeticOpcode::Add))?, // Use Add as placeholder for conversion
+                operands: vec![32, 32], // Convert from i32 to f32
+                metadata: InstructionMetadata {
+                    stack_effect: (1, 1),
+                    ..Default::default()
+                },
+            }]),
+
+            WasmInstruction::F32Add => Ok(vec![MappedInstruction {
+                opcode: self.map_to_arch(Opcode64::Arithmetic(ArithmeticOpcode::Add))?,
+                operands: vec![32], // 32-bit float operation
+                metadata: InstructionMetadata {
+                    stack_effect: (2, 1),
+                    ..Default::default()
+                },
+            }]),
+
+            WasmInstruction::MemorySize => Ok(vec![MappedInstruction {
+                opcode: self.map_to_arch(Opcode64::Memory(MemoryOpcode::Load))?, // Use Load as placeholder
+                operands: vec![0], // Memory index
+                metadata: InstructionMetadata {
+                    stack_effect: (0, 1),
+                    ..Default::default()
+                },
+            }]),
+
+            WasmInstruction::MemoryGrow => Ok(vec![MappedInstruction {
+                opcode: self.map_to_arch(Opcode64::Memory(MemoryOpcode::Allocate))?, // Use Allocate for grow
+                operands: vec![0], // Memory index
+                metadata: InstructionMetadata {
+                    stack_effect: (1, 1),
+                    ..Default::default()
+                },
+            }]),
+
             // Add more instruction mappings as needed...
             _ => Err(OpcodeMappingError::UnsupportedInstruction {
                 instruction: format!("{:?}", instruction),
@@ -434,13 +476,8 @@ impl OpcodeMapper {
         match self.target_architecture {
             VmArchitecture::Arch64 => Ok(MappedOpcode::Arch64(base_opcode)),
             VmArchitecture::Arch128 => Ok(MappedOpcode::Arch128(Opcode128::Base(base_opcode))),
-            VmArchitecture::Arch256 | VmArchitecture::Arch512 => {
-                // TODO: Implement when Arch256 and Arch512 opcodes are available
-                Err(OpcodeMappingError::UnsupportedInstruction {
-                    instruction: format!("{:?}", base_opcode),
-                    arch: self.target_architecture,
-                })
-            }
+            VmArchitecture::Arch256 => Ok(MappedOpcode::Arch256(Opcode256::Base(Opcode128::Base(base_opcode)))),
+            VmArchitecture::Arch512 => Ok(MappedOpcode::Arch512(Opcode512::Base(Opcode256::Base(Opcode128::Base(base_opcode))))),
             VmArchitecture::Arch32 => Err(OpcodeMappingError::IncompatibleArchitecture {
                 instruction: format!("{:?}", base_opcode),
                 arch: self.target_architecture,

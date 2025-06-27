@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod async_runtime;
-pub mod contracts;
-pub mod environment;
-pub mod events;
-pub mod execution_context;
-pub mod finalizer;
-pub mod rollback;
-pub mod state;
-pub mod transpiler_integration;
-pub mod validation;
+//! DotVM Tools Library
+//!
+//! This crate provides command-line tools and utilities for working with DotVM,
+//! including transpilation, optimization, and debugging tools.
+
+pub mod cli;
+pub mod utils;
+
+// Re-export main CLI functions for easy access
+pub use cli::transpile::{run_transpile_cli, TranspileArgs, TranspilationPipeline};
