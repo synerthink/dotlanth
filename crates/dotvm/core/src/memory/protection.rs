@@ -15,6 +15,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::*;
+use std::arch::asm;
+use std::fs;
 use cfg_if::cfg_if;
 use std::collections::HashMap;
 use std::env;
@@ -116,7 +118,7 @@ impl HardwareProtection {
     }
 
     /// Automatically determines the protection type and applies protection.
-    fn protect_region(&self, addr: VirtualAddress, size: usize, _protection: Protection) -> Result<(), MemoryError> {
+    fn protect_region(&self, addr: VirtualAddress, size: usize, protection: Protection) -> Result<(), MemoryError> {
         self.enforce_alignment(addr)?;
         self.validate_size(size)?;
 
