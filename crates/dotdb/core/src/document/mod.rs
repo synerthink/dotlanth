@@ -54,11 +54,6 @@ impl DocumentId {
     pub fn uuid(&self) -> Uuid {
         self.0
     }
-
-    /// Convert to string representation
-    pub fn to_string(&self) -> String {
-        self.0.to_string()
-    }
 }
 
 impl Default for DocumentId {

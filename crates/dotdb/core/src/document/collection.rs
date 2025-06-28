@@ -19,7 +19,7 @@
 //! This module provides high-level collection management operations
 //! for organizing documents in the document store.
 
-use super::{CollectionName, Document, DocumentError, DocumentId, DocumentResult, DocumentStorage};
+use super::{CollectionName, Document, DocumentId, DocumentResult, DocumentStorage};
 use serde_json::Value;
 use std::sync::Arc;
 
@@ -182,7 +182,7 @@ pub fn create_in_memory_collection_manager() -> DocumentResult<CollectionManager
 /// Helper function to create a collection manager with persistent storage
 pub fn create_persistent_collection_manager<P: AsRef<std::path::Path>>(path: P, config: Option<crate::state::db_interface::DbConfig>) -> DocumentResult<CollectionManager> {
     use super::storage::DocumentStore;
-    use crate::state::db_interface::{Database, DbConfig};
+    use crate::state::db_interface::Database;
 
     let config = config.unwrap_or_default();
     let db = Arc::new(Database::new(path, config)?);

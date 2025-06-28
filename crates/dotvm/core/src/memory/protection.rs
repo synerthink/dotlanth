@@ -16,10 +16,8 @@
 
 use super::*;
 use cfg_if::cfg_if;
-use std::arch::asm;
 use std::collections::HashMap;
 use std::env;
-use std::fs;
 
 // Constants
 const PAGE_SIZE: usize = 4096;
@@ -79,7 +77,9 @@ impl ProtectionContext {
 /// Hardware-assisted memory protection (when available)
 #[derive(Debug)]
 pub struct HardwareProtection {
+    #[allow(dead_code)]
     pkey_supported: bool,
+    #[allow(dead_code)]
     mpk_supported: bool,
 }
 
@@ -116,7 +116,7 @@ impl HardwareProtection {
     }
 
     /// Automatically determines the protection type and applies protection.
-    fn protect_region(&self, addr: VirtualAddress, size: usize, protection: Protection) -> Result<(), MemoryError> {
+    fn protect_region(&self, addr: VirtualAddress, size: usize, _protection: Protection) -> Result<(), MemoryError> {
         self.enforce_alignment(addr)?;
         self.validate_size(size)?;
 
@@ -151,6 +151,7 @@ impl HardwareProtection {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn determine_mpk_for_protection(&self, protection: Protection) -> u32 {
         // Determine the appropriate MPK key according to the protection type
         match protection {
@@ -232,6 +233,7 @@ impl HardwareProtection {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn determine_pkey_for_protection(&self, protection: Protection) -> u32 {
         // Determine the appropriate PKEY key according to the protection type
         match protection {

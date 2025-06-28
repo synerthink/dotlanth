@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{ExecutionError, Task}; // TaskPriority removed from here
-use crate::vm::execution_controller::TaskPriority; // Import it specifically for tests if needed, or from super if Task uses it
+// Removed unused import - TaskPriority may be needed later for priority scheduling
 use crossbeam_deque::{Steal, Stealer, Worker};
 use std::collections::BinaryHeap;
 use std::sync::Arc;
@@ -120,7 +120,7 @@ impl WorkStealingScheduler {
             }
             // STAGE 1: Acquire locks with minimal scope
             let mut priority_queues = self.priority_queues.lock().await;
-            let mut workers_guard = self.workers.lock().await; // Renamed to avoid conflict if `workers` is used later
+            let workers_guard = self.workers.lock().await; // Renamed to avoid conflict if `workers` is used later
 
             // STAGE 2: Priority task processing
             if let Some(task) = priority_queues[worker_id].pop() {

@@ -23,6 +23,7 @@ pub mod math_opcodes;
 pub mod memory_opcodes;
 pub mod parallel_opcodes;
 pub mod simd_opcodes;
+pub mod stack_opcodes;
 pub mod state_opcodes;
 pub mod system_call_opcodes;
 pub mod vector_opcodes;

@@ -20,8 +20,7 @@
 //! of the key-value database interface to provide document-oriented operations.
 
 use super::{CollectionName, Document, DocumentError, DocumentId, DocumentResult};
-use crate::state::db_interface::{DatabaseInterface, DbResult};
-use serde_json::Value;
+use crate::state::db_interface::DatabaseInterface;
 use std::sync::Arc;
 
 /// Document storage interface

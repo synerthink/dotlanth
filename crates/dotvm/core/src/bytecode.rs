@@ -120,9 +120,114 @@ impl BytecodeHeader {
     }
 }
 
+/// Value types that can be stored in the constant pool
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConstantValue {
+    /// 64-bit signed integer
+    Int64(i64),
+    /// 64-bit floating point
+    Float64(f64),
+    /// UTF-8 string
+    String(String),
+    /// Boolean value
+    Bool(bool),
+    /// Null value
+    Null,
+    /// JSON value for database operations
+    Json(serde_json::Value),
+}
+
+/// Simple bytecode file structure for the executor
+#[derive(Debug, Clone)]
+pub struct BytecodeFile {
+    /// File header
+    pub header: BytecodeHeader,
+    /// Raw bytecode instructions
+    pub code: Vec<u8>,
+    /// Constants referenced by bytecode
+    pub constants: std::collections::HashMap<u32, ConstantValue>,
+}
+
+impl BytecodeFile {
+    /// Create a new empty bytecode file
+    pub fn new(architecture: VmArchitecture) -> Self {
+        Self {
+            header: BytecodeHeader::new(architecture),
+            code: Vec::new(),
+            constants: std::collections::HashMap::new(),
+        }
+    }
+
+    /// Add an instruction to the code section
+    pub fn add_instruction(&mut self, opcode: u8, operands: &[u8]) {
+        self.code.push(opcode);
+        self.code.extend_from_slice(operands);
+    }
+
+    /// Add a constant and return its ID
+    pub fn add_constant(&mut self, value: ConstantValue) -> u32 {
+        let id = self.constants.len() as u32;
+        self.constants.insert(id, value);
+        id
+    }
+
+    /// Get a constant by ID
+    pub fn get_constant(&self, id: u32) -> Option<&ConstantValue> {
+        self.constants.get(&id)
+    }
+
+    /// Get the entry point (always 0 for now)
+    pub fn entry_point(&self) -> u32 {
+        0
+    }
+
+    /// Get the target architecture
+    pub fn architecture(&self) -> u32 {
+        match self.header.architecture {
+            VmArchitecture::Arch32 => 32,
+            VmArchitecture::Arch64 => 64,
+            VmArchitecture::Arch128 => 128,
+            VmArchitecture::Arch256 => 256,
+            VmArchitecture::Arch512 => 512,
+        }
+    }
+
+    /// Load bytecode from a file (simplified version)
+    pub fn load_from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Self, std::io::Error> {
+        let data = std::fs::read(path)?;
+        Self::load_from_bytes(&data)
+    }
+
+    /// Load bytecode from bytes
+    pub fn load_from_bytes(data: &[u8]) -> Result<Self, std::io::Error> {
+        if data.len() < BytecodeHeader::size() {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Insufficient data for header"));
+        }
+
+        let header = BytecodeHeader::from_bytes(&data[0..BytecodeHeader::size()]).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+
+        let code = data[BytecodeHeader::size()..].to_vec();
+
+        Ok(Self {
+            header,
+            code,
+            constants: std::collections::HashMap::new(), // For now, no constant pool in file format
+        })
+    }
+
+    /// Save bytecode to a file (simplified version)
+    pub fn save_to_file<P: AsRef<std::path::Path>>(&self, path: P) -> Result<(), std::io::Error> {
+        let mut data = Vec::new();
+        data.extend_from_slice(&self.header.to_bytes());
+        data.extend_from_slice(&self.code);
+        std::fs::write(path, data)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
 
     #[test]
     fn test_vm_architecture_from_u8() {

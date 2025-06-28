@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::memory::{Arch32, Arch64, Arch128, Arch256, Arch512};
+// Removed unused architecture imports - they may be needed later for compatibility checks
 use crate::{
     bytecode::VmArchitecture,
     instruction::instruction::MemoryManagerInterface,
@@ -28,6 +28,7 @@ use crate::{
 #[derive(Debug)] // Added Debug
 pub struct AdaptedMemoryManager<HostArch: Architecture> {
     host_memory_manager: MemoryManager<HostArch>, // MemoryManager is Debug
+    #[allow(dead_code)]
     guest_arch: VmArchitecture,                   // VmArchitecture is Debug
 }
 

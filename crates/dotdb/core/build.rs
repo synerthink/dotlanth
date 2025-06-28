@@ -19,7 +19,6 @@
 /// This script executes at build time and defines build configuration settings.
 /// It is responsible for setting up external dependencies and linking options
 /// for the dotdb core library.
-
 fn main() {
     // Only apply Linux-specific configurations when building for Linux
     if cfg!(target_os = "linux") {

@@ -150,7 +150,8 @@ impl Instruction for BigIntInstruction {
                         }
 
                         // Use integer square root
-                        use num_integer::Roots; // Moved import here, as it's only used by this specific arm
+                        // Use integer square root
+                        use num_integer::Roots;
                         let sqrt_result = magnitude.sqrt();
                         Ok(BigInt::from(sqrt_result))
                     }

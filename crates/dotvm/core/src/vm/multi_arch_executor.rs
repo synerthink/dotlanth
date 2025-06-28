@@ -20,7 +20,7 @@ use crate::{
         instruction::{ExecutorInterface, Instruction, MemoryManagerInterface},
         registry::{InstructionRegistry, Opcode},
     },
-    memory::{Architecture, MemoryManagement, MemoryManager},
+    memory::Architecture,
     vm::{errors::VMError, vm_factory::VmInstance},
 };
 use std::marker::PhantomData;

@@ -54,7 +54,7 @@ impl LoadBalancer {
     /// # Returns
     /// - `Ok(())`: If suitable worker found
     /// - `Err(ExecutionError::TaskDistributionFailure)`: If overload thresholds exceeded
-    pub async fn distribute_task(&self, task: &Task) -> Result<(), ExecutionError> {
+    pub async fn distribute_task(&self, _task: &Task) -> Result<(), ExecutionError> {
         let mut system = self.system.lock().await;
         system.refresh_all();
 

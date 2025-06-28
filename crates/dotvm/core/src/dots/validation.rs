@@ -160,6 +160,7 @@ impl Validator {
     }
 
     /// Helper function to determine the final Result<(), ValidationError> from ValidationResult.
+    #[allow(dead_code)]
     fn prepare_validation_outcome(result: &ValidationResult) -> Result<(), ValidationError> {
         if result.is_valid {
             Ok(())
