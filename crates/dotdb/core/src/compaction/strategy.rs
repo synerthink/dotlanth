@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::fs::FileMetadata;
+use crate::fs::{FileMetadata, FileType};
 use std::collections::HashMap;
 
 /// Represents the type of compaction strategy to be used.
