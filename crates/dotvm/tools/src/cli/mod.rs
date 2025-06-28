@@ -16,4 +16,5 @@
 
 //! CLI tools for DotVM
 
+pub mod run;
 pub mod transpile;

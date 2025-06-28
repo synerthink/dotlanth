@@ -19,6 +19,7 @@
 //! Main entry point for the DotVM command-line interface.
 
 use clap::{Parser, Subcommand};
+use dotvm_tools::cli::run::{RunArgs, run_bytecode};
 use dotvm_tools::cli::transpile::{TranspileArgs, run_transpile_cli};
 
 #[derive(Parser)]
@@ -34,6 +35,8 @@ struct Cli {
 enum Commands {
     /// Transpile Rust code to DotVM bytecode
     Transpile(TranspileArgs),
+    /// Run DotVM bytecode
+    Run(RunArgs),
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -58,6 +61,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let pipeline = dotvm_tools::TranspilationPipeline::new(transpile_args);
             pipeline.execute()?;
+        }
+        Commands::Run(args) => {
+            run_bytecode(args)?;
         }
     }
 

@@ -16,6 +16,7 @@
 
 pub mod architecture_detector;
 pub mod compatibility;
+pub mod database_bridge;
 pub mod errors;
 pub mod execution_controller;
 pub mod executor;

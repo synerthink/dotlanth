@@ -19,6 +19,7 @@ pub mod arithmetic_opcodes;
 pub mod bigint_opcodes;
 pub mod control_flow_opcodes;
 pub mod crypto_opcodes;
+pub mod db_opcodes;
 pub mod math_opcodes;
 pub mod memory_opcodes;
 pub mod parallel_opcodes;

@@ -144,6 +144,30 @@ impl StackValue {
             _ => None,
         }
     }
+
+    /// Convert to i64 (for compatibility with executor)
+    pub fn to_i64(&self) -> Option<i64> {
+        self.as_i64()
+    }
+
+    /// Convert to bool (for conditional operations)
+    pub fn to_bool(&self) -> bool {
+        self.is_truthy()
+    }
+
+    /// Convert to string (for database operations)
+    pub fn to_string(&self) -> String {
+        match self {
+            StackValue::String(s) => s.clone(),
+            StackValue::DocumentId(s) => s.clone(),
+            StackValue::Collection(s) => s.clone(),
+            StackValue::Int64(i) => i.to_string(),
+            StackValue::Float64(f) => f.to_string(),
+            StackValue::Bool(b) => b.to_string(),
+            StackValue::Null => "null".to_string(),
+            StackValue::Json(v) => v.to_string(),
+        }
+    }
 }
 
 impl fmt::Display for StackValue {

@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 dotvm-common = { path = "../common" }
+dotdb-core = { path = "../../dotdb/core" }
 tokio.workspace = true
 futures.workspace = true
 async-trait.workspace = true

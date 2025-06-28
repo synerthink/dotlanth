@@ -21,7 +21,10 @@
 
 use crate::bytecode::BytecodeFile;
 use crate::opcode::arithmetic_opcodes::ArithmeticOpcode;
+use crate::opcode::control_flow_opcodes::ControlFlowOpcode;
+use crate::opcode::db_opcodes::DatabaseOpcode;
 use crate::opcode::stack_opcodes::{StackInstruction, StackOpcode};
+use crate::vm::database_bridge::{DatabaseBridge, DatabaseBridgeError};
 use crate::vm::stack::{OperandStack, StackError, StackValue};
 use std::collections::HashMap;
 use std::path::Path;
@@ -97,6 +100,8 @@ pub struct VmExecutor {
     context: ExecutionContext,
     /// Debug information
     debug_info: DebugInfo,
+    /// Database bridge for database operations
+    database_bridge: DatabaseBridge,
 }
 
 impl VmExecutor {
@@ -106,6 +111,17 @@ impl VmExecutor {
             bytecode: None,
             context: ExecutionContext::new(),
             debug_info: DebugInfo::new(),
+            database_bridge: DatabaseBridge::new(),
+        }
+    }
+
+    /// Create a new VM executor with a custom database bridge
+    pub fn with_database_bridge(database_bridge: DatabaseBridge) -> Self {
+        Self {
+            bytecode: None,
+            context: ExecutionContext::new(),
+            debug_info: DebugInfo::new(),
+            database_bridge,
         }
     }
 
@@ -234,7 +250,13 @@ impl VmExecutor {
             return Ok(Instruction::Arithmetic(arith_opcode));
         }
 
-        // Add more instruction types here as they are implemented
+        if let Some(db_opcode) = DatabaseOpcode::from_u8(opcode_byte) {
+            return Ok(Instruction::Database(db_opcode));
+        }
+
+        if let Some(cf_opcode) = ControlFlowOpcode::from_u8(opcode_byte) {
+            return Ok(Instruction::ControlFlow(cf_opcode));
+        }
 
         Err(ExecutorError::UnknownOpcode(opcode_byte))
     }
@@ -247,7 +269,13 @@ impl VmExecutor {
             }
             Instruction::Arithmetic(arith_opcode) => {
                 self.execute_arithmetic_instruction(*arith_opcode)?;
-            } // Add more instruction types here
+            }
+            Instruction::Database(db_opcode) => {
+                self.execute_database_instruction(*db_opcode)?;
+            }
+            Instruction::ControlFlow(cf_opcode) => {
+                self.execute_control_flow_instruction(*cf_opcode)?;
+            }
         }
 
         Ok(())
@@ -409,6 +437,203 @@ impl VmExecutor {
         Ok(())
     }
 
+    /// Execute a database instruction
+    fn execute_database_instruction(&mut self, opcode: DatabaseOpcode) -> Result<(), ExecutorError> {
+        match opcode {
+            DatabaseOpcode::DbGet => {
+                // Stack: [collection_name, document_id] -> [document_json]
+                let document_id = self.context.stack.pop()?.to_string();
+                let collection_name = self.context.stack.pop()?.to_string();
+
+                match self.database_bridge.get_document(&collection_name, &document_id) {
+                    Ok(Some(document_json)) => {
+                        self.context.stack.push(StackValue::String(document_json))?;
+                    }
+                    Ok(None) => {
+                        self.context.stack.push(StackValue::Null)?;
+                    }
+                    Err(e) => {
+                        return Err(ExecutorError::DatabaseError(e.to_string()));
+                    }
+                }
+            }
+
+            DatabaseOpcode::DbPut => {
+                // Stack: [collection_name, document_json] -> [document_id]
+                let document_json = self.context.stack.pop()?.to_string();
+                let collection_name = self.context.stack.pop()?.to_string();
+
+                match self.database_bridge.put_document(&collection_name, &document_json) {
+                    Ok(document_id) => {
+                        self.context.stack.push(StackValue::String(document_id))?;
+                    }
+                    Err(e) => {
+                        return Err(ExecutorError::DatabaseError(e.to_string()));
+                    }
+                }
+            }
+
+            DatabaseOpcode::DbUpdate => {
+                // Stack: [collection_name, document_id, document_json] -> []
+                let document_json = self.context.stack.pop()?.to_string();
+                let document_id = self.context.stack.pop()?.to_string();
+                let collection_name = self.context.stack.pop()?.to_string();
+
+                if let Err(e) = self.database_bridge.update_document(&collection_name, &document_id, &document_json) {
+                    return Err(ExecutorError::DatabaseError(e.to_string()));
+                }
+            }
+
+            DatabaseOpcode::DbDelete => {
+                // Stack: [collection_name, document_id] -> []
+                let document_id = self.context.stack.pop()?.to_string();
+                let collection_name = self.context.stack.pop()?.to_string();
+
+                if let Err(e) = self.database_bridge.delete_document(&collection_name, &document_id) {
+                    return Err(ExecutorError::DatabaseError(e.to_string()));
+                }
+            }
+
+            DatabaseOpcode::DbList => {
+                // Stack: [collection_name] -> [document_ids_array]
+                let collection_name = self.context.stack.pop()?.to_string();
+
+                match self.database_bridge.list_documents(&collection_name) {
+                    Ok(document_ids) => {
+                        // Convert to JSON array string
+                        let json_array = serde_json::to_string(&document_ids)
+                            .map_err(|e| ExecutorError::DatabaseError(format!("Failed to serialize document IDs: {}", e)))?;
+                        self.context.stack.push(StackValue::String(json_array))?;
+                    }
+                    Err(e) => {
+                        return Err(ExecutorError::DatabaseError(e.to_string()));
+                    }
+                }
+            }
+
+            DatabaseOpcode::DbCreateCollection => {
+                // Stack: [collection_name] -> []
+                let collection_name = self.context.stack.pop()?.to_string();
+
+                if let Err(e) = self.database_bridge.create_collection(&collection_name) {
+                    return Err(ExecutorError::DatabaseError(e.to_string()));
+                }
+            }
+
+            DatabaseOpcode::DbDeleteCollection => {
+                // Stack: [collection_name] -> []
+                let collection_name = self.context.stack.pop()?.to_string();
+
+                if let Err(e) = self.database_bridge.delete_collection(&collection_name) {
+                    return Err(ExecutorError::DatabaseError(e.to_string()));
+                }
+            }
+        }
+
+        self.context.pc += 1; // Database opcodes have no operands
+        Ok(())
+    }
+
+    /// Execute a control flow instruction
+    fn execute_control_flow_instruction(&mut self, opcode: ControlFlowOpcode) -> Result<(), ExecutorError> {
+        match opcode {
+            ControlFlowOpcode::Jump => {
+                // For now, implement a simple unconditional jump
+                // In a real implementation, this would need jump targets
+                // For the MVP, we'll implement a simple relative jump using the top stack value
+                let offset = self.context.stack.pop()?.to_i64().ok_or_else(|| {
+                    ExecutorError::TypeMismatch {
+                        operation: "jump".to_string(),
+                        left: "stack_value".to_string(),
+                        right: "integer".to_string(),
+                    }
+                })?;
+
+                // Calculate new PC (with bounds checking)
+                let new_pc = if offset >= 0 {
+                    self.context.pc.saturating_add(offset as usize)
+                } else {
+                    self.context.pc.saturating_sub((-offset) as usize)
+                };
+
+                // Validate bounds
+                let bytecode = self.bytecode.as_ref().unwrap();
+                if new_pc >= bytecode.code.len() {
+                    return Err(ExecutorError::ProgramCounterOutOfBounds(new_pc));
+                }
+
+                self.context.pc = new_pc;
+            }
+
+            ControlFlowOpcode::IfElse => {
+                // Conditional execution based on stack top
+                // Stack: [condition, true_offset, false_offset] -> []
+                let false_offset = self.context.stack.pop()?.to_i64().ok_or_else(|| {
+                    ExecutorError::TypeMismatch {
+                        operation: "if_else".to_string(),
+                        left: "stack_value".to_string(),
+                        right: "integer".to_string(),
+                    }
+                })?;
+
+                let true_offset = self.context.stack.pop()?.to_i64().ok_or_else(|| {
+                    ExecutorError::TypeMismatch {
+                        operation: "if_else".to_string(),
+                        left: "stack_value".to_string(),
+                        right: "integer".to_string(),
+                    }
+                })?;
+
+                let condition = self.context.stack.pop()?.to_bool();
+
+                let offset = if condition { true_offset } else { false_offset };
+
+                // Calculate new PC
+                let new_pc = if offset >= 0 {
+                    self.context.pc.saturating_add(offset as usize)
+                } else {
+                    self.context.pc.saturating_sub((-offset) as usize)
+                };
+
+                // Validate bounds
+                let bytecode = self.bytecode.as_ref().unwrap();
+                if new_pc >= bytecode.code.len() {
+                    return Err(ExecutorError::ProgramCounterOutOfBounds(new_pc));
+                }
+
+                self.context.pc = new_pc;
+            }
+
+            ControlFlowOpcode::ForLoop | ControlFlowOpcode::WhileLoop | ControlFlowOpcode::DoWhileLoop => {
+                // For the MVP, we'll implement these as simple jumps
+                // In a full implementation, these would have more sophisticated loop handling
+                let offset = self.context.stack.pop()?.to_i64().ok_or_else(|| {
+                    ExecutorError::TypeMismatch {
+                        operation: "loop".to_string(),
+                        left: "stack_value".to_string(),
+                        right: "integer".to_string(),
+                    }
+                })?;
+
+                let new_pc = if offset >= 0 {
+                    self.context.pc.saturating_add(offset as usize)
+                } else {
+                    self.context.pc.saturating_sub((-offset) as usize)
+                };
+
+                let bytecode = self.bytecode.as_ref().unwrap();
+                if new_pc >= bytecode.code.len() {
+                    return Err(ExecutorError::ProgramCounterOutOfBounds(new_pc));
+                }
+
+                self.context.pc = new_pc;
+            }
+        }
+
+        // Note: Control flow instructions manage PC themselves, so we don't increment here
+        Ok(())
+    }
+
     /// Add two stack values
     fn add_values(&self, a: &StackValue, b: &StackValue) -> Result<StackValue, ExecutorError> {
         match (a, b) {
@@ -563,7 +788,8 @@ impl Default for VmExecutor {
 pub enum Instruction {
     Stack(StackInstruction),
     Arithmetic(ArithmeticOpcode),
-    // Add more instruction types here as they are implemented
+    Database(DatabaseOpcode),
+    ControlFlow(ControlFlowOpcode),
 }
 
 /// Result of executing bytecode
@@ -639,6 +865,9 @@ pub enum ExecutorError {
 
     #[error("Execution limit exceeded")]
     ExecutionLimitExceeded,
+
+    #[error("Database error: {0}")]
+    DatabaseError(String),
 }
 
 /// Type alias for executor operation results
