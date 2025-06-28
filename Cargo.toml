@@ -9,6 +9,7 @@ members = [
     "crates/dotvm/tools",
     "crates/dotdb/common",
     "crates/dotdb/core",
+    "crates/dotdb/cli",
 ]
 
 [workspace.package]
