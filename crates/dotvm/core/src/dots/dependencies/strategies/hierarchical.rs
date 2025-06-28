@@ -36,7 +36,7 @@ impl DependencyDetectionStrategy for HierarchicalDetectionStrategy {
         // Group segments by type
         let mut grouped_segments: HashMap<&str, Vec<&DotSegment>> = HashMap::new();
         for segment in segments {
-            grouped_segments.entry(segment.segment_type.as_str()).or_insert_with(Vec::new).push(segment);
+            grouped_segments.entry(segment.segment_type.as_str()).or_default().push(segment);
         }
 
         // For each segment type, add dependency on higher priority types

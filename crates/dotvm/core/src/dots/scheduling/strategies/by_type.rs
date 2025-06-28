@@ -33,7 +33,7 @@ pub fn schedule_by_type(segments: &[DotSegment], dependency_graph: &DependencyGr
 
     let mut type_groups: HashMap<&str, Vec<String>> = HashMap::new();
     for segment in segments {
-        type_groups.entry(segment.segment_type.as_str()).or_insert_with(Vec::new).push(segment.id.clone());
+        type_groups.entry(segment.segment_type.as_str()).or_default().push(segment.id.clone());
     }
 
     let mut ordered_ids: Vec<String> = Vec::new();

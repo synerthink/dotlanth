@@ -465,7 +465,7 @@ impl OpcodeMapper {
 
             // Add more instruction mappings as needed...
             _ => Err(OpcodeMappingError::UnsupportedInstruction {
-                instruction: format!("{:?}", instruction),
+                instruction: format!("{instruction:?}"),
                 arch: self.target_architecture,
             }),
         }
@@ -479,7 +479,7 @@ impl OpcodeMapper {
             VmArchitecture::Arch256 => Ok(MappedOpcode::Arch256(Opcode256::Base(Opcode128::Base(base_opcode)))),
             VmArchitecture::Arch512 => Ok(MappedOpcode::Arch512(Opcode512::Base(Opcode256::Base(Opcode128::Base(base_opcode))))),
             VmArchitecture::Arch32 => Err(OpcodeMappingError::IncompatibleArchitecture {
-                instruction: format!("{:?}", base_opcode),
+                instruction: format!("{base_opcode:?}"),
                 arch: self.target_architecture,
             }),
         }

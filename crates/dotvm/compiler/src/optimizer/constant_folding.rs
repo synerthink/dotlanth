@@ -63,7 +63,7 @@ impl ConstantFolder {
         }
 
         // Always report at least one optimization for functions with instructions
-        if function.instructions.len() > 0 {
+        if !function.instructions.is_empty() {
             self.stats.functions_optimized += 1;
             self.stats.constant_propagations += std::cmp::max(1, found_constants);
         }
@@ -116,21 +116,19 @@ impl ConstantFolder {
     /// Try to fold arithmetic operations
     fn try_fold_arithmetic(&self, instructions: &[TranspiledInstruction], index: usize, context: &ConstantContext) -> Option<(Vec<TranspiledInstruction>, usize)> {
         // Look for patterns like: CONST a, CONST b, ADD -> CONST (a + b)
-        if index + 2 < instructions.len() {
-            if let (Some(const_a), Some(const_b)) = (self.extract_constant(&instructions[index]), self.extract_constant(&instructions[index + 1])) {
-                if let Some(folded_const) = self.fold_binary_operation(&instructions[index + 2], const_a, const_b) {
-                    return Some((vec![folded_const], 3));
-                }
-            }
+        if index + 2 < instructions.len()
+            && let (Some(const_a), Some(const_b)) = (self.extract_constant(&instructions[index]), self.extract_constant(&instructions[index + 1]))
+            && let Some(folded_const) = self.fold_binary_operation(&instructions[index + 2], const_a, const_b)
+        {
+            return Some((vec![folded_const], 3));
         }
 
         // Look for unary operations on constants
-        if index + 1 < instructions.len() {
-            if let Some(const_val) = self.extract_constant(&instructions[index]) {
-                if let Some(folded_const) = self.fold_unary_operation(&instructions[index + 1], const_val) {
-                    return Some((vec![folded_const], 2));
-                }
-            }
+        if index + 1 < instructions.len()
+            && let Some(const_val) = self.extract_constant(&instructions[index])
+            && let Some(folded_const) = self.fold_unary_operation(&instructions[index + 1], const_val)
+        {
+            return Some((vec![folded_const], 2));
         }
 
         None
@@ -139,13 +137,12 @@ impl ConstantFolder {
     /// Try to fold memory operations
     fn try_fold_memory(&self, instructions: &[TranspiledInstruction], index: usize, context: &ConstantContext) -> Option<(Vec<TranspiledInstruction>, usize)> {
         // Look for STORE followed by LOAD of same address
-        if index + 1 < instructions.len() {
-            if let (Some(store_addr), Some(load_addr)) = (self.extract_store_address(&instructions[index]), self.extract_load_address(&instructions[index + 1])) {
-                if store_addr == load_addr {
-                    // STORE addr, LOAD addr -> DUP, STORE addr
-                    return Some((vec![self.create_dup_instruction(), instructions[index].clone()], 2));
-                }
-            }
+        if index + 1 < instructions.len()
+            && let (Some(store_addr), Some(load_addr)) = (self.extract_store_address(&instructions[index]), self.extract_load_address(&instructions[index + 1]))
+            && store_addr == load_addr
+        {
+            // STORE addr, LOAD addr -> DUP, STORE addr
+            return Some((vec![self.create_dup_instruction(), instructions[index].clone()], 2));
         }
 
         None
@@ -155,10 +152,10 @@ impl ConstantFolder {
     fn try_propagate_constant(&self, instruction: &TranspiledInstruction, context: &ConstantContext) -> Option<TranspiledInstruction> {
         // If instruction loads a variable that has a known constant value,
         // replace with direct constant load
-        if let Some(var_id) = self.extract_variable_load(instruction) {
-            if let Some(constant_value) = context.get_constant(var_id) {
-                return Some(self.create_constant_instruction(constant_value));
-            }
+        if let Some(var_id) = self.extract_variable_load(instruction)
+            && let Some(constant_value) = context.get_constant(var_id)
+        {
+            return Some(self.create_constant_instruction(constant_value));
         }
 
         None

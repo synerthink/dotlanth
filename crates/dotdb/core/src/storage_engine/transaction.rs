@@ -18,18 +18,16 @@
 // This module implements ACID-compliant transactions, including isolation, atomicity, and durability. It manages transaction lifecycles, state, and concurrency control, and coordinates with the WAL and buffer manager.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Condvar, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::{Duration, Instant};
 
-use crate::storage_engine::buffer_manager::{BufferManager, PageGuard};
-use crate::storage_engine::deadlock_detector::{DeadlockDetector, DeadlockResolutionPolicy};
-use crate::storage_engine::file_format::{FileFormat, Page, PageId, PageType};
+use crate::storage_engine::buffer_manager::BufferManager;
+use crate::storage_engine::deadlock_detector::DeadlockDetector;
+use crate::storage_engine::file_format::{Page, PageId, PageType};
 use crate::storage_engine::isolation::{IsolationLevelEnforcer, LockManager};
-use crate::storage_engine::lib::{Initializable, StorageError, StorageResult, VersionId, calculate_checksum, generate_timestamp};
+use crate::storage_engine::lib::{StorageError, StorageResult, VersionId, generate_timestamp};
 use crate::storage_engine::mvcc::MVCCManager;
 use crate::storage_engine::occ::{ConflictResolution, ConflictResolutionStrategy, OCCManager, OCCTransaction, OCCTransactionManager, ValidationContext};
-use crate::storage_engine::page_manager::{PageAllocation, PageManager};
 use crate::storage_engine::wal::{LogEntry, LogSequenceNumber, WriteAheadLog};
 
 /// Transaction isolation levels
@@ -619,10 +617,10 @@ impl TransactionManager {
                     return Ok(());
                 }
             }
-            if let Some(timeout) = timeout {
-                if start.elapsed() > timeout {
-                    return Err(StorageError::Concurrency("Timed out waiting for transactions to complete".to_string()));
-                }
+            if let Some(timeout) = timeout
+                && start.elapsed() > timeout
+            {
+                return Err(StorageError::Concurrency("Timed out waiting for transactions to complete".to_string()));
             }
             // Wait a short time
             std::thread::sleep(std::time::Duration::from_millis(10));
@@ -642,7 +640,7 @@ impl TransactionManager {
         // Get the transaction
         let txn_arc = {
             let map = self.active_transactions.lock().unwrap();
-            map.get(&txn_id).cloned().ok_or_else(|| StorageError::TransactionAborted(format!("Transaction {} not found", txn_id)))?
+            map.get(&txn_id).cloned().ok_or_else(|| StorageError::TransactionAborted(format!("Transaction {txn_id} not found")))?
         };
 
         // Commit the transaction
@@ -677,7 +675,7 @@ impl TransactionManager {
         // Get the transaction
         let txn_arc = {
             let map = self.active_transactions.lock().unwrap();
-            map.get(&txn_id).cloned().ok_or_else(|| StorageError::TransactionAborted(format!("Transaction {} not found", txn_id)))?
+            map.get(&txn_id).cloned().ok_or_else(|| StorageError::TransactionAborted(format!("Transaction {txn_id} not found")))?
         };
 
         // Try OCC commit
@@ -707,12 +705,12 @@ impl TransactionManager {
             ConflictResolution::Abort { reason, should_retry: _ } => {
                 // Abort the transaction
                 self.abort_transaction(txn_id)?;
-                Err(StorageError::Concurrency(format!("Transaction aborted due to conflict: {}", reason)))
+                Err(StorageError::Concurrency(format!("Transaction aborted due to conflict: {reason}")))
             }
             ConflictResolution::Retry { backoff_duration, max_retries: _ } => {
                 // For now, just return an error indicating retry is needed
                 // In a real implementation, you might want to implement automatic retry logic
-                Err(StorageError::Concurrency(format!("Transaction needs retry with backoff: {:?}", backoff_duration)))
+                Err(StorageError::Concurrency(format!("Transaction needs retry with backoff: {backoff_duration:?}")))
             }
         }
     }
@@ -729,7 +727,7 @@ impl TransactionManager {
         // Get the transaction
         let txn_arc = {
             let map = self.active_transactions.lock().unwrap();
-            map.get(&txn_id).cloned().ok_or_else(|| StorageError::TransactionAborted(format!("Transaction {} not found", txn_id)))?
+            map.get(&txn_id).cloned().ok_or_else(|| StorageError::TransactionAborted(format!("Transaction {txn_id} not found")))?
         };
 
         // If active, abort; otherwise, remove regardless of state

@@ -34,6 +34,12 @@ pub struct DotProcessor {
     scheduler: SchedulingAlgorithm,
 }
 
+impl Default for DotProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DotProcessor {
     /// Initializes processor with default components:
     /// - Segment extractor

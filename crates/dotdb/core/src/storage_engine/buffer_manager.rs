@@ -18,14 +18,13 @@
 // This module provides in-memory caching of pages, coordinates I/O operations, and implements buffer replacement policies. It manages the buffer pool, page pinning, flushing, and background writing.
 
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
-use std::sync::{Arc, Condvar, Mutex, RwLock, Weak};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, RwLock, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::storage_engine::file_format::{FileFormat, Page, PageId, PageType};
-use crate::storage_engine::lib::{Flushable, Initializable, StorageError, StorageResult, VersionId, calculate_checksum, generate_timestamp};
+use crate::storage_engine::lib::{Flushable, Initializable, StorageError, StorageResult, VersionId, generate_timestamp};
 
 /// Buffer pool statistics
 #[derive(Debug)]
@@ -40,6 +39,12 @@ pub struct BufferStats {
     pub misses: AtomicU64,
     /// Number of evictions
     pub evictions: AtomicU64,
+}
+
+impl Default for BufferStats {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BufferStats {
@@ -417,10 +422,7 @@ impl BufferPool {
 
         // If there were any errors, return the first one
         if let Some((page_id, error)) = errors.first() {
-            Err(StorageError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to flush page {}: {:?}", page_id.0, error),
-            )))
+            Err(StorageError::Io(std::io::Error::other(format!("Failed to flush page {}: {:?}", page_id.0, error))))
         } else {
             Ok(count)
         }
@@ -442,7 +444,7 @@ impl BufferPool {
         // Now allocate the page
         let mut file_format = self.file_format.lock().map_err(|_| StorageError::Corruption("Failed to lock file format".to_string()))?;
 
-        let mut page = file_format.allocate_page(page_type, version)?;
+        let page = file_format.allocate_page(page_type, version)?;
         let page_id = page.id;
 
         // Add the page to the buffer pool
@@ -521,32 +523,32 @@ impl BufferPool {
             let check_pos = (starting_position + i) % queue_size;
             let page_id = self.lru_queue[check_pos];
 
-            if let Some(buffer) = self.buffers.get(&page_id) {
-                if buffer.can_evict() {
-                    // Check if the clock bit is reset
-                    if !buffer.reset_clock_bit() {
-                        // Clock bit is 0, we can evict this page
-                        if buffer.is_dirty() {
-                            // Flush to disk first
-                            let mut page_copy = buffer.page.clone();
-                            let mut file_format = self.file_format.lock().map_err(|_| StorageError::Corruption("Failed to lock file format".to_string()))?;
+            if let Some(buffer) = self.buffers.get(&page_id)
+                && buffer.can_evict()
+            {
+                // Check if the clock bit is reset
+                if !buffer.reset_clock_bit() {
+                    // Clock bit is 0, we can evict this page
+                    if buffer.is_dirty() {
+                        // Flush to disk first
+                        let mut page_copy = buffer.page.clone();
+                        let mut file_format = self.file_format.lock().map_err(|_| StorageError::Corruption("Failed to lock file format".to_string()))?;
 
-                            self.stats.inc_writes();
-                            file_format.write_page(&mut page_copy)?;
-                        }
-
-                        // Remove the page from queue and buffers
-                        self.lru_queue.remove(check_pos);
-                        self.buffers.remove(&page_id);
-                        self.stats.inc_evictions();
-
-                        // Update clock hand
-                        self.clock_hand = (check_pos + 1) % queue_size;
-
-                        return Ok(());
+                        self.stats.inc_writes();
+                        file_format.write_page(&mut page_copy)?;
                     }
-                    // Otherwise, clock bit is 1, so reset it and continue
+
+                    // Remove the page from queue and buffers
+                    self.lru_queue.remove(check_pos);
+                    self.buffers.remove(&page_id);
+                    self.stats.inc_evictions();
+
+                    // Update clock hand
+                    self.clock_hand = (check_pos + 1) % queue_size;
+
+                    return Ok(());
                 }
+                // Otherwise, clock bit is 1, so reset it and continue
             }
 
             // Move clock hand to next position
@@ -716,14 +718,14 @@ impl BufferManager {
                     thread::sleep(interval);
 
                     // Flush dirty pages
-                    if let Ok(mut pool) = pool_clone.write() {
-                        if let Err(e) = pool.flush_all() {
-                            eprintln!("Error flushing buffer pool: {:?}", e);
-                        }
+                    if let Ok(mut pool) = pool_clone.write()
+                        && let Err(e) = pool.flush_all()
+                    {
+                        eprintln!("Error flushing buffer pool: {e:?}");
                     }
                 }
             })
-            .map_err(|e| StorageError::Io(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to spawn flusher thread: {}", e))))?;
+            .map_err(|e| StorageError::Io(std::io::Error::other(format!("Failed to spawn flusher thread: {e}"))))?;
 
         self._flusher_handle = Some(handle);
 
@@ -741,7 +743,7 @@ impl BufferManager {
 
             // Wait for the thread to finish
             if handle.join().is_err() {
-                return Err(StorageError::Io(std::io::Error::new(std::io::ErrorKind::Other, "Failed to join flusher thread")));
+                return Err(StorageError::Io(std::io::Error::other("Failed to join flusher thread")));
             }
         }
 
@@ -889,12 +891,11 @@ impl PageGuard {
 impl Drop for PageGuard {
     fn drop(&mut self) {
         // Unpin the page when the guard is dropped
-        if let Some(pool) = self.pool.upgrade() {
-            if let Ok(mut pool) = pool.write() {
-                if let Err(e) = pool.unpin_page(self.page_id) {
-                    eprintln!("Error unpinning page {}: {:?}", self.page_id.0, e);
-                }
-            }
+        if let Some(pool) = self.pool.upgrade()
+            && let Ok(mut pool) = pool.write()
+            && let Err(e) = pool.unpin_page(self.page_id)
+        {
+            eprintln!("Error unpinning page {}: {:?}", self.page_id.0, e);
         }
     }
 }

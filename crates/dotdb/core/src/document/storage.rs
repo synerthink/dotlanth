@@ -72,7 +72,7 @@ impl DocumentStore {
 
     /// Generate storage key for a document
     fn document_key(&self, collection: &CollectionName, id: &DocumentId) -> Vec<u8> {
-        format!("doc:{}:{}", collection.as_str(), id.to_string()).into_bytes()
+        format!("doc:{}:{}", collection.as_str(), id).into_bytes()
     }
 
     /// Generate storage key for collection metadata

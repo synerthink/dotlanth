@@ -103,7 +103,7 @@ where
 
     /// Check if node is underflowing
     pub fn is_underflow(&self) -> bool {
-        self.keys.len() < (self.max_keys + 1) / 2
+        self.keys.len() < self.max_keys.div_ceil(2)
     }
 
     /// Insert a key-value pair into a leaf node
@@ -262,7 +262,7 @@ where
     /// Create a new B+ tree with specified order
     pub fn with_order(order: usize) -> Self {
         if order < MIN_ORDER {
-            panic!("B+ tree order must be at least {}", MIN_ORDER);
+            panic!("B+ tree order must be at least {MIN_ORDER}");
         }
 
         Self {
@@ -515,7 +515,7 @@ where
         let mut best_prefix_len = 0;
         let mut best_prefix = Vec::new();
 
-        for (prefix, _count) in &self.prefix_cache {
+        for prefix in self.prefix_cache.keys() {
             if key_bytes.starts_with(prefix) && prefix.len() > best_prefix_len {
                 best_prefix_len = prefix.len();
                 best_prefix = prefix.clone();
@@ -653,19 +653,19 @@ where
     }
 
     fn update(&mut self, key: K, value: V) -> IndexResult<()> {
-        let leaf = self.find_leaf(&key).ok_or_else(|| IndexError::KeyNotFound(format!("{:?}", key)))?;
+        let leaf = self.find_leaf(&key).ok_or_else(|| IndexError::KeyNotFound(format!("{key:?}")))?;
 
         let mut node = leaf.write().unwrap();
         if let Some(pos) = node.find_key(&key) {
             node.values[pos] = value;
             Ok(())
         } else {
-            Err(IndexError::KeyNotFound(format!("{:?}", key)))
+            Err(IndexError::KeyNotFound(format!("{key:?}")))
         }
     }
 
     fn delete(&mut self, key: &K) -> IndexResult<()> {
-        let leaf = self.find_leaf(key).ok_or_else(|| IndexError::KeyNotFound(format!("{:?}", key)))?;
+        let leaf = self.find_leaf(key).ok_or_else(|| IndexError::KeyNotFound(format!("{key:?}")))?;
 
         let mut node = leaf.write().unwrap();
         if let Some(pos) = node.find_key(key) {
@@ -676,7 +676,7 @@ where
             // TODO: Handle underflow and rebalancing
             Ok(())
         } else {
-            Err(IndexError::KeyNotFound(format!("{:?}", key)))
+            Err(IndexError::KeyNotFound(format!("{key:?}")))
         }
     }
 
@@ -794,10 +794,10 @@ where
                 let node = node_arc.read().unwrap();
 
                 for (i, key) in node.keys.iter().enumerate() {
-                    if key >= start {
-                        if let Some(value) = node.values.get(i) {
-                            result.push((key.clone(), value.clone()));
-                        }
+                    if key >= start
+                        && let Some(value) = node.values.get(i)
+                    {
+                        result.push((key.clone(), value.clone()));
                     }
                 }
 
@@ -1035,11 +1035,11 @@ where
 
     fn save_to_disk<P: AsRef<std::path::Path>>(&self, path: P) -> IndexResult<()> {
         let data = self.serialize()?;
-        std::fs::write(path, data).map_err(|e| IndexError::IoError(format!("Failed to write to disk: {}", e)))
+        std::fs::write(path, data).map_err(|e| IndexError::IoError(format!("Failed to write to disk: {e}")))
     }
 
     fn load_from_disk<P: AsRef<std::path::Path>>(&mut self, path: P) -> IndexResult<()> {
-        let data = std::fs::read(path).map_err(|e| IndexError::IoError(format!("Failed to read from disk: {}", e)))?;
+        let data = std::fs::read(path).map_err(|e| IndexError::IoError(format!("Failed to read from disk: {e}")))?;
         self.deserialize(&data)
     }
 

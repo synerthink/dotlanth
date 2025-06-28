@@ -109,14 +109,14 @@ impl ConsistencyVerifier for DefaultConsistencyVerifier {
         for (name, check) in checks.iter() {
             match (check.check_fn)(state) {
                 VerificationResult::Valid => {
-                    log_event(LogLevel::Info, "ConsistencyVerifier", &format!("Check '{}' passed", name));
+                    log_event(LogLevel::Info, "ConsistencyVerifier", &format!("Check '{name}' passed"));
                 }
                 VerificationResult::Invalid(reason) => {
-                    let failure_msg = format!("Check '{}' failed: {}", name, reason);
+                    let failure_msg = format!("Check '{name}' failed: {reason}");
                     log_event(LogLevel::Warning, "ConsistencyVerifier", &failure_msg);
 
                     if check.is_critical {
-                        log_event(LogLevel::Error, "ConsistencyVerifier", &format!("Critical check '{}' failed, verification aborted", name));
+                        log_event(LogLevel::Error, "ConsistencyVerifier", &format!("Critical check '{name}' failed, verification aborted"));
                         return VerificationResult::Invalid(failure_msg);
                     }
 
@@ -148,18 +148,18 @@ impl ConsistencyVerifier for DefaultConsistencyVerifier {
             .lock()
             .map_err(|_| RollbackError::VerificationFailed("Failed to acquire verification checks lock".to_string()))?;
 
-        let check = checks.get(name).ok_or_else(|| RollbackError::VerificationFailed(format!("Verification check '{}' not found", name)))?;
+        let check = checks.get(name).ok_or_else(|| RollbackError::VerificationFailed(format!("Verification check '{name}' not found")))?;
 
-        log_event(LogLevel::Info, "ConsistencyVerifier", &format!("Running verification check: {}", name));
+        log_event(LogLevel::Info, "ConsistencyVerifier", &format!("Running verification check: {name}"));
 
         let result = (check.check_fn)(state);
 
         match &result {
             VerificationResult::Valid => {
-                log_event(LogLevel::Info, "ConsistencyVerifier", &format!("Check '{}' passed", name));
+                log_event(LogLevel::Info, "ConsistencyVerifier", &format!("Check '{name}' passed"));
             }
             VerificationResult::Invalid(reason) => {
-                log_event(LogLevel::Warning, "ConsistencyVerifier", &format!("Check '{}' failed: {}", name, reason));
+                log_event(LogLevel::Warning, "ConsistencyVerifier", &format!("Check '{name}' failed: {reason}"));
             }
         }
 

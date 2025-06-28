@@ -49,6 +49,12 @@ pub struct InstructionRegistry {
     pub crypto: HashMap<CryptoOpcode, Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>>,
 }
 
+impl Default for InstructionRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InstructionRegistry {
     /// Creates a new InstructionRegistry populated with default instruction creators.
     pub fn new() -> Self {
@@ -233,7 +239,7 @@ impl InstructionRegistry {
             SystemCallOpcode::TerminateProcess,
             Box::new(|args: Option<Vec<usize>>| {
                 if let Some(vals) = args {
-                    let pid = vals.get(0).cloned().unwrap_or(0) as u32;
+                    let pid = vals.first().cloned().unwrap_or(0) as u32;
                     Ok(Arc::new(TerminateProcessInstruction::new(pid)) as Arc<dyn Instruction>)
                 } else {
                     Err(VMError::InvalidInstructionArguments)

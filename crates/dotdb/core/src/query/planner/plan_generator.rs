@@ -15,11 +15,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use thiserror::Error;
 
 use super::cost_model::{CostEstimate, CostModel, OperationCost};
-use super::index_selector::{IndexRecommendation, IndexSelector, QueryPredicate};
+use super::index_selector::{IndexSelector, QueryPredicate};
 
 #[derive(Debug, Error)]
 pub enum PlanGeneratorError {
@@ -239,7 +239,7 @@ impl QueryPlanner {
     fn generate_scan_alternatives(&self, table: &str) -> Result<Vec<PlanNode>, PlanGeneratorError> {
         let mut alternatives = Vec::new();
 
-        let metadata = self.table_metadata.get(table).ok_or_else(|| PlanGeneratorError::InvalidQuery(format!("Table {} not found", table)))?;
+        let metadata = self.table_metadata.get(table).ok_or_else(|| PlanGeneratorError::InvalidQuery(format!("Table {table} not found")))?;
 
         // Full table scan
         let table_scan = PlanNode {
@@ -448,11 +448,8 @@ impl QueryPlanner {
                 memory_mb += (node.estimated_rows * 64) / (1024 * 1024); // 64 bytes per row
             }
             PlanOperation::Join { algorithm, .. } => {
-                match algorithm {
-                    JoinAlgorithm::HashJoin => {
-                        memory_mb += (node.estimated_rows * 32) / (1024 * 1024); // Hash table overhead
-                    }
-                    _ => {}
+                if let JoinAlgorithm::HashJoin = algorithm {
+                    memory_mb += (node.estimated_rows * 32) / (1024 * 1024); // Hash table overhead
                 }
             }
             _ => {}

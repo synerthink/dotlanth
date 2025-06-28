@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::mem;
-
 /// Aligns a size to the specified alignment boundary
 /// This is critical for memory operations that require specific alignment
 /// The function rounds up the size to the next multiple of alignment
@@ -66,7 +64,7 @@ pub fn get_page_size() -> usize {
 
 /// A struct to track memory usage statistics
 /// Useful for monitoring and optimizing memory consumption
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MemoryStats {
     pub allocated: usize,        // Total bytes allocated
     pub deallocated: usize,      // Total bytes deallocated
@@ -74,19 +72,6 @@ pub struct MemoryStats {
     pub peak_usage: usize,       // Maximum memory usage recorded
     pub allocation_count: u64,   // Number of allocation operations
     pub deallocation_count: u64, // Number of deallocation operations
-}
-
-impl Default for MemoryStats {
-    fn default() -> Self {
-        Self {
-            allocated: 0,
-            deallocated: 0,
-            current_usage: 0,
-            peak_usage: 0,
-            allocation_count: 0,
-            deallocation_count: 0,
-        }
-    }
 }
 
 impl MemoryStats {

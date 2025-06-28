@@ -22,6 +22,12 @@ pub struct DependencyGraph {
     edges: HashMap<String, HashSet<String>>,
 }
 
+impl Default for DependencyGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyGraph {
     /// Creates empty dependency graph
     pub fn new() -> Self {
@@ -48,7 +54,7 @@ impl DependencyGraph {
         let mut dot = String::from("digraph G {\n");
         for (source, targets) in &self.edges {
             for target in targets {
-                dot.push_str(&format!("  \"{}\" -> \"{}\";\n", source, target));
+                dot.push_str(&format!("  \"{source}\" -> \"{target}\";\n"));
             }
         }
         dot.push_str("}\n");

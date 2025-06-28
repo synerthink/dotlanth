@@ -171,10 +171,10 @@ impl<A: Architecture> TLB<A> {
 
     pub fn insert(&mut self, virtual_addr: VirtualAddress, physical_addr: PhysicalAddress, flags: PageFlags) {
         // Remove the old entry (if it exists)
-        if self.entries.contains_key(&virtual_addr) {
-            if let Some(pos) = self.order.iter().position(|&x| x == virtual_addr) {
-                self.order.remove(pos);
-            }
+        if self.entries.contains_key(&virtual_addr)
+            && let Some(pos) = self.order.iter().position(|&x| x == virtual_addr)
+        {
+            self.order.remove(pos);
         }
 
         // If capacity is exceeded, remove the oldest entry

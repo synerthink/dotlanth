@@ -26,6 +26,12 @@ pub struct PriorityExecutor {
 /// Implements two core policies:
 /// 1. Low→Medium priority upgrade under high system load
 /// 2. Critical task preemption handling
+impl Default for PriorityExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PriorityExecutor {
     /// Initializes with:
     /// - System metrics collector

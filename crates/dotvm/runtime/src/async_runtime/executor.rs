@@ -19,7 +19,6 @@ use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskState};
 use crate::async_runtime::scheduler::{AsyncTaskScheduler, Priority, Task};
 use futures::Future;
 use futures::task::{ArcWake, Context, Poll, Waker};
-use futures_timer::Delay;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::task::Wake;
@@ -299,12 +298,12 @@ impl FutureExecutor {
     /// Handle timeout lifecycle events
     fn handle_timeouts(&self, timed_out: Vec<TaskId>) {
         for task_id in timed_out {
-            if let Some(task) = self.scheduler.get_task(task_id) {
-                if let Ok(mut task_guard) = task.lock() {
-                    task_guard.metrics_mut().mark_failed();
-                    let mut stats = self.stats.lock().unwrap();
-                    stats.timeouts += 1;
-                }
+            if let Some(task) = self.scheduler.get_task(task_id)
+                && let Ok(mut task_guard) = task.lock()
+            {
+                task_guard.metrics_mut().mark_failed();
+                let mut stats = self.stats.lock().unwrap();
+                stats.timeouts += 1;
             }
 
             self.completed_tasks.lock().unwrap().insert(

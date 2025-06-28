@@ -441,14 +441,15 @@ where
         }
 
         // Check if the first entry matches
-        if let Some(head) = bucket {
-            if head.hash == hash && head.key == *key {
-                let removed = std::mem::take(bucket);
-                if let Some(mut removed_entry) = removed {
-                    *bucket = removed_entry.next.take();
-                    self.size -= 1;
-                    return Some(*removed_entry);
-                }
+        if let Some(head) = bucket
+            && head.hash == hash
+            && head.key == *key
+        {
+            let removed = std::mem::take(bucket);
+            if let Some(mut removed_entry) = removed {
+                *bucket = removed_entry.next.take();
+                self.size -= 1;
+                return Some(*removed_entry);
             }
         }
 
@@ -496,11 +497,9 @@ where
         let mut total_chain_length = 0;
         let mut non_empty_buckets = 0;
 
-        for bucket in &self.buckets {
-            if let Some(entry) = bucket {
-                total_chain_length += entry.chain_length();
-                non_empty_buckets += 1;
-            }
+        for entry in self.buckets.iter().flatten() {
+            total_chain_length += entry.chain_length();
+            non_empty_buckets += 1;
         }
 
         if non_empty_buckets == 0 { 0.0 } else { total_chain_length as f64 / non_empty_buckets as f64 }
@@ -559,14 +558,14 @@ where
                 entry.value = value;
                 Ok(())
             }
-            None => Err(IndexError::KeyNotFound(format!("{:?}", key))),
+            None => Err(IndexError::KeyNotFound(format!("{key:?}"))),
         }
     }
 
     fn delete(&mut self, key: &K) -> IndexResult<()> {
         match self.remove_entry(key) {
             Some(_) => Ok(()),
-            None => Err(IndexError::KeyNotFound(format!("{:?}", key))),
+            None => Err(IndexError::KeyNotFound(format!("{key:?}"))),
         }
     }
 
@@ -884,11 +883,11 @@ where
 
     fn save_to_disk<P: AsRef<std::path::Path>>(&self, path: P) -> IndexResult<()> {
         let data = self.serialize()?;
-        std::fs::write(path, data).map_err(|e| IndexError::IoError(format!("Failed to write to disk: {}", e)))
+        std::fs::write(path, data).map_err(|e| IndexError::IoError(format!("Failed to write to disk: {e}")))
     }
 
     fn load_from_disk<P: AsRef<std::path::Path>>(&mut self, path: P) -> IndexResult<()> {
-        let data = std::fs::read(path).map_err(|e| IndexError::IoError(format!("Failed to read from disk: {}", e)))?;
+        let data = std::fs::read(path).map_err(|e| IndexError::IoError(format!("Failed to read from disk: {e}")))?;
         self.deserialize(&data)
     }
 

@@ -95,7 +95,7 @@ impl DefaultCheckpointManager {
         for i in 0..to_remove {
             let id_to_remove = &checkpoint_items[i].0;
             checkpoints.remove(id_to_remove);
-            log_event(LogLevel::Info, "CheckpointManager", &format!("Removed old checkpoint: {}", id_to_remove));
+            log_event(LogLevel::Info, "CheckpointManager", &format!("Removed old checkpoint: {id_to_remove}"));
         }
 
         Ok(())
@@ -114,7 +114,7 @@ impl CheckpointManager for DefaultCheckpointManager {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
         let nanos = now.as_secs() * 1_000_000_000 + now.subsec_nanos() as u64;
         // Use that same value for the checkpoint ID _and_ the timestamp
-        let checkpoint_id = format!("checkpoint-{}", nanos);
+        let checkpoint_id = format!("checkpoint-{nanos}");
         let timestamp = nanos;
 
         let checkpoint = Checkpoint {
@@ -129,7 +129,7 @@ impl CheckpointManager for DefaultCheckpointManager {
             .map_err(|_| RollbackError::StateStorageError("Failed to acquire checkpoints lock".to_string()))?;
 
         checkpoints.insert(checkpoint_id.clone(), checkpoint.clone());
-        log_event(LogLevel::Info, "CheckpointManager", &format!("Created checkpoint: {}", checkpoint_id));
+        log_event(LogLevel::Info, "CheckpointManager", &format!("Created checkpoint: {checkpoint_id}"));
 
         drop(checkpoints); // Release lock before maintenance
         self.maintain_checkpoint_storage()?;
@@ -182,7 +182,7 @@ impl CheckpointManager for DefaultCheckpointManager {
             .map_err(|_| RollbackError::StateStorageError("Failed to acquire checkpoints lock".to_string()))?;
 
         if checkpoints.remove(id).is_some() {
-            log_event(LogLevel::Info, "CheckpointManager", &format!("Deleted checkpoint: {}", id));
+            log_event(LogLevel::Info, "CheckpointManager", &format!("Deleted checkpoint: {id}"));
             Ok(())
         } else {
             Err(RollbackError::CheckpointNotFound(id.to_string()))

@@ -15,12 +15,10 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::fs::{FileMetadata, FileSystemLayout, FileType};
-use crate::io::DirectIOFile;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Result, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Metadata describing a checkpoint, including files, LSN, and integrity information.
@@ -202,7 +200,7 @@ impl CheckpointManager {
             }
         }
 
-        Err(io::Error::new(io::ErrorKind::NotFound, format!("Checkpoint {} not found", checkpoint_id)))
+        Err(io::Error::new(io::ErrorKind::NotFound, format!("Checkpoint {checkpoint_id} not found")))
     }
 
     /// Lists all available checkpoints, sorted by timestamp (newest first).

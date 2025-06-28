@@ -15,8 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::lib::{IndexError, IndexKey, IndexResult, IndexType, IndexValue};
-use crate::memory::mmap::{MappingStrategy, MemoryMap, MmapError};
-use crate::storage_engine::page_manager::PageManager;
+use crate::memory::mmap::{MappingStrategy, MemoryMap};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -99,7 +98,7 @@ impl IndexPersistenceManager {
         let root_path = root_path.as_ref().to_path_buf();
 
         // Create directory if it doesn't exist
-        std::fs::create_dir_all(&root_path).map_err(|e| IndexError::IoError(format!("Failed to create directory: {}", e)))?;
+        std::fs::create_dir_all(&root_path).map_err(|e| IndexError::IoError(format!("Failed to create directory: {e}")))?;
 
         Ok(Self {
             root_path,
@@ -123,7 +122,7 @@ impl IndexPersistenceManager {
 
     /// Register an index for persistence
     pub fn register_index(&mut self, name: String, index_type: IndexType) -> IndexResult<()> {
-        let file_path = self.root_path.join(format!("{}.idx", name));
+        let file_path = self.root_path.join(format!("{name}.idx"));
 
         let metadata = IndexMetadata {
             name: name.clone(),
@@ -161,7 +160,7 @@ impl IndexPersistenceManager {
 
         // Extract file path before mutable borrow
         let file_path = {
-            let metadata = self.metadata.get(name).ok_or_else(|| IndexError::InvalidOperation(format!("Index {} not registered", name)))?;
+            let metadata = self.metadata.get(name).ok_or_else(|| IndexError::InvalidOperation(format!("Index {name} not registered")))?;
             metadata.file_path.clone()
         };
 
@@ -173,9 +172,9 @@ impl IndexPersistenceManager {
             {
                 let mut mmap_guard = mmap.write().map_err(|_| IndexError::Corruption("Failed to acquire write lock".to_string()))?;
 
-                mmap_guard.write(0, &data).map_err(|e| IndexError::IoError(format!("Failed to write to mmap: {:?}", e)))?;
+                mmap_guard.write(0, &data).map_err(|e| IndexError::IoError(format!("Failed to write to mmap: {e:?}")))?;
 
-                mmap_guard.sync().map_err(|e| IndexError::IoError(format!("Failed to sync mmap: {:?}", e)))?;
+                mmap_guard.sync().map_err(|e| IndexError::IoError(format!("Failed to sync mmap: {e:?}")))?;
             }
 
             self.mmapped_indices.insert(name.to_string(), mmap);
@@ -185,7 +184,7 @@ impl IndexPersistenceManager {
             metadata.is_mmap = true;
         } else {
             // Write to regular file
-            std::fs::write(&file_path, &data).map_err(|e| IndexError::IoError(format!("Failed to write file: {}", e)))?;
+            std::fs::write(&file_path, &data).map_err(|e| IndexError::IoError(format!("Failed to write file: {e}")))?;
 
             // Now update metadata
             let metadata = self.metadata.get_mut(name).unwrap();
@@ -208,7 +207,7 @@ impl IndexPersistenceManager {
         V: IndexValue + 'static,
         I: IndexPersistence<K, V>,
     {
-        let metadata = self.metadata.get(name).ok_or_else(|| IndexError::InvalidOperation(format!("Index {} not registered", name)))?;
+        let metadata = self.metadata.get(name).ok_or_else(|| IndexError::InvalidOperation(format!("Index {name} not registered")))?;
 
         let expected_checksum = metadata.checksum;
         let is_mmap = metadata.is_mmap;
@@ -223,13 +222,13 @@ impl IndexPersistenceManager {
             mmap_guard.as_slice().to_vec()
         } else {
             // Read from regular file
-            std::fs::read(&file_path).map_err(|e| IndexError::IoError(format!("Failed to read file: {}", e)))?
+            std::fs::read(&file_path).map_err(|e| IndexError::IoError(format!("Failed to read file: {e}")))?
         };
 
         // Verify checksum
         let checksum = self.calculate_checksum(&data);
         if checksum != expected_checksum {
-            return Err(IndexError::Corruption(format!("Checksum mismatch for index {}", name)));
+            return Err(IndexError::Corruption(format!("Checksum mismatch for index {name}")));
         }
 
         // Decompress if needed
@@ -250,13 +249,13 @@ impl IndexPersistenceManager {
                 .write(true)
                 .truncate(true)
                 .open(path)
-                .map_err(|e| IndexError::IoError(format!("Failed to create file: {}", e)))?;
+                .map_err(|e| IndexError::IoError(format!("Failed to create file: {e}")))?;
 
-            file.set_len(size as u64).map_err(|e| IndexError::IoError(format!("Failed to set file size: {}", e)))?;
+            file.set_len(size as u64).map_err(|e| IndexError::IoError(format!("Failed to set file size: {e}")))?;
         }
 
         // Create memory map
-        let mmap = MemoryMap::from_file(path, MappingStrategy::ReadWrite, 0, Some(size)).map_err(|e| IndexError::IoError(format!("Failed to create mmap: {:?}", e)))?;
+        let mmap = MemoryMap::from_file(path, MappingStrategy::ReadWrite, 0, Some(size)).map_err(|e| IndexError::IoError(format!("Failed to create mmap: {e:?}")))?;
 
         Ok(Arc::new(RwLock::new(mmap)))
     }
@@ -270,7 +269,7 @@ impl IndexPersistenceManager {
 
     /// Decompress data
     fn decompress_data(&self, data: &[u8]) -> IndexResult<Vec<u8>> {
-        Ok(self.simple_rle_decompress(data)?)
+        self.simple_rle_decompress(data)
     }
 
     /// Simple run-length encoding compression
@@ -349,7 +348,7 @@ impl IndexPersistenceManager {
 
             // Remove file from disk
             if metadata.file_path.exists() {
-                std::fs::remove_file(&metadata.file_path).map_err(|e| IndexError::IoError(format!("Failed to remove file: {}", e)))?;
+                std::fs::remove_file(&metadata.file_path).map_err(|e| IndexError::IoError(format!("Failed to remove file: {e}")))?;
             }
         }
         Ok(())
@@ -393,7 +392,7 @@ impl IndexPersistenceManager {
             return Ok(false);
         }
 
-        let data = std::fs::read(&metadata.file_path).map_err(|e| IndexError::IoError(format!("Failed to read file: {}", e)))?;
+        let data = std::fs::read(&metadata.file_path).map_err(|e| IndexError::IoError(format!("Failed to read file: {e}")))?;
 
         let checksum = self.calculate_checksum(&data);
         Ok(checksum == metadata.checksum)

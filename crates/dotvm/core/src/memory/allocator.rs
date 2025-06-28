@@ -134,7 +134,7 @@ impl<A: Architecture> Allocator<A> {
         // Then perform fragmentation check
         let max_contiguous = self.get_max_contiguous_free_block();
         if max_contiguous < aligned_size {
-            return Err(MemoryError::FragmentationError(format!("Maximum contiguous block size: {}", max_contiguous)));
+            return Err(MemoryError::FragmentationError(format!("Maximum contiguous block size: {max_contiguous}")));
         }
 
         // Use the strategy field to determine which allocation method to use
@@ -328,9 +328,9 @@ impl<A: Architecture> Allocator<A> {
             // Need to be careful with borrowing rules here.
             // We can find the previous block's address first, then operate.
             let mut prev_addr_to_merge_with_current: Option<PhysicalAddress> = None;
-            if let Some((&previous_address, _previous_block_ref)) = self.blocks.range(..current_block_address).rev().next() {
+            if let Some((&previous_address, _previous_block_ref)) = self.blocks.range(..current_block_address).next_back() {
                 // Check if it's free without holding a mutable borrow that conflicts
-                if self.blocks.get(&previous_address).map_or(false, |pb| pb.is_free) {
+                if self.blocks.get(&previous_address).is_some_and(|pb| pb.is_free) {
                     // The block we are deallocating (current_block_address) might have been extended by merging right.
                     // So, its size might have changed.
                     let current_merged_size = self.blocks.get(&current_block_address).map_or(0, |b| b.size);

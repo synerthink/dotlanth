@@ -27,6 +27,12 @@ pub struct ResourceAllocator {
 /// Implements:
 /// - Priority-driven resource boosting
 /// - System capacity validation
+impl Default for ResourceAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceAllocator {
     /// Initializes with:
     /// - System metrics collector

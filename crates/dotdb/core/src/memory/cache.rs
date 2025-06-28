@@ -240,7 +240,7 @@ where
 
         // Update average access time
         let access_time = start_time.elapsed();
-        stats.avg_access_time = Duration::from_nanos(((stats.avg_access_time.as_nanos() as u128 * (total_accesses - 1) as u128 + access_time.as_nanos() as u128) / total_accesses as u128) as u64);
+        stats.avg_access_time = Duration::from_nanos(((stats.avg_access_time.as_nanos() * (total_accesses - 1) as u128 + access_time.as_nanos()) / total_accesses as u128) as u64);
 
         // Check if we need to run cleanup
         self.maybe_cleanup();
@@ -549,12 +549,12 @@ where
                 let mut frequency_buckets = self.frequency_buckets.lock().unwrap();
                 if let Some(entry) = entries.get_mut(key) {
                     let freq = entry.access_count;
-                    if freq > 0 {
-                        if let Some(keys) = frequency_buckets.get_mut(&(freq - 1)) {
-                            keys.retain(|k| k != key);
-                        }
+                    if freq > 0
+                        && let Some(keys) = frequency_buckets.get_mut(&(freq - 1))
+                    {
+                        keys.retain(|k| k != key);
                     }
-                    frequency_buckets.entry(freq).or_insert_with(Vec::new).push(key.clone());
+                    frequency_buckets.entry(freq).or_default().push(key.clone());
                 }
             }
             _ => {} // Other policies don't need access order updates
@@ -569,7 +569,7 @@ where
             }
             EvictionPolicy::LFU => {
                 let mut frequency_buckets = self.frequency_buckets.lock().unwrap();
-                frequency_buckets.entry(1).or_insert_with(Vec::new).push(key.clone());
+                frequency_buckets.entry(1).or_default().push(key.clone());
             }
             EvictionPolicy::FIFO => {
                 let mut insertion_order = self.insertion_order.lock().unwrap();
@@ -605,7 +605,7 @@ where
 
     fn maybe_cleanup(&self) {
         if self.policy == EvictionPolicy::TTL {
-            let mut last_cleanup = self.last_cleanup.lock().unwrap();
+            let last_cleanup = self.last_cleanup.lock().unwrap();
             let now = Instant::now();
 
             if now.duration_since(*last_cleanup) >= self.cleanup_interval {

@@ -65,8 +65,8 @@
 
 use crate::state::mpt::node::NodeType;
 use crate::state::mpt::trie::NodeStorage;
-use crate::state::mpt::{Hash, MPTError, MerklePatriciaTrie, NodeId, TrieResult};
-use crate::state::snapshot::{SnapshotError, SnapshotId, SnapshotManager, StateSnapshot};
+use crate::state::mpt::{Hash, MPTError, NodeId};
+use crate::state::snapshot::{SnapshotError, SnapshotManager};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -198,13 +198,13 @@ pub enum PruningError {
 
 impl From<MPTError> for PruningError {
     fn from(err: MPTError) -> Self {
-        PruningError::MPTError(format!("{:?}", err))
+        PruningError::MPTError(format!("{err:?}"))
     }
 }
 
 impl From<SnapshotError> for PruningError {
     fn from(err: SnapshotError) -> Self {
-        PruningError::PruningFailed(format!("Snapshot error: {:?}", err))
+        PruningError::PruningFailed(format!("Snapshot error: {err:?}"))
     }
 }
 
@@ -301,7 +301,7 @@ impl<S: NodeStorage + Clone> StatePruner<S> {
         let is_snapshot_root = self.snapshot_manager.as_ref().map(|sm| sm.list_snapshots().iter().any(|s| s.root_hash == root_hash)).unwrap_or(false);
 
         let prunable_state = PrunableState {
-            root_hash: root_hash.clone(),
+            root_hash,
             height,
             timestamp,
             size_bytes,
@@ -351,7 +351,7 @@ impl<S: NodeStorage + Clone> StatePruner<S> {
                         self.state_registry.remove(&root_hash);
                     }
                     Err(e) => {
-                        result.errors.push(format!("Failed to prune state {:?}: {:?}", root_hash, e));
+                        result.errors.push(format!("Failed to prune state {root_hash:?}: {e:?}"));
                     }
                 }
             }
@@ -528,13 +528,13 @@ impl<S: NodeStorage + Clone> StatePruner<S> {
         // Get mutable access to the current trie
         let current_trie = snapshot_manager
             .get_current_trie_mut()
-            .map_err(|e| PruningError::InvalidConfig(format!("Failed to get current trie: {:?}", e)))?;
+            .map_err(|e| PruningError::InvalidConfig(format!("Failed to get current trie: {e:?}")))?;
 
         // Collect nodes to delete
         fn collect_nodes_to_delete<S: NodeStorage>(node_id: &NodeId, storage: &S, nodes_to_delete: &mut Vec<NodeId>, bytes_reclaimed: &mut u64) -> PruningResult_<()> {
             if let Some(node) = storage.get_node(node_id)? {
                 // Add current node to deletion list
-                nodes_to_delete.push(node_id.clone());
+                nodes_to_delete.push(*node_id);
                 *bytes_reclaimed += node.size_bytes();
 
                 // Recursively process child nodes
@@ -627,11 +627,11 @@ impl<S: NodeStorage + Clone> StatePruner<S> {
                     Ok(bytes_reclaimed) => {
                         result.pruned_count += 1;
                         result.bytes_reclaimed += bytes_reclaimed;
-                        result.pruned_roots.push(root_hash.clone());
+                        result.pruned_roots.push(*root_hash);
                         self.state_registry.remove(root_hash);
                     }
                     Err(e) => {
-                        result.errors.push(format!("Failed to prune state {:?}: {:?}", root_hash, e));
+                        result.errors.push(format!("Failed to prune state {root_hash:?}: {e:?}"));
                     }
                 }
             }

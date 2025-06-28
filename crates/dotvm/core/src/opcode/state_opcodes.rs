@@ -184,16 +184,16 @@ impl fmt::Display for StateOpcodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StateOpcodeError::InsufficientGas { required, available } => {
-                write!(f, "Insufficient gas: required {}, available {}", required, available)
+                write!(f, "Insufficient gas: required {required}, available {available}")
             }
-            StateOpcodeError::InvalidOpcode(code) => write!(f, "Invalid opcode: 0x{:02x}", code),
+            StateOpcodeError::InvalidOpcode(code) => write!(f, "Invalid opcode: 0x{code:02x}"),
             StateOpcodeError::StackUnderflow => write!(f, "Stack underflow"),
             StateOpcodeError::StackOverflow => write!(f, "Stack overflow"),
             StateOpcodeError::InvalidStorageKey => write!(f, "Invalid storage key format"),
             StateOpcodeError::StorageAccessDenied => write!(f, "Storage access denied"),
             StateOpcodeError::StorageWriteDenied => write!(f, "Storage write denied"),
-            StateOpcodeError::InvalidDataFormat(msg) => write!(f, "Invalid data format: {}", msg),
-            StateOpcodeError::StorageError(msg) => write!(f, "Storage error: {}", msg),
+            StateOpcodeError::InvalidDataFormat(msg) => write!(f, "Invalid data format: {msg}"),
+            StateOpcodeError::StorageError(msg) => write!(f, "Storage error: {msg}"),
             StateOpcodeError::OperationLimitExceeded => write!(f, "Operation limit exceeded"),
         }
     }

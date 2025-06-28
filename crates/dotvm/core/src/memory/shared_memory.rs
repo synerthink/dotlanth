@@ -48,6 +48,12 @@ pub struct SharedMemoryManager<A: Architecture> {
     allocator: Allocator<A>,
 }
 
+impl<A: Architecture> Default for SharedMemoryManager<A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<A: Architecture> SharedMemoryManager<A> {
     /// Creates a new SharedMemoryManager instance.
     pub fn new() -> Self {
@@ -70,10 +76,10 @@ impl<A: Architecture> SharedMemoryManager<A> {
         if let Some(region) = self.regions.remove(&id) {
             self.allocator
                 .deallocate(region.memory_handle)
-                .map_err(|e| MemoryError::AllocationError(format!("Failed to deallocate region {}: {:?}", id, e)))?;
+                .map_err(|e| MemoryError::AllocationError(format!("Failed to deallocate region {id}: {e:?}")))?;
             Ok(())
         } else {
-            Err(MemoryError::InvalidRegion(format!("Region {} not found", id)))
+            Err(MemoryError::InvalidRegion(format!("Region {id} not found")))
         }
     }
 
@@ -83,7 +89,7 @@ impl<A: Architecture> SharedMemoryManager<A> {
             region.share(contract_id, protection);
             Ok(())
         } else {
-            Err(MemoryError::InvalidRegion(format!("Region {} does not exist", region_id)))
+            Err(MemoryError::InvalidRegion(format!("Region {region_id} does not exist")))
         }
     }
 
@@ -92,7 +98,7 @@ impl<A: Architecture> SharedMemoryManager<A> {
         self.regions
             .get_mut(&region_id)
             .map(|region| region.unshare(contract_id))
-            .ok_or_else(|| MemoryError::InvalidRegion(format!("Region {} not found", region_id)))
+            .ok_or_else(|| MemoryError::InvalidRegion(format!("Region {region_id} not found")))
     }
 
     /// Retrieves a shared memory region by ID.

@@ -18,7 +18,7 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use crate::events::lib::{Event, Priority, event_downcast};
+use crate::events::lib::Event;
 
 /// Statistics for monitoring queue performance
 ///
@@ -50,6 +50,12 @@ pub struct EventQueue {
     queue: VecDeque<QueuedEvent>,
     capacity: usize,
     stats: QueueStats,
+}
+
+impl Default for EventQueue {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EventQueue {
@@ -107,7 +113,7 @@ impl EventQueue {
     /// Updates statistics (processed_count, avg_wait_time).
     pub fn dequeue(&mut self) -> Option<Box<dyn Event>> {
         let now = Instant::now();
-        if let Some(idx) = self.queue.iter().position(|e| e.delay_until.map_or(true, |d| now >= d)) {
+        if let Some(idx) = self.queue.iter().position(|e| e.delay_until.is_none_or(|d| now >= d)) {
             let queued = self.queue.remove(idx).unwrap();
 
             // Update stats

@@ -173,14 +173,14 @@ impl StackValue {
 impl fmt::Display for StackValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StackValue::Int64(v) => write!(f, "{}", v),
-            StackValue::Float64(v) => write!(f, "{}", v),
-            StackValue::String(v) => write!(f, "\"{}\"", v),
-            StackValue::Bool(v) => write!(f, "{}", v),
+            StackValue::Int64(v) => write!(f, "{v}"),
+            StackValue::Float64(v) => write!(f, "{v}"),
+            StackValue::String(v) => write!(f, "\"{v}\""),
+            StackValue::Bool(v) => write!(f, "{v}"),
             StackValue::Null => write!(f, "null"),
-            StackValue::Json(v) => write!(f, "{}", v),
-            StackValue::DocumentId(v) => write!(f, "doc:{}", v),
-            StackValue::Collection(v) => write!(f, "col:{}", v),
+            StackValue::Json(v) => write!(f, "{v}"),
+            StackValue::DocumentId(v) => write!(f, "doc:{v}"),
+            StackValue::Collection(v) => write!(f, "col:{v}"),
         }
     }
 }

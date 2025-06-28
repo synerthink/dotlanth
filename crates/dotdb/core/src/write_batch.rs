@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::indices::{BPlusTree, CompositeIndex, CompositeKey, HashIndex, Index, IndexError, IndexKey, IndexMaintenance, IndexPersistenceManager, IndexResult, IndexStats, IndexType, IndexValue};
+use crate::indices::{BPlusTree, CompositeIndex, CompositeKey, HashIndex, Index, IndexError, IndexKey, IndexMaintenance, IndexPersistenceManager, IndexResult, IndexType, IndexValue};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 /// Write operation types
 #[derive(Debug, Clone, PartialEq)]
@@ -153,13 +153,10 @@ where
         let mut insert_keys = std::collections::HashSet::new();
 
         for operation in &self.operations {
-            match operation {
-                WriteOperation::Insert { key, .. } => {
-                    if !insert_keys.insert(key.clone()) {
-                        return Err(IndexError::InvalidOperation(format!("Duplicate insert key in batch: {:?}", key)));
-                    }
+            if let WriteOperation::Insert { key, .. } = operation {
+                if !insert_keys.insert(key.clone()) {
+                    return Err(IndexError::InvalidOperation(format!("Duplicate insert key in batch: {key:?}")));
                 }
-                _ => {}
             }
         }
 
@@ -322,7 +319,7 @@ where
         if self.btree_indices.remove(name).is_some() || self.hash_indices.remove(name).is_some() || self.composite_indices.remove(name).is_some() {
             Ok(())
         } else {
-            Err(IndexError::KeyNotFound(format!("Index: {}", name)))
+            Err(IndexError::KeyNotFound(format!("Index: {name}")))
         }
     }
 
@@ -353,14 +350,14 @@ where
     pub fn insert_to_all(&mut self, key: K, value: V) -> IndexResult<()> {
         // Insert into B+ tree indices
         for (name, index_arc) in &self.btree_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {name}")))?;
 
             index.insert(key.clone(), value.clone())?;
         }
 
         // Insert into hash indices
         for (name, index_arc) in &self.hash_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {name}")))?;
 
             index.insert(key.clone(), value.clone())?;
         }
@@ -372,14 +369,14 @@ where
     pub fn update_in_all(&mut self, key: K, value: V) -> IndexResult<()> {
         // Update in B+ tree indices
         for (name, index_arc) in &self.btree_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {name}")))?;
 
             index.update(key.clone(), value.clone())?;
         }
 
         // Update in hash indices
         for (name, index_arc) in &self.hash_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {name}")))?;
 
             index.update(key.clone(), value.clone())?;
         }
@@ -391,14 +388,14 @@ where
     pub fn delete_from_all(&mut self, key: &K) -> IndexResult<()> {
         // Delete from B+ tree indices
         for (name, index_arc) in &self.btree_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {name}")))?;
 
             index.delete(key)?;
         }
 
         // Delete from hash indices
         for (name, index_arc) in &self.hash_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {name}")))?;
 
             index.delete(key)?;
         }
@@ -409,52 +406,52 @@ where
     /// Get a value from a specific index
     pub fn get_from_index(&self, index_name: &str, key: &K) -> IndexResult<Option<V>> {
         if let Some(index_arc) = self.btree_indices.get(index_name) {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {}", index_name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {index_name}")))?;
 
             return index.get(key);
         }
 
         if let Some(index_arc) = self.hash_indices.get(index_name) {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {}", index_name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {index_name}")))?;
 
             return index.get(key);
         }
 
         // Note: Composite indices require CompositeKey, not K
         // This method is for simple key lookups only
-        Err(IndexError::KeyNotFound(format!("Index: {}", index_name)))
+        Err(IndexError::KeyNotFound(format!("Index: {index_name}")))
     }
 
     /// Get a value from a composite index using CompositeKey
     pub fn get_from_composite_index(&self, index_name: &str, key: &CompositeKey) -> IndexResult<Option<V>> {
         if let Some(index_arc) = self.composite_indices.get(index_name) {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock composite index: {}", index_name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock composite index: {index_name}")))?;
 
             return index.get(key);
         }
 
-        Err(IndexError::KeyNotFound(format!("Composite index: {}", index_name)))
+        Err(IndexError::KeyNotFound(format!("Composite index: {index_name}")))
     }
 
     /// Clear all indices
     pub fn clear_all(&mut self) -> IndexResult<()> {
         // Clear B+ tree indices
         for (name, index_arc) in &self.btree_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {name}")))?;
 
             index.clear();
         }
 
         // Clear hash indices
         for (name, index_arc) in &self.hash_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {name}")))?;
 
             index.clear();
         }
 
         // Clear composite indices
         for (name, index_arc) in &self.composite_indices {
-            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock composite index: {}", name)))?;
+            let mut index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock composite index: {name}")))?;
 
             index.clear();
         }
@@ -468,21 +465,21 @@ where
 
         // Count B+ tree entries
         for (name, index_arc) in &self.btree_indices {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {}", name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {name}")))?;
 
             total += index.len();
         }
 
         // Count hash entries
         for (name, index_arc) in &self.hash_indices {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {}", name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {name}")))?;
 
             total += index.len();
         }
 
         // Count composite entries
         for (name, index_arc) in &self.composite_indices {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock composite index: {}", name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock composite index: {name}")))?;
 
             total += index.len();
         }
@@ -496,21 +493,21 @@ where
 
         // Get B+ tree stats
         for (name, index_arc) in &self.btree_indices {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {}", name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock B+ tree index: {name}")))?;
 
             stats.insert(name.clone(), index.stats());
         }
 
         // Get hash stats
         for (name, index_arc) in &self.hash_indices {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {}", name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock hash index: {name}")))?;
 
             stats.insert(name.clone(), index.stats());
         }
 
         // Get composite stats
         for (name, index_arc) in &self.composite_indices {
-            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock composite index: {}", name)))?;
+            let index = index_arc.lock().map_err(|_| IndexError::Corruption(format!("Failed to lock composite index: {name}")))?;
 
             stats.insert(name.clone(), index.stats());
         }
@@ -563,14 +560,14 @@ where
             for (name, index) in &self.btree_indices {
                 let mut index_guard = index.lock().map_err(|_| IndexError::Corruption("Failed to acquire lock".to_string()))?;
 
-                manager.load_index(&name, &mut *index_guard)?;
+                manager.load_index(name, &mut *index_guard)?;
             }
 
             // Load hash indices
             for (name, index) in &self.hash_indices {
                 let mut index_guard = index.lock().map_err(|_| IndexError::Corruption("Failed to acquire lock".to_string()))?;
 
-                manager.load_index(&name, &mut *index_guard)?;
+                manager.load_index(name, &mut *index_guard)?;
             }
         }
 

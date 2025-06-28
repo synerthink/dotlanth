@@ -51,7 +51,7 @@ impl EventDispatcher {
 
         // Acquire write lock, recover from poison if needed
         let mut handlers_map = self.handlers.write().unwrap_or_else(|e| e.into_inner());
-        let type_handlers = handlers_map.entry(type_id).or_insert_with(HashMap::new);
+        let type_handlers = handlers_map.entry(type_id).or_default();
         type_handlers.insert(handler_id, wrapper);
 
         handler_id

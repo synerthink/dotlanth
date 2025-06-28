@@ -87,7 +87,7 @@ impl RollbackManager {
 
 impl StateRollback for RollbackManager {
     fn rollback_to_checkpoint(&mut self, checkpoint_id: &str) -> RollbackResult<()> {
-        log_event(LogLevel::Info, "StateRollback", &format!("Rolling back to checkpoint: {}", checkpoint_id));
+        log_event(LogLevel::Info, "StateRollback", &format!("Rolling back to checkpoint: {checkpoint_id}"));
 
         // Get checkpoint manager and attempt to retrieve the checkpoint
         let checkpoint_manager = self
@@ -98,13 +98,13 @@ impl StateRollback for RollbackManager {
         // Retrieve and apply the checkpoint
         let checkpoint = checkpoint_manager
             .get_checkpoint(checkpoint_id)
-            .map_err(|e| RollbackError::RollbackFailed(format!("Failed to get checkpoint: {}", e)))?;
+            .map_err(|e| RollbackError::RollbackFailed(format!("Failed to get checkpoint: {e}")))?;
 
         checkpoint_manager
             .apply_checkpoint(&checkpoint)
-            .map_err(|e| RollbackError::RollbackFailed(format!("Failed to apply checkpoint: {}", e)))?;
+            .map_err(|e| RollbackError::RollbackFailed(format!("Failed to apply checkpoint: {e}")))?;
 
-        log_event(LogLevel::Info, "StateRollback", &format!("Successfully rolled back to checkpoint: {}", checkpoint_id));
+        log_event(LogLevel::Info, "StateRollback", &format!("Successfully rolled back to checkpoint: {checkpoint_id}"));
 
         // Clear transaction log after successful rollback
         self.clear_transaction_log()?;
@@ -119,7 +119,7 @@ impl StateRollback for RollbackManager {
             .map_err(|_| RollbackError::RollbackFailed("Failed to acquire transaction log lock".to_string()))?;
 
         log.push((transaction_id.to_string(), before_state));
-        log_event(LogLevel::Info, "StateRollback", &format!("Recorded transaction: {}", transaction_id));
+        log_event(LogLevel::Info, "StateRollback", &format!("Recorded transaction: {transaction_id}"));
 
         // Maintain transaction log size
         drop(log); // Release lock before calling other methods
@@ -140,12 +140,12 @@ impl StateRollback for RollbackManager {
 
         // Log the rollback trigger
         let trigger_msg = match &trigger {
-            RollbackTrigger::ErrorDetected(err) => format!("Error detected: {}", err),
+            RollbackTrigger::ErrorDetected(err) => format!("Error detected: {err}"),
             RollbackTrigger::ManualIntervention => "Manual intervention".to_string(),
-            RollbackTrigger::InconsistencyDetected(details) => format!("Inconsistency detected: {}", details),
+            RollbackTrigger::InconsistencyDetected(details) => format!("Inconsistency detected: {details}"),
         };
 
-        log_event(LogLevel::Warning, "StateRollback", &format!("Rollback triggered: {}", trigger_msg));
+        log_event(LogLevel::Warning, "StateRollback", &format!("Rollback triggered: {trigger_msg}"));
 
         // Get checkpoint manager to find the most recent checkpoint
         let checkpoint_manager = self

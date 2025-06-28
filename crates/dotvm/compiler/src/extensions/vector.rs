@@ -551,7 +551,7 @@ impl VectorExtension {
             VectorOperation::FourierTransform => Ok(0x20),
             VectorOperation::ParallelMap => Ok(0x30),
             VectorOperation::ParallelReduce => Ok(0x31),
-            _ => Err(VectorExtensionError::UnsupportedOperation(format!("Encoding not implemented for {:?}", operation))),
+            _ => Err(VectorExtensionError::UnsupportedOperation(format!("Encoding not implemented for {operation:?}"))),
         }
     }
 

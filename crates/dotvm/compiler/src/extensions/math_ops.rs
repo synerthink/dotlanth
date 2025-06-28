@@ -269,7 +269,7 @@ impl MathExtension {
             return match operation.minimum_architecture() {
                 VmArchitecture::Arch128 => Err(MathExtensionError::BigIntArchitectureRequired),
                 VmArchitecture::Arch256 | VmArchitecture::Arch512 => Err(MathExtensionError::HighPrecisionArchitectureRequired),
-                _ => Err(MathExtensionError::UnsupportedOperation(format!("{:?}", operation))),
+                _ => Err(MathExtensionError::UnsupportedOperation(format!("{operation:?}"))),
             };
         }
 
@@ -277,7 +277,7 @@ impl MathExtension {
         let expected_operands = operation.operand_count();
         if function.signature.params.len() != expected_operands {
             return Err(MathExtensionError::InvalidOperandCount {
-                operation: format!("{:?}", operation),
+                operation: format!("{operation:?}"),
                 expected: expected_operands,
                 actual: function.signature.params.len(),
             });

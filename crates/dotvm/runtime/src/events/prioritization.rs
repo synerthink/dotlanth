@@ -28,6 +28,12 @@ pub struct PriorityManager {
     default_priority: RwLock<Priority>,
 }
 
+impl Default for PriorityManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PriorityManager {
     /// Create a new priority manager with default settings
     pub fn new() -> Self {

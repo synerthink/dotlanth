@@ -16,7 +16,7 @@
 
 use crate::async_runtime::executor::FutureExecutor;
 use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId};
-use crate::async_runtime::scheduler::{AsyncTaskScheduler, Priority};
+use crate::async_runtime::scheduler::AsyncTaskScheduler;
 use std::collections::HashMap;
 use std::sync::{
     Arc, Mutex,
@@ -166,22 +166,21 @@ impl TaskHandle {
         let task_id = self.token.task_id;
 
         // Step 2: Update task metrics
-        if let Some(task) = self.scheduler.get_task(task_id) {
-            if let Ok(mut task) = task.lock() {
-                task.metrics_mut().mark_cancelled();
-                if let Some(reason) = self.token.cancellation_reason() {
-                    task.metrics_mut().cancel_reason = Some(reason);
-                }
+        if let Some(task) = self.scheduler.get_task(task_id)
+            && let Ok(mut task) = task.lock()
+        {
+            task.metrics_mut().mark_cancelled();
+            if let Some(reason) = self.token.cancellation_reason() {
+                task.metrics_mut().cancel_reason = Some(reason);
             }
         }
 
         // Step 3: Remove from scheduler (tolerate 'not found' errors)
-        if let Err(e) = self.scheduler.remove_task(task_id) {
-            if let RuntimeError::Internal(ref msg) = e {
-                if !msg.contains("not found") {
-                    return Err(e);
-                }
-            }
+        if let Err(e) = self.scheduler.remove_task(task_id)
+            && let RuntimeError::Internal(ref msg) = e
+            && !msg.contains("not found")
+        {
+            return Err(e);
         }
 
         // Step 4: Notify executor
@@ -204,6 +203,12 @@ pub struct CancellationSystem {
     handles: Arc<Mutex<HashMap<TaskId, Arc<TaskHandle>>>>,
     metrics: Arc<CancellationMetrics>,
     background_cleaner: Mutex<Option<std::thread::JoinHandle<()>>>,
+}
+
+impl Default for CancellationSystem {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CancellationSystem {

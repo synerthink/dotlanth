@@ -15,9 +15,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::{
-    ffi::CString,
     fs::{File, OpenOptions},
-    io::{self, Seek, SeekFrom, Write},
+    io::{self, Write},
     os::unix::io::AsRawFd,
     path::Path,
     ptr::{self, NonNull},
@@ -355,7 +354,7 @@ impl MemoryMap {
 
         // Track dirty pages
         let page_start = offset / self.page_size;
-        let page_end = (offset + to_write + self.page_size - 1) / self.page_size;
+        let page_end = (offset + to_write).div_ceil(self.page_size);
 
         let mut dirty_pages = self.dirty_pages.lock().unwrap();
         dirty_pages.push((page_start * self.page_size, (page_end - page_start) * self.page_size));
@@ -706,7 +705,7 @@ impl MemoryMapBuilder {
     pub fn build(self) -> Result<MemoryMap, MmapError> {
         let size = self.size.ok_or(MmapError::InvalidSize)?;
 
-        let mut mmap = MemoryMap::with_protection_and_flags(size, &self.protection, &self.flags)?;
+        let mmap = MemoryMap::with_protection_and_flags(size, &self.protection, &self.flags)?;
 
         mmap.set_sync_policy(self.sync_policy);
 
@@ -722,7 +721,7 @@ impl MemoryMapBuilder {
     }
 
     pub fn build_from_file<P: AsRef<Path>>(self, path: P, offset: u64, length: Option<usize>) -> Result<MemoryMap, MmapError> {
-        let mut mmap = MemoryMap::from_file(path, self.strategy, offset, length)?;
+        let mmap = MemoryMap::from_file(path, self.strategy, offset, length)?;
 
         mmap.set_sync_policy(self.sync_policy);
 

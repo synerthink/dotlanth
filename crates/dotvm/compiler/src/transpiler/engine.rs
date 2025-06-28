@@ -357,7 +357,7 @@ impl TranspilationEngine {
         let local_count = parameter_count + wasm_function.locals.len();
 
         Ok(TranspiledFunction {
-            name: format!("func_{}", index), // Generate a name since WasmFunction doesn't have one
+            name: format!("func_{index}"), // Generate a name since WasmFunction doesn't have one
             instructions,
             local_count,
             parameter_count,

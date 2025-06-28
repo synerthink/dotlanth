@@ -29,10 +29,9 @@
 //! - Compression and serialization
 //! - Metrics and monitoring
 
-use crate::state::mpt::{Hash, Key, MPTError, Node, NodeId, TrieResult, Value};
-use crate::storage_engine::{BufferManager, DatabaseId, Storage, StorageConfig, StorageError, StorageResult, Transaction, TransactionManager, VersionId};
+use crate::state::mpt::{MPTError, Node, NodeId, TrieResult};
+use crate::storage_engine::{DatabaseId, StorageConfig, StorageError, VersionId};
 use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -99,7 +98,7 @@ pub enum DbError {
 
 impl From<DbError> for MPTError {
     fn from(err: DbError) -> Self {
-        MPTError::StorageError(format!("{}", err))
+        MPTError::StorageError(format!("{err}"))
     }
 }
 
@@ -453,7 +452,7 @@ impl crate::state::mpt::trie::NodeStorage for MptStorageAdapter {
 
     fn delete_node(&mut self, id: &NodeId) -> TrieResult<()> {
         let key = self.node_key(id);
-        self.db.delete(&key).map_err(DbError::from).map_err(MPTError::from)?;
+        self.db.delete(&key).map_err(MPTError::from)?;
         Ok(())
     }
 

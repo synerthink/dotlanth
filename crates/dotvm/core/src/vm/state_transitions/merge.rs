@@ -28,8 +28,8 @@ pub enum MergeError {
 impl fmt::Display for MergeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MergeError::Conflict(s) => write!(f, "Merge conflict: {}", s),
-            MergeError::OperationFailed(s) => write!(f, "Merge operation failed: {}", s),
+            MergeError::Conflict(s) => write!(f, "Merge conflict: {s}"),
+            MergeError::OperationFailed(s) => write!(f, "Merge operation failed: {s}"),
             MergeError::NotImplemented => write!(f, "Merge operation not implemented"),
         }
     }
@@ -58,6 +58,12 @@ where
 
 /// DefaultStateMerger is the production implementation of StateMerger.
 pub struct DefaultStateMerger;
+
+impl Default for DefaultStateMerger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DefaultStateMerger {
     /// Creates a new instance of DefaultStateMerger.

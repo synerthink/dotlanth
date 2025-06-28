@@ -97,6 +97,12 @@ pub struct SegmentExtractor {
     criteria: SegmentCriteria,
 }
 
+impl Default for SegmentExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SegmentExtractor {
     /// Creates extractor with default criteria:
     /// - Patterns: SECTION/ARTICLE/CLAUSE headers

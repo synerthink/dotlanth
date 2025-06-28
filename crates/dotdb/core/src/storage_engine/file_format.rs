@@ -17,12 +17,10 @@
 // File format module
 // This module defines the on-disk format for persistent storage, including page layout, headers, and file structure. It provides methods for reading, writing, allocating, and freeing pages, as well as managing file metadata and versions.
 
-use std::collections::HashMap;
 use std::convert::TryInto;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::path::PathBuf;
 
 use crate::storage_engine::lib::{StorageConfig, StorageError, StorageResult, VersionId};
 
@@ -295,7 +293,7 @@ impl FileHeader {
 
         // Check version compatibility
         if version > FORMAT_VERSION {
-            return Err(StorageError::Corruption(format!("Unsupported format version: {}", version)));
+            return Err(StorageError::Corruption(format!("Unsupported format version: {version}")));
         }
 
         // Page size
@@ -364,7 +362,7 @@ impl FileFormat {
         self.is_new = !file_exists;
 
         // Open or create the file
-        let mut file = OpenOptions::new().read(true).write(true).create(true).open(&self.path)?;
+        let file = OpenOptions::new().read(true).write(true).create(true).open(&self.path)?;
 
         // Store the file immediately so that it can be accessed later
         self.file = Some(file);
@@ -577,7 +575,7 @@ impl FileFormat {
             let free_page_id = self.header.first_free_page;
 
             // Read the free page - if this fails due to checksum, we'll try to repair it
-            let mut free_page = match self.read_page(free_page_id) {
+            let free_page = match self.read_page(free_page_id) {
                 Ok(page) => page,
                 Err(StorageError::Corruption(msg)) if msg.contains("invalid checksum") => {
                     // Try to recover by reading the page directly without checksum verification

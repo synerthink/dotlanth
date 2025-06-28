@@ -24,7 +24,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
 use crate::storage_engine::file_format::PageId;
-use crate::storage_engine::lib::{StorageError, StorageResult};
+use crate::storage_engine::lib::StorageResult;
 use crate::storage_engine::mvcc::{MVCCManager, Timestamp};
 use crate::storage_engine::transaction::{IsolationLevel, TransactionId};
 

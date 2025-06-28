@@ -52,6 +52,12 @@ where
 /// Its migration logic is left unimplemented to drive development with TDD.
 pub struct DefaultStateVersioner;
 
+impl Default for DefaultStateVersioner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DefaultStateVersioner {
     /// Creates a new instance of DefaultStateVersioner.
     pub fn new() -> Self {

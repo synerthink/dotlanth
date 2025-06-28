@@ -15,8 +15,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, UNIX_EPOCH};
 
 /// Type of access pattern
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,11 +87,11 @@ impl TemporalAccessPattern {
         }
 
         // Add or update current timestamp
-        if let Some(&mut (ref mut last_ts, ref mut count)) = self.access_counts.back_mut() {
-            if *last_ts == now {
-                *count += 1;
-                return;
-            }
+        if let Some(&mut (ref mut last_ts, ref mut count)) = self.access_counts.back_mut()
+            && *last_ts == now
+        {
+            *count += 1;
+            return;
         }
 
         self.access_counts.push_back((now, 1));
@@ -203,14 +203,14 @@ impl AccessPatternTracker {
 
         // Add to access history
         self.access_history.push_back((key.to_string(), timestamp));
-        if self.access_history.len() > self.max_history_size {
-            if let Some((old_key, _)) = self.access_history.pop_front() {
-                // Decrement frequency for removed access
-                if let Some(freq) = self.key_frequencies.get_mut(&old_key) {
-                    *freq = freq.saturating_sub(1);
-                    if *freq == 0 {
-                        self.key_frequencies.remove(&old_key);
-                    }
+        if self.access_history.len() > self.max_history_size
+            && let Some((old_key, _)) = self.access_history.pop_front()
+        {
+            // Decrement frequency for removed access
+            if let Some(freq) = self.key_frequencies.get_mut(&old_key) {
+                *freq = freq.saturating_sub(1);
+                if *freq == 0 {
+                    self.key_frequencies.remove(&old_key);
                 }
             }
         }
@@ -262,10 +262,10 @@ impl AccessPatternTracker {
         let mut prev_key: Option<&str> = None;
 
         for (key, _) in &recent_accesses {
-            if let Some(prev) = prev_key {
-                if self.is_sequential_key(prev, key) {
-                    sequential_count += 1;
-                }
+            if let Some(prev) = prev_key
+                && self.is_sequential_key(prev, key)
+            {
+                sequential_count += 1;
             }
             prev_key = Some(key);
         }
@@ -472,7 +472,7 @@ impl AccessPatternTracker {
             + self.access_history.capacity() * std::mem::size_of::<(String, u64)>()
             + self.pattern_history.capacity() * std::mem::size_of::<AccessPattern>()
             + self.temporal_patterns.iter().map(|(k, v)| k.len() + std::mem::size_of_val(v)).sum::<usize>()
-            + self.key_frequencies.iter().map(|(k, _)| k.len()).sum::<usize>()
+            + self.key_frequencies.keys().map(|k| k.len()).sum::<usize>()
     }
 }
 

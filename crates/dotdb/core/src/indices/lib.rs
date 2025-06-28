@@ -85,14 +85,14 @@ pub enum IndexError {
 impl Display for IndexError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            IndexError::KeyNotFound(key) => write!(f, "Key not found: {}", key),
+            IndexError::KeyNotFound(key) => write!(f, "Key not found: {key}"),
             IndexError::IndexFull => write!(f, "Index is full"),
-            IndexError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
-            IndexError::InvalidOperation(msg) => write!(f, "Invalid operation: {}", msg),
-            IndexError::IoError(msg) => write!(f, "IO error: {}", msg),
-            IndexError::Corruption(msg) => write!(f, "Index corruption: {}", msg),
-            IndexError::InvalidKey(msg) => write!(f, "Invalid key: {}", msg),
-            IndexError::IndexExists(name) => write!(f, "Index already exists: {}", name),
+            IndexError::SerializationError(msg) => write!(f, "Serialization error: {msg}"),
+            IndexError::InvalidOperation(msg) => write!(f, "Invalid operation: {msg}"),
+            IndexError::IoError(msg) => write!(f, "IO error: {msg}"),
+            IndexError::Corruption(msg) => write!(f, "Index corruption: {msg}"),
+            IndexError::InvalidKey(msg) => write!(f, "Invalid key: {msg}"),
+            IndexError::IndexExists(name) => write!(f, "Index already exists: {name}"),
             IndexError::OutOfMemory => write!(f, "Out of memory"),
         }
     }
@@ -335,7 +335,7 @@ impl IndexKey for String {
     }
 
     fn from_bytes(bytes: &[u8]) -> IndexResult<Self> {
-        String::from_utf8(bytes.to_vec()).map_err(|e| IndexError::SerializationError(format!("UTF-8 error: {}", e)))
+        String::from_utf8(bytes.to_vec()).map_err(|e| IndexError::SerializationError(format!("UTF-8 error: {e}")))
     }
 }
 
@@ -393,7 +393,7 @@ impl IndexValue for String {
     }
 
     fn from_bytes(bytes: &[u8]) -> IndexResult<Self> {
-        String::from_utf8(bytes.to_vec()).map_err(|e| IndexError::SerializationError(format!("UTF-8 error: {}", e)))
+        String::from_utf8(bytes.to_vec()).map_err(|e| IndexError::SerializationError(format!("UTF-8 error: {e}")))
     }
 }
 

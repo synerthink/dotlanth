@@ -71,7 +71,7 @@ impl WasmParser {
             match payload? {
                 Payload::Version { num, .. } => {
                     if num != 1 {
-                        return Err(WasmParseError::UnsupportedFeature(format!("WASM version {}", num)));
+                        return Err(WasmParseError::UnsupportedFeature(format!("WASM version {num}")));
                     }
                 }
 
@@ -216,7 +216,7 @@ impl WasmParser {
             ValType::Ref(ref_type) => match ref_type.heap_type() {
                 wasmparser::HeapType::Func => Ok(WasmValueType::FuncRef),
                 wasmparser::HeapType::Extern => Ok(WasmValueType::ExternRef),
-                _ => Err(WasmParseError::UnsupportedFeature(format!("Reference type: {:?}", ref_type))),
+                _ => Err(WasmParseError::UnsupportedFeature(format!("Reference type: {ref_type:?}"))),
             },
         }
     }
@@ -487,7 +487,7 @@ impl WasmParser {
             Operator::I64ExtendI32U => Ok(WasmInstruction::I64ExtendI32U),
 
             // Add more operators as needed...
-            _ => Err(WasmParseError::UnsupportedFeature(format!("Operator: {:?}", op))),
+            _ => Err(WasmParseError::UnsupportedFeature(format!("Operator: {op:?}"))),
         }
     }
 

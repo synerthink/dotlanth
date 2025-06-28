@@ -126,6 +126,12 @@ pub struct PoolManager {
     size_classes: Vec<usize>,
 }
 
+impl Default for PoolManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PoolManager {
     pub fn new() -> Self {
         Self {

@@ -60,7 +60,7 @@ pub struct HyperLogLogEstimator {
 
 impl HyperLogLogEstimator {
     pub fn new(precision: u8) -> Result<Self, CardinalityError> {
-        if precision < 4 || precision > 16 {
+        if !(4..=16).contains(&precision) {
             return Err(CardinalityError::InvalidPrecision(precision));
         }
 
@@ -235,18 +235,12 @@ impl CardinalityEstimator {
         self.count += other.count;
         self.last_updated = crate::storage_engine::generate_timestamp();
 
-        match (&mut self.exact_set, &other.exact_set) {
-            (Some(self_set), Some(other_set)) => {
-                self_set.extend(other_set.iter());
-            }
-            _ => {}
+        if let (Some(self_set), Some(other_set)) = (&mut self.exact_set, &other.exact_set) {
+            self_set.extend(other_set.iter());
         }
 
-        match (&mut self.hll_estimator, &other.hll_estimator) {
-            (Some(self_hll), Some(other_hll)) => {
-                self_hll.merge(other_hll)?;
-            }
-            _ => {}
+        if let (Some(self_hll), Some(other_hll)) = (&mut self.hll_estimator, &other.hll_estimator) {
+            self_hll.merge(other_hll)?;
         }
 
         Ok(())

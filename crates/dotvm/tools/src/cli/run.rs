@@ -73,7 +73,7 @@ pub fn run_bytecode(args: RunArgs) -> Result<(), Box<dyn std::error::Error>> {
     let load_time = start_load.elapsed();
 
     if args.verbose {
-        println!("Bytecode loaded in {:?}", load_time);
+        println!("Bytecode loaded in {load_time:?}");
         println!("Starting execution...");
     }
 
@@ -85,7 +85,7 @@ pub fn run_bytecode(args: RunArgs) -> Result<(), Box<dyn std::error::Error>> {
     // Print results
     println!("Execution completed!");
     println!("Instructions executed: {}", result.instructions_executed);
-    println!("Execution time: {:?}", exec_time);
+    println!("Execution time: {exec_time:?}");
     println!("Total time: {:?}", load_time + exec_time);
 
     if args.debug || args.verbose {
@@ -93,7 +93,7 @@ pub fn run_bytecode(args: RunArgs) -> Result<(), Box<dyn std::error::Error>> {
         if !result.final_stack.is_empty() {
             println!("Final stack contents:");
             for (i, value) in result.final_stack.iter().enumerate() {
-                println!("  [{}]: {}", i, value);
+                println!("  [{i}]: {value}");
             }
         }
         println!("Program counter: {}", result.pc);
@@ -123,7 +123,7 @@ fn execute_step_mode(executor: &mut VmExecutor, verbose: bool) -> Result<dotvm_c
             println!("Stack contents:");
             let snapshot = context.stack.snapshot();
             for (i, value) in snapshot.iter().enumerate() {
-                println!("  [{}]: {}", i, value);
+                println!("  [{i}]: {value}");
             }
         }
 
@@ -151,8 +151,8 @@ fn execute_step_mode(executor: &mut VmExecutor, verbose: bool) -> Result<dotvm_c
                     dotvm_core::vm::executor::StepResult::Executed { instruction, pc, stack_size } => {
                         instruction_count += 1;
                         if verbose {
-                            println!("Executed: {:?}", instruction);
-                            println!("New PC: {}, Stack size: {}", pc, stack_size);
+                            println!("Executed: {instruction:?}");
+                            println!("New PC: {pc}, Stack size: {stack_size}");
                         }
                     }
                     dotvm_core::vm::executor::StepResult::Halted => {

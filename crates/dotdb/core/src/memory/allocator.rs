@@ -20,7 +20,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     ptr::{self, NonNull},
     sync::atomic,
-    sync::{Arc, Barrier, Mutex},
+    sync::{Arc, Mutex},
     time::Instant,
 };
 
@@ -328,10 +328,8 @@ impl CustomAllocator {
             AllocationStrategy::FirstFit => self.first_fit_allocate(aligned_size, alignment),
             AllocationStrategy::BestFit => self.best_fit_allocate(aligned_size, alignment),
         };
-        if result.is_err() {
-            if self.max_bytes.is_some() {
-                self.used_bytes.fetch_sub(aligned_size, atomic::Ordering::SeqCst);
-            }
+        if result.is_err() && self.max_bytes.is_some() {
+            self.used_bytes.fetch_sub(aligned_size, atomic::Ordering::SeqCst);
         }
         if let Ok(ptr) = &result {
             let addr = ptr.as_ptr() as usize;
@@ -407,10 +405,10 @@ impl CustomAllocator {
 
         // Find first suitable block
         for (&block_size, blocks) in free_blocks.iter_mut() {
-            if block_size >= size {
-                if let Some(block) = blocks.pop() {
-                    return self.use_block(block, size, alignment, &mut free_blocks);
-                }
+            if block_size >= size
+                && let Some(block) = blocks.pop()
+            {
+                return self.use_block(block, size, alignment, &mut free_blocks);
             }
         }
 
@@ -435,11 +433,12 @@ impl CustomAllocator {
 
         // Find best fitting block
         for (&block_size, blocks) in free_blocks.iter_mut() {
-            if block_size >= size && block_size < best_size {
-                if let Some(block) = blocks.last().copied() {
-                    best_block = Some((block_size, block));
-                    best_size = block_size;
-                }
+            if block_size >= size
+                && block_size < best_size
+                && let Some(block) = blocks.last().copied()
+            {
+                best_block = Some((block_size, block));
+                best_size = block_size;
             }
         }
 
@@ -490,7 +489,7 @@ impl CustomAllocator {
                 (*block_mut).is_free = false;
 
                 // Use the provided free_blocks reference
-                free_blocks.entry(remaining_size).or_insert_with(Vec::new).push(new_block);
+                free_blocks.entry(remaining_size).or_default().push(new_block);
             } else {
                 let block_mut = block.as_ptr();
                 (*block_mut).is_free = false;
@@ -621,7 +620,7 @@ impl CustomAllocator {
 
         let mut i = 0;
         while i < all_blocks.len() {
-            let mut current = all_blocks[i];
+            let current = all_blocks[i];
             let mut current_size = unsafe { current.as_ref().size };
             let mut j = i + 1;
             while j < all_blocks.len() {
@@ -641,7 +640,7 @@ impl CustomAllocator {
                 }
             }
             // Add the (possibly merged) block back to free_blocks
-            free_blocks.entry(current_size).or_insert_with(Vec::new).push(current);
+            free_blocks.entry(current_size).or_default().push(current);
             i = j;
         }
         coalesced
@@ -660,7 +659,7 @@ impl CustomAllocator {
             let block_mut = block.as_ptr();
             (*block_mut).is_free = true;
         }
-        free_blocks.entry(size).or_insert_with(Vec::new).push(block);
+        free_blocks.entry(size).or_default().push(block);
         // Perform eager coalescing using the locked mutex
         let _ = self.defragment_internal(&mut free_blocks);
     }
@@ -676,16 +675,17 @@ impl CustomAllocator {
     /// * `Result<NonNull<u8>, AllocatorError>` - Pointer to the allocated memory or an error
     pub fn allocate_thread_local(&self, size: usize, alignment: usize) -> Result<NonNull<u8>, AllocatorError> {
         // Use thread-local slab for small, fixed-size allocations
-        if size <= 128 && alignment <= 16 {
-            if let Some(ptr) = TLS_SLAB.with(|slab| slab.borrow_mut().allocate(size, alignment)) {
-                return Ok(ptr);
-            }
+        if size <= 128
+            && alignment <= 16
+            && let Some(ptr) = TLS_SLAB.with(|slab| slab.borrow_mut().allocate(size, alignment))
+        {
+            return Ok(ptr);
         }
         // Use thread-local arena for other small allocations
-        if size <= 1024 {
-            if let Some(ptr) = TLS_ARENA.with(|arena| arena.borrow_mut().allocate(size, alignment)) {
-                return Ok(ptr);
-            }
+        if size <= 1024
+            && let Some(ptr) = TLS_ARENA.with(|arena| arena.borrow_mut().allocate(size, alignment))
+        {
+            return Ok(ptr);
         }
         // Fallback to global allocator
         self.allocate(size, alignment)
@@ -765,9 +765,9 @@ impl CustomAllocator {
         let total_dealloc = *self.total_deallocations.lock().unwrap();
         let peak = *self.peak_active_allocations.lock().unwrap();
         println!("\n[Allocator Profiling]");
-        println!("Total allocations: {}", total_alloc);
-        println!("Total deallocations: {}", total_dealloc);
-        println!("Peak active allocations: {}", peak);
+        println!("Total allocations: {total_alloc}");
+        println!("Total deallocations: {total_dealloc}");
+        println!("Peak active allocations: {peak}");
         println!("Active allocations (possible leaks): {}", allocation_map.len());
         if !allocation_map.is_empty() {
             println!("Leaked allocations:");

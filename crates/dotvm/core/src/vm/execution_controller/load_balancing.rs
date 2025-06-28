@@ -26,6 +26,12 @@ pub struct LoadBalancer {
 
 /// System-aware load balancer using real-time metrics for task distribution.
 /// Implements dynamic threshold calculations and worker selection algorithm.
+impl Default for LoadBalancer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoadBalancer {
     /// Creates new load balancer with:
     /// - System metrics collector

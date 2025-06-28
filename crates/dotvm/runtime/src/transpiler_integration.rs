@@ -71,7 +71,7 @@ impl JitTranspiler {
         }
 
         // Parse Wasm
-        let wasm_module = self.wasm_parser.parse(wasm_bytes).map_err(|e| JitError::WasmParsing(format!("Failed to parse Wasm: {:?}", e)))?;
+        let wasm_module = self.wasm_parser.parse(wasm_bytes).map_err(|e| JitError::WasmParsing(format!("Failed to parse Wasm: {e:?}")))?;
 
         // Transpile to DotVM
         let bytecode = self.transpile_module(wasm_module).await?;
@@ -92,7 +92,7 @@ impl JitTranspiler {
         }
 
         // Read and transpile the file
-        let wasm_bytes = fs::read(wasm_path).map_err(|e| JitError::FileSystem(format!("Cannot read Wasm file: {}", e)))?;
+        let wasm_bytes = fs::read(wasm_path).map_err(|e| JitError::FileSystem(format!("Cannot read Wasm file: {e}")))?;
 
         let bytecode = self.transpile_wasm(&wasm_bytes).await?;
 
@@ -105,17 +105,17 @@ impl JitTranspiler {
     /// Transpile a Wasm module to DotVM bytecode
     async fn transpile_module(&self, wasm_module: WasmModule) -> Result<Vec<u8>, JitError> {
         // Convert WasmModule to bytes (simplified approach)
-        let wasm_bytes = serde_json::to_vec(&wasm_module).map_err(|e| JitError::Transpilation(format!("Failed to serialize Wasm module: {:?}", e)))?;
+        let wasm_bytes = serde_json::to_vec(&wasm_module).map_err(|e| JitError::Transpilation(format!("Failed to serialize Wasm module: {e:?}")))?;
 
         // Transpile Wasm to intermediate representation
         let mut transpiler = self.transpiler.lock().await;
-        let transpiled_module = transpiler.transpile(&wasm_bytes).map_err(|e| JitError::Transpilation(format!("Transpilation failed: {:?}", e)))?;
+        let transpiled_module = transpiler.transpile(&wasm_bytes).map_err(|e| JitError::Transpilation(format!("Transpilation failed: {e:?}")))?;
 
         // Generate bytecode
         let mut generator = self.generator.lock().await;
         let generated = generator
             .generate(&transpiled_module)
-            .map_err(|e| JitError::BytecodeGeneration(format!("Bytecode generation failed: {:?}", e)))?;
+            .map_err(|e| JitError::BytecodeGeneration(format!("Bytecode generation failed: {e:?}")))?;
 
         let bytecode = generated.bytecode;
 
@@ -148,16 +148,16 @@ impl JitTranspiler {
 
     /// Get cached bytecode for a file (if newer than file modification time)
     fn get_cached_file_bytecode(&self, file_path: &Path) -> Result<Option<Vec<u8>>, JitError> {
-        let file_metadata = fs::metadata(file_path).map_err(|e| JitError::FileSystem(format!("Cannot read file metadata: {}", e)))?;
+        let file_metadata = fs::metadata(file_path).map_err(|e| JitError::FileSystem(format!("Cannot read file metadata: {e}")))?;
 
-        let file_modified = file_metadata.modified().map_err(|e| JitError::FileSystem(format!("Cannot get file modification time: {}", e)))?;
+        let file_modified = file_metadata.modified().map_err(|e| JitError::FileSystem(format!("Cannot get file modification time: {e}")))?;
 
         let cache = self.cache.read().map_err(|_| JitError::CacheLock("Cannot acquire cache read lock".to_string()))?;
 
-        if let Some(cached_entry) = cache.get_file_entry(file_path) {
-            if cached_entry.file_modified >= file_modified {
-                return Ok(Some(cached_entry.bytecode.clone()));
-            }
+        if let Some(cached_entry) = cache.get_file_entry(file_path)
+            && cached_entry.file_modified >= file_modified
+        {
+            return Ok(Some(cached_entry.bytecode.clone()));
         }
 
         Ok(None)
@@ -165,9 +165,9 @@ impl JitTranspiler {
 
     /// Cache bytecode for a file
     fn cache_file_bytecode(&self, file_path: &Path, bytecode: Vec<u8>) -> Result<(), JitError> {
-        let file_metadata = fs::metadata(file_path).map_err(|e| JitError::FileSystem(format!("Cannot read file metadata: {}", e)))?;
+        let file_metadata = fs::metadata(file_path).map_err(|e| JitError::FileSystem(format!("Cannot read file metadata: {e}")))?;
 
-        let file_modified = file_metadata.modified().map_err(|e| JitError::FileSystem(format!("Cannot get file modification time: {}", e)))?;
+        let file_modified = file_metadata.modified().map_err(|e| JitError::FileSystem(format!("Cannot get file modification time: {e}")))?;
 
         let mut cache = self.cache.write().map_err(|_| JitError::CacheLock("Cannot acquire cache write lock".to_string()))?;
 
@@ -312,9 +312,9 @@ impl HotReloader {
     /// Add a file to watch for changes
     pub fn watch_file<P: AsRef<Path>>(&self, file_path: P) -> Result<(), JitError> {
         let file_path = file_path.as_ref().to_path_buf();
-        let metadata = fs::metadata(&file_path).map_err(|e| JitError::FileSystem(format!("Cannot read file metadata: {}", e)))?;
+        let metadata = fs::metadata(&file_path).map_err(|e| JitError::FileSystem(format!("Cannot read file metadata: {e}")))?;
 
-        let modified = metadata.modified().map_err(|e| JitError::FileSystem(format!("Cannot get file modification time: {}", e)))?;
+        let modified = metadata.modified().map_err(|e| JitError::FileSystem(format!("Cannot get file modification time: {e}")))?;
 
         if let Ok(mut watched) = self.watched_files.write() {
             watched.insert(file_path, modified);
@@ -333,18 +333,17 @@ impl HotReloader {
         };
 
         for (file_path, last_modified) in watched_files {
-            if let Ok(metadata) = fs::metadata(&file_path) {
-                if let Ok(current_modified) = metadata.modified() {
-                    if current_modified > last_modified {
-                        // File has been modified, reload it
-                        self.jit_transpiler.transpile_wasm_file(&file_path).await?;
-                        reloaded_files.push(file_path.clone());
+            if let Ok(metadata) = fs::metadata(&file_path)
+                && let Ok(current_modified) = metadata.modified()
+                && current_modified > last_modified
+            {
+                // File has been modified, reload it
+                self.jit_transpiler.transpile_wasm_file(&file_path).await?;
+                reloaded_files.push(file_path.clone());
 
-                        // Update the modification time
-                        if let Ok(mut watched) = self.watched_files.write() {
-                            watched.insert(file_path, current_modified);
-                        }
-                    }
+                // Update the modification time
+                if let Ok(mut watched) = self.watched_files.write() {
+                    watched.insert(file_path, current_modified);
                 }
             }
         }

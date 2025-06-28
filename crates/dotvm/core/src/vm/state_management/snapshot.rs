@@ -98,7 +98,7 @@ impl Snapshot {
             fs::create_dir_all(parent).map_err(|e| Error::SnapshotError(format!("Failed to create directory {}: {}", parent.display(), e)))?;
         }
 
-        let serialized = serde_json::to_string(self).map_err(|e| Error::SnapshotError(format!("Serialization failed: {}", e)))?; // <-- Burada düzeltildi
+        let serialized = serde_json::to_string(self).map_err(|e| Error::SnapshotError(format!("Serialization failed: {e}")))?; // <-- Burada düzeltildi
 
         fs::write(path, serialized).map_err(|e| Error::SnapshotError(format!("Failed to write file {}: {}", path.display(), e)))?;
 
@@ -107,9 +107,9 @@ impl Snapshot {
 
     /// Loads a snapshot from a file
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let content = fs::read_to_string(path).map_err(|e| Error::SnapshotError(format!("Failed to read file: {}", e)))?;
+        let content = fs::read_to_string(path).map_err(|e| Error::SnapshotError(format!("Failed to read file: {e}")))?;
 
-        serde_json::from_str(&content).map_err(|e| Error::SnapshotError(format!("Deserialization failed: {}", e)))
+        serde_json::from_str(&content).map_err(|e| Error::SnapshotError(format!("Deserialization failed: {e}")))
     }
 }
 
@@ -149,18 +149,18 @@ impl SnapshotManager {
         cache.clear();
 
         // Read all snapshot files in the directory
-        let entries = fs::read_dir(&self.snapshot_dir).map_err(|e| Error::SnapshotError(format!("Failed to read directory: {}", e)))?;
+        let entries = fs::read_dir(&self.snapshot_dir).map_err(|e| Error::SnapshotError(format!("Failed to read directory: {e}")))?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| Error::SnapshotError(format!("Invalid entry: {}", e)))?;
+            let entry = entry.map_err(|e| Error::SnapshotError(format!("Invalid entry: {e}")))?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                 // Try to load snapshot metadata
-                if let Ok(content) = fs::read_to_string(&path) {
-                    if let Ok(snapshot) = serde_json::from_str::<Snapshot>(&content) {
-                        cache.insert(snapshot.metadata.id.clone(), snapshot.metadata);
-                    }
+                if let Ok(content) = fs::read_to_string(&path)
+                    && let Ok(snapshot) = serde_json::from_str::<Snapshot>(&content)
+                {
+                    cache.insert(snapshot.metadata.id.clone(), snapshot.metadata);
                 }
             }
         }
@@ -215,7 +215,7 @@ impl SnapshotManager {
 
     /// Loads a specific snapshot by ID
     pub fn load_snapshot(&self, id: &str) -> Result<Snapshot> {
-        let file_path = self.snapshot_dir.join(format!("{}.json", id));
+        let file_path = self.snapshot_dir.join(format!("{id}.json"));
         Snapshot::load_from_file(file_path)
     }
 
@@ -247,10 +247,10 @@ impl SnapshotManager {
 
     /// Deletes a snapshot
     pub fn delete_snapshot(&self, id: &str) -> Result<()> {
-        let file_path = self.snapshot_dir.join(format!("{}.json", id));
+        let file_path = self.snapshot_dir.join(format!("{id}.json"));
 
         if file_path.exists() {
-            fs::remove_file(&file_path).map_err(|e| Error::SnapshotError(format!("Failed to delete file: {}", e)))?;
+            fs::remove_file(&file_path).map_err(|e| Error::SnapshotError(format!("Failed to delete file: {e}")))?;
 
             // Update cache
             self.metadata_cache.write().unwrap().remove(id);

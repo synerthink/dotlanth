@@ -20,7 +20,7 @@ use crate::{
         instruction::{ExecutorInterface, Instruction, MemoryManagerInterface},
         registry::{InstructionRegistry, Opcode},
     },
-    memory::{Architecture, MemoryManager},
+    memory::Architecture,
     vm::{errors::VMError, vm_factory::VmInstance},
 };
 use std::marker::PhantomData;
@@ -91,8 +91,7 @@ impl<HostArch: Architecture + std::fmt::Debug> MultiArchExecutor<HostArch> {
 
         if compatibility_mode && host_arch_label.word_size() < guest_arch_label.word_size() {
             return Err(VMError::ConfigurationError(format!(
-                "Cannot run guest bytecode for {:?} on a smaller host architecture {:?}",
-                guest_arch_label, host_arch_label
+                "Cannot run guest bytecode for {guest_arch_label:?} on a smaller host architecture {host_arch_label:?}"
             )));
         }
 
@@ -153,7 +152,7 @@ impl<HostArch: Architecture + std::fmt::Debug> MultiArchExecutor<HostArch> {
                 Ok(instr) => self.instructions.push(instr),
                 Err(e) => {
                     // Consider propagating this error instead of panicking
-                    panic!("Failed to create instruction for opcode {:?}: {:?}", opcode, e);
+                    panic!("Failed to create instruction for opcode {opcode:?}: {e:?}");
                 }
             }
         }

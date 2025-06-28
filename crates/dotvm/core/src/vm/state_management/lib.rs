@@ -44,10 +44,10 @@ impl Display for Error {
         match self {
             Error::VersionConflict => write!(f, "Version conflict detected"),
             Error::NotFound => write!(f, "Item not found"),
-            Error::MerkleError(msg) => write!(f, "Merkle tree error: {}", msg),
-            Error::SnapshotError(msg) => write!(f, "Snapshot error: {}", msg),
-            Error::ValidationError(msg) => write!(f, "Validation error: {}", msg),
-            Error::Other(msg) => write!(f, "Error: {}", msg),
+            Error::MerkleError(msg) => write!(f, "Merkle tree error: {msg}"),
+            Error::SnapshotError(msg) => write!(f, "Snapshot error: {msg}"),
+            Error::ValidationError(msg) => write!(f, "Validation error: {msg}"),
+            Error::Other(msg) => write!(f, "Error: {msg}"),
         }
     }
 }

@@ -60,6 +60,12 @@ pub trait VMFactory {
 /// It creates MultiArchExecutor instances based on the specified architecture.
 pub struct SimpleVMFactory;
 
+impl Default for SimpleVMFactory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SimpleVMFactory {
     pub fn new() -> Self {
         SimpleVMFactory

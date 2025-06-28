@@ -159,7 +159,7 @@ pub fn key_to_nibbles(key: &[u8]) -> Vec<u8> {
 /// This function pre-allocates the output vector and processes the input
 /// in chunks of 2 nibbles for efficiency.
 pub fn nibbles_to_key(nibbles: &[u8]) -> Vec<u8> {
-    let mut key = Vec::with_capacity((nibbles.len() + 1) / 2);
+    let mut key = Vec::with_capacity(nibbles.len().div_ceil(2));
     for pair in nibbles.chunks(2) {
         if pair.len() == 2 {
             key.push((pair[0] << 4) | pair[1]);

@@ -125,5 +125,5 @@ pub fn generate_timestamp() -> u64 {
 pub fn generate_unique_id(prefix: &str) -> String {
     let timestamp = generate_timestamp();
     let random_part = rand::random::<u16>();
-    format!("{}-{}-{}", prefix, timestamp, random_part)
+    format!("{prefix}-{timestamp}-{random_part}")
 }

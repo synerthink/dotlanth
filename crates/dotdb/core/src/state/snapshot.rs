@@ -69,8 +69,8 @@
 //! error information for different failure scenarios.
 
 use crate::state::contract_storage_layout::ContractAddress;
-use crate::state::mpt::trie::{InMemoryStorage, NodeStorage};
-use crate::state::mpt::{Hash, Key, MPTError, MerklePatriciaTrie, TrieResult, Value};
+use crate::state::mpt::trie::NodeStorage;
+use crate::state::mpt::{Hash, MPTError, MerklePatriciaTrie};
 use crate::state::versioning::{ContractVersionManager, ContractVersioningError, StateVersionId};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -128,13 +128,13 @@ pub enum SnapshotError {
 
 impl From<MPTError> for SnapshotError {
     fn from(err: MPTError) -> Self {
-        SnapshotError::MPTError(format!("{:?}", err))
+        SnapshotError::MPTError(format!("{err:?}"))
     }
 }
 
 impl From<ContractVersioningError> for SnapshotError {
     fn from(err: ContractVersioningError) -> Self {
-        SnapshotError::VersioningError(format!("{:?}", err))
+        SnapshotError::VersioningError(format!("{err:?}"))
     }
 }
 
@@ -441,7 +441,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
         // Create a version in the version manager
         let version_id = self
             .version_manager
-            .create_version(contract_address, trie.root_hash(), description.clone().unwrap_or_else(|| format!("Snapshot: {}", id)))?;
+            .create_version(contract_address, trie.root_hash(), description.clone().unwrap_or_else(|| format!("Snapshot: {id}")))?;
 
         // Create the snapshot with versioning information
         let snapshot = StateSnapshot::new_with_version(id.clone(), version_id, Some(contract_address), trie.root_hash(), height, description);
@@ -482,7 +482,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
         let contract_version = self
             .version_manager
             .get_version(contract_address, version_id)
-            .ok_or_else(|| SnapshotError::VersioningError(format!("Version not found: {:?}", version_id)))?;
+            .ok_or_else(|| SnapshotError::VersioningError(format!("Version not found: {version_id:?}")))?;
 
         // Create the snapshot with versioning information
         let snapshot = StateSnapshot::new_with_version(
@@ -614,21 +614,21 @@ impl<S: NodeStorage> SnapshotManager<S> {
         }
 
         // Remove excess snapshots if we have more than max_snapshots
-        if let Some(max_count) = self.config.max_snapshots {
-            if self.snapshots.len() > max_count {
-                let mut snapshots: Vec<(SnapshotId, StateSnapshot)> = self.snapshots.drain().collect();
+        if let Some(max_count) = self.config.max_snapshots
+            && self.snapshots.len() > max_count
+        {
+            let mut snapshots: Vec<(SnapshotId, StateSnapshot)> = self.snapshots.drain().collect();
 
-                // Sort by timestamp (newest first)
-                snapshots.sort_by(|a, b| b.1.timestamp().cmp(&a.1.timestamp()));
+            // Sort by timestamp (newest first)
+            snapshots.sort_by(|a, b| b.1.timestamp().cmp(&a.1.timestamp()));
 
-                // Keep only the newest max_count snapshots
-                let excess_count = snapshots.len() - max_count;
-                snapshots.truncate(max_count);
-                removed_count += excess_count;
+            // Keep only the newest max_count snapshots
+            let excess_count = snapshots.len() - max_count;
+            snapshots.truncate(max_count);
+            removed_count += excess_count;
 
-                // Put back the remaining snapshots
-                self.snapshots = snapshots.into_iter().collect();
-            }
+            // Put back the remaining snapshots
+            self.snapshots = snapshots.into_iter().collect();
         }
 
         Ok(removed_count)
@@ -644,7 +644,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     /// # Returns
     ///
     /// A Result containing the restored trie or an error
-    pub fn restore_from_snapshot(&self, snapshot_id: &SnapshotId, mut base_trie: MerklePatriciaTrie<S>) -> SnapshotResult<MerklePatriciaTrie<S>> {
+    pub fn restore_from_snapshot(&self, snapshot_id: &SnapshotId, base_trie: MerklePatriciaTrie<S>) -> SnapshotResult<MerklePatriciaTrie<S>> {
         let snapshot = self.get_snapshot(snapshot_id)?;
 
         // Create a new trie with the snapshot's root

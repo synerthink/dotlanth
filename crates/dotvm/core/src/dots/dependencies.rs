@@ -68,6 +68,12 @@ pub struct DependencyGraph {
     node_indices: HashMap<String, NodeIndex>,
 }
 
+impl Default for DependencyGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyGraph {
     /// Initializes an empty dependency graph
     pub fn new() -> Self {
@@ -157,6 +163,12 @@ pub struct DependencyResolver {
     detection_strategies: Vec<Box<dyn DependencyDetectionStrategy>>,
 }
 
+impl Default for DependencyResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyResolver {
     /// Creates resolver with default detection strategies:
     /// - Reference detection
@@ -200,7 +212,7 @@ impl DependencyResolver {
         }
 
         // Cyclic dependency check
-        if let Err(_) = graph.topological_sort() {
+        if graph.topological_sort().is_err() {
             return Err(ProcessingError::DependencyResolutionFailed("Circular dependency detected".to_string()));
         }
 

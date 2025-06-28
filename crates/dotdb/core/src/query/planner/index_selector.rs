@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::indices::{IndexStats, IndexType};
@@ -147,7 +147,7 @@ impl IndexSelector {
             },
             estimated_cost: *best_cost,
             confidence: 0.9,
-            reasoning: format!("Selected {} index with estimated cost {}", best_index, best_cost),
+            reasoning: format!("Selected {best_index} index with estimated cost {best_cost}"),
         })
     }
 

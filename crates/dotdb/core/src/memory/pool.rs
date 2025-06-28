@@ -378,7 +378,7 @@ impl MemoryPool {
     }
 
     fn try_grow_pool(&self) -> Result<bool, PoolError> {
-        let mut stats = self.stats.lock().unwrap();
+        let stats = self.stats.lock().unwrap();
 
         if stats.total_blocks >= self.max_capacity {
             return Ok(false);

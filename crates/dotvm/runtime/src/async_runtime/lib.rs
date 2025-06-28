@@ -40,9 +40,9 @@ impl fmt::Display for RuntimeError {
         match self {
             Self::Cancelled => write!(f, "Task cancelled"),
             Self::Timeout => write!(f, "Task timed out"),
-            Self::ExecutionFailed(msg) => write!(f, "Execution failed: {}", msg),
-            Self::ResourceError(msg) => write!(f, "Resource error: {}", msg),
-            Self::Internal(msg) => write!(f, "Internal error: {}", msg),
+            Self::ExecutionFailed(msg) => write!(f, "Execution failed: {msg}"),
+            Self::ResourceError(msg) => write!(f, "Resource error: {msg}"),
+            Self::Internal(msg) => write!(f, "Internal error: {msg}"),
         }
     }
 }
@@ -153,6 +153,12 @@ impl Default for TaskMetrics {
 /// A unique identifier for tasks
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TaskId(pub u64);
+
+impl Default for TaskId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TaskId {
     /// Generate a new unique task ID

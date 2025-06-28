@@ -37,12 +37,11 @@
 //! - Thread-safe concurrent access
 //! - Efficient proof generation
 
-use crate::state::mpt::lib::{CompactPath, Hash, Key, MPTError, NodeId, TrieResult, Value, common_prefix, keccak256, key_to_nibbles};
+use crate::state::mpt::lib::{CompactPath, Hash, Key, MPTError, NodeId, TrieResult, Value, common_prefix, key_to_nibbles};
 use crate::state::mpt::node::{Node, NodeType};
 use crate::state::mpt::proof::{ProofBuilder, StateProof};
 use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 /// Storage interface for MPT nodes
 ///
@@ -177,7 +176,7 @@ impl<S: NodeStorage> MerklePatriciaTrie<S> {
         let empty_node = Node::new_empty();
         let root_id = empty_node.id;
 
-        let mut trie = Self {
+        let trie = Self {
             storage: RwLock::new(storage),
             root: RwLock::new(root_id),
         };
@@ -231,7 +230,7 @@ impl<S: NodeStorage> MerklePatriciaTrie<S> {
                     return Ok(None);
                 }
 
-                if &key_nibbles[..path.nibbles.len()] == &path.nibbles[..] {
+                if key_nibbles[..path.nibbles.len()] == path.nibbles[..] {
                     self.get_recursive(storage, *child, &key_nibbles[path.nibbles.len()..])
                 } else {
                     Ok(None)
@@ -471,7 +470,7 @@ impl<S: NodeStorage> MerklePatriciaTrie<S> {
             }
 
             NodeType::Extension { path, child } => {
-                if key_nibbles.len() < path.nibbles.len() || &key_nibbles[..path.nibbles.len()] != &path.nibbles[..] {
+                if key_nibbles.len() < path.nibbles.len() || key_nibbles[..path.nibbles.len()] != path.nibbles[..] {
                     return Ok(None);
                 }
 
@@ -552,7 +551,7 @@ impl<S: NodeStorage> MerklePatriciaTrie<S> {
             }
 
             NodeType::Extension { path, child } => {
-                if key_nibbles.len() < path.nibbles.len() || &key_nibbles[..path.nibbles.len()] != &path.nibbles[..] {
+                if key_nibbles.len() < path.nibbles.len() || key_nibbles[..path.nibbles.len()] != path.nibbles[..] {
                     return Ok(None);
                 }
 
@@ -599,7 +598,7 @@ impl<S: NodeStorage> MerklePatriciaTrie<S> {
         Ok(keys)
     }
 
-    fn collect_keys_recursive(&self, storage: &S, node_id: NodeId, mut prefix: Vec<u8>, keys: &mut Vec<Key>) -> TrieResult<()> {
+    fn collect_keys_recursive(&self, storage: &S, node_id: NodeId, prefix: Vec<u8>, keys: &mut Vec<Key>) -> TrieResult<()> {
         use crate::state::mpt::lib::nibbles_to_key;
         let node = storage.get_node(&node_id)?.ok_or(MPTError::NodeNotFound(node_id))?;
         match &node.node_type {
@@ -616,7 +615,7 @@ impl<S: NodeStorage> MerklePatriciaTrie<S> {
                 self.collect_keys_recursive(storage, *child, new_prefix, keys)
             }
             NodeType::Branch { children, value } => {
-                if let Some(_) = value {
+                if value.is_some() {
                     // Branch node can have value at this node (empty key)
                     keys.push(nibbles_to_key(&prefix));
                 }
@@ -667,7 +666,7 @@ impl<S: NodeStorage> MerklePatriciaTrie<S> {
     /// * `value` - The metadata value
     pub fn add_metadata(&mut self, key: String, value: String) -> TrieResult<()> {
         // Store metadata in a special node
-        let metadata_key = format!("metadata:{}", key);
+        let metadata_key = format!("metadata:{key}");
         self.put(metadata_key.as_bytes().to_vec(), value.as_bytes().to_vec())
     }
 

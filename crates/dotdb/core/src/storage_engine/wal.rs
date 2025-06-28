@@ -17,15 +17,14 @@
 // Write-ahead logging module
 // This module provides durability and crash recovery by logging all changes before they are applied to the main storage. It implements a write-ahead log (WAL) with support for log records, file rotation, checkpoints, and replay for recovery.
 
-use std::collections::HashMap;
 use std::convert::TryInto;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::storage_engine::file_format::{Page, PageHeader, PageId, PageType};
-use crate::storage_engine::lib::{Flushable, Initializable, StorageError, StorageResult, VersionId, calculate_checksum, generate_timestamp};
+use crate::storage_engine::file_format::{Page, PageId};
+use crate::storage_engine::lib::{Flushable, Initializable, StorageError, StorageResult, VersionId};
 
 /// Magic number to identify WAL files (DOTWAL)
 const WAL_MAGIC: [u8; 4] = [0x44, 0x4F, 0x54, 0x57];
@@ -74,18 +73,12 @@ impl From<u8> for RecordType {
 }
 
 /// Log Sequence Number uniquely identifies a log record
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct LogSequenceNumber {
     /// File ID where the log record is stored
     pub file_id: u32,
     /// Offset within the file
     pub offset: u64,
-}
-
-impl Default for LogSequenceNumber {
-    fn default() -> Self {
-        Self { file_id: 0, offset: 0 }
-    }
 }
 
 /// Header for a WAL record
@@ -366,7 +359,7 @@ impl WalHeader {
 
         // Check version compatibility
         if version > WAL_VERSION {
-            return Err(StorageError::Corruption(format!("Unsupported WAL version: {}", version)));
+            return Err(StorageError::Corruption(format!("Unsupported WAL version: {version}")));
         }
 
         // Current LSN
@@ -544,7 +537,6 @@ impl WriteAheadLog {
 
         #[cfg(unix)]
         {
-            use std::os::unix::fs::FileExt;
             file.sync_all()?;
         }
 
@@ -589,12 +581,11 @@ impl WriteAheadLog {
             let file_name = file_path.file_name().unwrap().to_string_lossy().to_string();
 
             // Extract the file ID
-            if let Some(id_str) = file_name.strip_prefix("wal.") {
-                if let Ok(id) = id_str.parse::<u32>() {
-                    if id < current_file_id {
-                        std::fs::remove_file(file_path)?;
-                    }
-                }
+            if let Some(id_str) = file_name.strip_prefix("wal.")
+                && let Ok(id) = id_str.parse::<u32>()
+                && id < current_file_id
+            {
+                std::fs::remove_file(file_path)?;
             }
         }
 
@@ -617,16 +608,13 @@ impl WriteAheadLog {
         for entry in std::fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.is_file() {
-                if let Some(fname) = path.file_name().and_then(|f| f.to_str()) {
-                    if let Some(id_str) = fname.strip_prefix("wal.") {
-                        if let Ok(id) = id_str.parse::<u32>() {
-                            if id < before_file_id {
-                                let _ = std::fs::remove_file(path);
-                            }
-                        }
-                    }
-                }
+            if path.is_file()
+                && let Some(fname) = path.file_name().and_then(|f| f.to_str())
+                && let Some(id_str) = fname.strip_prefix("wal.")
+                && let Ok(id) = id_str.parse::<u32>()
+                && id < before_file_id
+            {
+                let _ = std::fs::remove_file(path);
             }
         }
         Ok(())
@@ -720,14 +708,14 @@ impl SharedWal {
 
     /// Get the next LSN
     pub fn next_lsn(&self) -> StorageResult<LogSequenceNumber> {
-        let mut wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
+        let wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
 
         wal.next_lsn()
     }
 
     /// Append a log entry
     pub fn append(&self, entry: &LogEntry) -> StorageResult<()> {
-        let mut wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
+        let wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
 
         wal.append(entry)?;
 
@@ -736,7 +724,7 @@ impl SharedWal {
 
     /// Truncate the WAL
     pub fn truncate(&self) -> StorageResult<()> {
-        let mut wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
+        let wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
 
         wal.truncate()
     }
@@ -746,7 +734,7 @@ impl SharedWal {
     where
         F: FnMut(&LogEntry) -> StorageResult<()>,
     {
-        let mut wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
+        let wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
 
         wal.replay(apply_func)
     }
@@ -754,7 +742,7 @@ impl SharedWal {
 
 impl Flushable for SharedWal {
     fn flush(&mut self) -> StorageResult<()> {
-        let mut wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
+        let wal = self.inner.lock().map_err(|_| StorageError::Corruption("Failed to lock WAL".to_string()))?;
 
         wal.flush()
     }

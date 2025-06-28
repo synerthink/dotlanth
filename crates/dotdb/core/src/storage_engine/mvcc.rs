@@ -33,7 +33,7 @@ use crate::state::contract_storage_layout::ContractAddress;
 use crate::state::mpt::Hash;
 use crate::state::versioning::{ContractStateVersion, ContractVersionManager, StateVersionId};
 use crate::storage_engine::file_format::{Page, PageId};
-use crate::storage_engine::lib::{StorageError, StorageResult, VersionId};
+use crate::storage_engine::lib::{StorageError, StorageResult};
 use crate::storage_engine::transaction::{IsolationLevel, TransactionId};
 
 /// Timestamp type for versioning
@@ -93,17 +93,17 @@ impl VersionInfo {
         }
 
         // If version is deleted, check deletion visibility
-        if let Some(deleted_by) = self.deleted_by {
-            if let Some(deleted_at) = self.deleted_at {
-                // If deleted by same transaction, not visible
-                if deleted_by == txn_id {
-                    return false;
-                }
+        if let Some(deleted_by) = self.deleted_by
+            && let Some(deleted_at) = self.deleted_at
+        {
+            // If deleted by same transaction, not visible
+            if deleted_by == txn_id {
+                return false;
+            }
 
-                // If deleted by a committed transaction before snapshot, not visible
-                if !active_txns.contains(&deleted_by) && deleted_at <= snapshot_timestamp {
-                    return false;
-                }
+            // If deleted by a committed transaction before snapshot, not visible
+            if !active_txns.contains(&deleted_by) && deleted_at <= snapshot_timestamp {
+                return false;
             }
         }
 
@@ -131,7 +131,7 @@ impl VersionChain {
     pub fn get_visible_version(&self, txn_id: TransactionId, snapshot_timestamp: Timestamp, active_txns: &HashSet<TransactionId>) -> Option<&VersionInfo> {
         // First, check if the transaction has any versions (its own changes should always be visible)
         let mut transaction_version: Option<&VersionInfo> = None;
-        for (_, version) in &self.versions {
+        for version in self.versions.values() {
             if version.created_by == txn_id {
                 // Take the latest version from this transaction
                 if transaction_version.is_none() || version.created_at > transaction_version.unwrap().created_at {
@@ -141,21 +141,20 @@ impl VersionChain {
         }
 
         // If we found a version from the same transaction, return it (unless it's deleted by the same transaction)
-        if let Some(version) = transaction_version {
-            if version.deleted_by != Some(txn_id) {
-                return Some(version);
-            }
+        if let Some(version) = transaction_version
+            && version.deleted_by != Some(txn_id)
+        {
+            return Some(version);
         }
 
         // Otherwise, look for committed versions from other transactions
         // Iterate through versions in reverse timestamp order (newest first) up to snapshot timestamp
-        for (_, version) in self.versions.range(..=snapshot_timestamp).rev() {
-            if version.created_by != txn_id && version.is_visible(txn_id, snapshot_timestamp, active_txns) {
-                return Some(version);
-            }
-        }
-
-        None
+        self.versions
+            .range(..=snapshot_timestamp)
+            .rev()
+            .map(|(_, version)| version)
+            .find(|&version| version.created_by != txn_id && version.is_visible(txn_id, snapshot_timestamp, active_txns))
+            .map(|v| v as _)
     }
 
     /// Get all versions created by a specific transaction
@@ -183,10 +182,10 @@ impl VersionChain {
             // Can only remove versions that are older than oldest active transaction
             if timestamp < oldest_active_timestamp && version.is_committed {
                 // Check if there's a newer committed version
-                if let Some(latest) = self.latest_committed {
-                    if latest > timestamp {
-                        to_remove.push(timestamp);
-                    }
+                if let Some(latest) = self.latest_committed
+                    && latest > timestamp
+                {
+                    to_remove.push(timestamp);
                 }
             }
         }
@@ -340,12 +339,11 @@ impl MVCCManager {
         let chains = self.version_chains.read().unwrap();
         let snapshots = self.transaction_snapshots.read().unwrap();
 
-        if let Some(snapshot) = snapshots.get(&txn_id) {
-            if let Some(chain) = chains.get(&page_id) {
-                if let Some(version) = chain.get_visible_version(txn_id, snapshot.timestamp, &snapshot.active_transactions) {
-                    return Ok(Some(version.data.clone()));
-                }
-            }
+        if let Some(snapshot) = snapshots.get(&txn_id)
+            && let Some(chain) = chains.get(&page_id)
+            && let Some(version) = chain.get_visible_version(txn_id, snapshot.timestamp, &snapshot.active_transactions)
+        {
+            return Ok(Some(version.data.clone()));
         }
 
         Ok(None)
@@ -423,14 +421,14 @@ impl MVCCManager {
         let chains = self.version_chains.read().unwrap();
         let snapshots = self.transaction_snapshots.read().unwrap();
 
-        if let Some(snapshot) = snapshots.get(&txn_id) {
-            if let Some(chain) = chains.get(&page_id) {
-                // Check if any transaction that was active when this transaction started
-                // has committed a write to this page
-                for (_, version) in &chain.versions {
-                    if version.created_by != txn_id && snapshot.active_transactions.contains(&version.created_by) && version.is_committed {
-                        return Ok(true); // Conflict detected
-                    }
+        if let Some(snapshot) = snapshots.get(&txn_id)
+            && let Some(chain) = chains.get(&page_id)
+        {
+            // Check if any transaction that was active when this transaction started
+            // has committed a write to this page
+            for version in chain.versions.values() {
+                if version.created_by != txn_id && snapshot.active_transactions.contains(&version.created_by) && version.is_committed {
+                    return Ok(true); // Conflict detected
                 }
             }
         }
@@ -443,15 +441,10 @@ impl MVCCManager {
         let version_id = self
             .contract_version_manager
             .create_version(contract_address, mpt_root_hash, description)
-            .map_err(|e| StorageError::Corruption(format!("Failed to create contract version: {:?}", e)))?;
+            .map_err(|e| StorageError::Corruption(format!("Failed to create contract version: {e:?}")))?;
 
         // Track the contract state for this transaction
-        self.transaction_contract_states
-            .write()
-            .unwrap()
-            .entry(txn_id)
-            .or_insert_with(Vec::new)
-            .push((contract_address, version_id));
+        self.transaction_contract_states.write().unwrap().entry(txn_id).or_default().push((contract_address, version_id));
 
         Ok(version_id)
     }
@@ -465,10 +458,8 @@ impl MVCCManager {
             let mut visible_version: Option<ContractStateVersion> = None;
 
             for version in all_versions {
-                if version.created_at <= snapshot.timestamp && version.is_finalized {
-                    if visible_version.is_none() || version.created_at > visible_version.as_ref().unwrap().created_at {
-                        visible_version = Some(version);
-                    }
+                if version.created_at <= snapshot.timestamp && version.is_finalized && (visible_version.is_none() || version.created_at > visible_version.as_ref().unwrap().created_at) {
+                    visible_version = Some(version);
                 }
             }
 
@@ -488,7 +479,7 @@ impl MVCCManager {
         for (contract_address, version_id) in states {
             self.contract_version_manager
                 .finalize_version(contract_address, version_id)
-                .map_err(|e| StorageError::Corruption(format!("Failed to finalize contract version: {:?}", e)))?;
+                .map_err(|e| StorageError::Corruption(format!("Failed to finalize contract version: {e:?}")))?;
         }
 
         Ok(())

@@ -100,6 +100,12 @@ pub struct ResourceMonitor {
     last_update: Arc<Mutex<Instant>>,
 }
 
+impl Default for ResourceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceMonitor {
     pub fn new() -> Self {
         Self {
@@ -271,7 +277,7 @@ impl CompactionManager {
         self.active_tasks.write().unwrap().insert(task.id, task.clone());
 
         // Send to worker threads
-        self.task_sender.try_send(task).map_err(|e| format!("Failed to schedule task: {}", e))?;
+        self.task_sender.try_send(task).map_err(|e| format!("Failed to schedule task: {e}"))?;
 
         Ok(())
     }
@@ -361,7 +367,7 @@ impl CompactionManager {
         let task_receiver = Arc::clone(&self.task_receiver);
         let manager_clone = self.create_manager_handle();
 
-        let handle = thread::Builder::new().name(format!("compaction-worker-{}", worker_id)).spawn(move || {
+        let handle = thread::Builder::new().name(format!("compaction-worker-{worker_id}")).spawn(move || {
             while !shutdown_signal.load(Ordering::Relaxed) {
                 if let Ok(mut receiver) = task_receiver.try_lock() {
                     match receiver.try_recv() {
@@ -418,10 +424,10 @@ impl CompactionManager {
 
         // Check if we recently compacted this file group
         let group_key = self.get_file_group_key(&task.input_files);
-        if let Some(last_time) = self.last_compaction_times.read().unwrap().get(&group_key) {
-            if last_time.elapsed().unwrap_or_default() < self.config.min_compaction_interval {
-                return Ok(false);
-            }
+        if let Some(last_time) = self.last_compaction_times.read().unwrap().get(&group_key)
+            && last_time.elapsed().unwrap_or_default() < self.config.min_compaction_interval
+        {
+            return Ok(false);
         }
 
         // Adjust based on aggressiveness level

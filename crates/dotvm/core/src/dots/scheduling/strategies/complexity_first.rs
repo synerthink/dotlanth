@@ -40,7 +40,7 @@ pub fn schedule_by_complexity(segments: &[DotSegment], dependency_graph: &Depend
     let (mut in_degree, graph_adj) = initialize_scheduling_graph_structures(&base_topological_ids, dependency_graph);
 
     let mut ordered_ids: Vec<String> = Vec::new();
-    let mut queue: VecDeque<String> = base_topological_ids.iter().filter(|id| in_degree.get(*id).map_or(false, |d| *d == 0)).cloned().collect();
+    let mut queue: VecDeque<String> = base_topological_ids.iter().filter(|id| in_degree.get(*id).is_some_and(|d| *d == 0)).cloned().collect();
 
     while !queue.is_empty() {
         // Sort queue by complexity (descending) before picking

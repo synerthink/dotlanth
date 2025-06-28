@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskMetrics, TaskState};
+use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskMetrics};
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fmt;
 use std::future::Future;
@@ -341,7 +341,7 @@ impl AsyncTaskScheduler {
     /// O(n) operation due to queue scanning
     pub fn remove_task(&self, task_id: TaskId) -> RuntimeResult<()> {
         let mut map = self.task_map.lock().unwrap();
-        let task = map.remove(&task_id).ok_or_else(|| RuntimeError::Internal(format!("Task {} not found", task_id)))?;
+        let task = map.remove(&task_id).ok_or_else(|| RuntimeError::Internal(format!("Task {task_id} not found")))?;
 
         // Remove from priority queues
         for queue in &self.priority_queues {

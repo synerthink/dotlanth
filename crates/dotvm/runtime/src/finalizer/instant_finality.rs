@@ -21,7 +21,7 @@ use crate::finalizer::lib::FinalityResult;
 use crate::finalizer::lib::{FinalityStatus, State, StateTransition};
 use crate::finalizer::logging_audit::AuditLogger;
 use dashmap::DashMap;
-use futures::{StreamExt, stream::FuturesUnordered};
+use futures::StreamExt;
 use ring::signature::Ed25519KeyPair;
 use std::io::{Error, ErrorKind};
 use std::sync::Arc;
@@ -92,7 +92,7 @@ impl InstantFinalityModule {
         // Verify state version consistency
         let current = state_store
             .get("current")
-            .ok_or_else(|| FinalityError::Internal(Error::new(ErrorKind::Other, "State not initialized")))?
+            .ok_or_else(|| FinalityError::Internal(Error::other("State not initialized")))?
             .value()
             .clone();
 

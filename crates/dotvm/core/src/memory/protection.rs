@@ -53,7 +53,7 @@ impl ProtectionContext {
                 if Self::is_compatible(current, requested) {
                     Ok(())
                 } else {
-                    Err(MemoryError::ProtectionError(format!("Access violation: requested {:?}, current {:?}", requested, current)))
+                    Err(MemoryError::ProtectionError(format!("Access violation: requested {requested:?}, current {current:?}")))
                 }
             }
             None => Err(MemoryError::InvalidHandle),

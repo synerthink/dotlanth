@@ -20,7 +20,7 @@
 //! It identifies cycles in the transaction dependency graph and resolves
 //! deadlocks by aborting the youngest transaction in the cycle.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
@@ -539,14 +539,14 @@ impl DeadlockDetectionService {
                     if let Ok(victims) = detector.detect_and_resolve_deadlocks() {
                         for victim in victims {
                             // In a real implementation, we would call the abort callback here
-                            eprintln!("Deadlock detected: aborting transaction {}", victim);
+                            eprintln!("Deadlock detected: aborting transaction {victim}");
                         }
                     }
 
                     // Also check for long-waiting transactions
                     if let Ok(long_waiters) = detector.check_long_waiting_transactions() {
                         for waiter in long_waiters {
-                            eprintln!("Long-waiting transaction detected: {}", waiter);
+                            eprintln!("Long-waiting transaction detected: {waiter}");
                         }
                     }
                 }

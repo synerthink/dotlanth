@@ -15,8 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Result, Seek, SeekFrom, Write};
-use std::os::unix::fs::OpenOptionsExt;
+use std::io::{Read, Result, Seek, SeekFrom, Write};
 use std::path::Path;
 
 /// Configuration for Direct I/O operations, including block size, alignment, and buffer size.
@@ -153,7 +152,7 @@ impl DirectIOFile {
     /// Aligns a size to the configured block boundary for Direct I/O.
     fn align_size(&self, size: usize) -> usize {
         let block_size = self.config.block_size;
-        ((size + block_size - 1) / block_size) * block_size
+        size.div_ceil(block_size) * block_size
     }
 
     /// Aligns an offset to the configured alignment boundary for Direct I/O.

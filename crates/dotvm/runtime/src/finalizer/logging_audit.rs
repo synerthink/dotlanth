@@ -36,6 +36,12 @@ pub struct AuditLogger {
     logs: Mutex<Vec<AuditLogEntry>>, // Thread-safe in-memory log storage
 }
 
+impl Default for AuditLogger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AuditLogger {
     /// Initialize empty logger
     pub fn new() -> Self {
@@ -44,7 +50,7 @@ impl AuditLogger {
 
     /// Safely acquire lock with poison handling
     fn get_logs(&self) -> Result<MutexGuard<Vec<AuditLogEntry>>, String> {
-        self.logs.lock().map_err(|e| format!("Mutex poisoned: {}. Attempting recovery...", e.to_string()))
+        self.logs.lock().map_err(|e| format!("Mutex poisoned: {}. Attempting recovery...", e))
     }
 
     /// Asynchronously append log entry to disk
@@ -80,7 +86,7 @@ impl AuditLogger {
         // Memory logging with poisoning handling
         match self.get_logs() {
             Ok(mut logs) => logs.push(entry.clone()),
-            Err(e) => eprintln!("{}", e), // Recovery logic can be added here
+            Err(e) => eprintln!("{e}"), // Recovery logic can be added here
         }
 
         // Async persistent logging (non-blocking)
@@ -89,7 +95,7 @@ impl AuditLogger {
             let entry_clone = entry.clone();
             tokio::spawn(async move {
                 if let Err(e) = Self::persist_log(&entry_clone).await {
-                    eprintln!("Async logging failed: {}", e);
+                    eprintln!("Async logging failed: {e}");
                 }
             });
         }

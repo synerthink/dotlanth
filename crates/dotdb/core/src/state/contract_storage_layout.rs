@@ -52,7 +52,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 
-use super::mpt::{Hash, Key, Value};
+use super::mpt::{Key, Value};
 
 /// Contract address type (20 bytes)
 pub type ContractAddress = [u8; 20];
@@ -148,9 +148,9 @@ impl fmt::Display for StorageLayoutError {
             StorageLayoutError::InvalidAddress => write!(f, "Invalid contract address"),
             StorageLayoutError::SlotCollision => write!(f, "Storage slot collision detected"),
             StorageLayoutError::InvalidVariableType => write!(f, "Invalid variable type"),
-            StorageLayoutError::EncodingError(msg) => write!(f, "Encoding error: {}", msg),
-            StorageLayoutError::KeyGenerationError(msg) => write!(f, "Key generation error: {}", msg),
-            StorageLayoutError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
+            StorageLayoutError::EncodingError(msg) => write!(f, "Encoding error: {msg}"),
+            StorageLayoutError::KeyGenerationError(msg) => write!(f, "Key generation error: {msg}"),
+            StorageLayoutError::SerializationError(msg) => write!(f, "Serialization error: {msg}"),
         }
     }
 }
@@ -207,7 +207,7 @@ impl ContractStorageLayout {
 
         // Hash: keccak256(mapping_key || base_slot)
         hasher.update(mapping_key);
-        hasher.update(&base_slot.to_be_bytes());
+        hasher.update(base_slot.to_be_bytes());
         let hash = hasher.finalize();
 
         let mut key_bytes = Vec::with_capacity(52);
@@ -222,7 +222,7 @@ impl ContractStorageLayout {
         let mut hasher = Keccak256::new();
 
         // Hash: keccak256(base_slot) + index
-        hasher.update(&base_slot.to_be_bytes());
+        hasher.update(base_slot.to_be_bytes());
         let base_hash = hasher.finalize();
 
         // Convert hash to u256 and add index
@@ -261,7 +261,7 @@ impl ContractStorageLayout {
                 if self.packed_storage {
                     // Calculate packed size
                     let total_size: u32 = fields.iter().map(|f| f.size).sum();
-                    (total_size + 31) / 32 // Round up to nearest slot
+                    total_size.div_ceil(32) // Round up to nearest slot
                 } else {
                     fields.len() as u32 // One slot per field
                 }

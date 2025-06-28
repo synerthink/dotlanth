@@ -86,24 +86,21 @@ impl OptimizationRule for PredicatePushdownRule {
         let mut new_operations = Vec::new();
 
         for operation in &plan.operations {
-            match operation {
-                PlanOperation::Filter { predicates } => {
-                    // Try to push predicates down to table scan
-                    if let Some(PlanOperation::TableScan { table, predicates: existing_preds }) = new_operations.last_mut() {
-                        // Merge predicates
-                        let mut combined_predicates = existing_preds.clone();
-                        combined_predicates.extend(predicates.clone());
+            if let PlanOperation::Filter { predicates } = operation {
+                // Try to push predicates down to table scan
+                if let Some(PlanOperation::TableScan { table, predicates: existing_preds }) = new_operations.last_mut() {
+                    // Merge predicates
+                    let mut combined_predicates = existing_preds.clone();
+                    combined_predicates.extend(predicates.clone());
 
-                        *new_operations.last_mut().unwrap() = PlanOperation::TableScan {
-                            table: table.clone(),
-                            predicates: combined_predicates,
-                        };
+                    *new_operations.last_mut().unwrap() = PlanOperation::TableScan {
+                        table: table.clone(),
+                        predicates: combined_predicates,
+                    };
 
-                        modified = true;
-                        continue;
-                    }
+                    modified = true;
+                    continue;
                 }
-                _ => {}
             }
             new_operations.push(operation.clone());
         }
@@ -234,10 +231,10 @@ impl ConstantFoldingRule {
                             }
                         }
                         "/" => {
-                            if let (Ok(l), Ok(r)) = (left_val.parse::<f64>(), right_val.parse::<f64>()) {
-                                if r != 0.0 {
-                                    return Ok(ExpressionType::Constant((l / r).to_string()));
-                                }
+                            if let (Ok(l), Ok(r)) = (left_val.parse::<f64>(), right_val.parse::<f64>())
+                                && r != 0.0
+                            {
+                                return Ok(ExpressionType::Constant((l / r).to_string()));
                             }
                         }
                         _ => {}
@@ -301,7 +298,7 @@ impl OptimizationRule for JoinReorderingRule {
                 PlanOperation::Join { join_type: _, condition } => {
                     // This is a simplified example - in practice, you'd need more
                     // sophisticated join reordering algorithms
-                    if self.should_reorder_join(&condition) {
+                    if self.should_reorder_join(condition) {
                         modified = true;
                         // Apply reordering logic here
                     }

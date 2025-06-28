@@ -228,21 +228,21 @@ pub enum StateTransitionError {
 impl fmt::Display for StateTransitionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StateTransitionError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
+            StateTransitionError::ValidationFailed(msg) => write!(f, "Validation failed: {msg}"),
             StateTransitionError::InsufficientGas { required, available } => {
-                write!(f, "Insufficient gas for validation: required {}, available {}", required, available)
+                write!(f, "Insufficient gas for validation: required {required}, available {available}")
             }
-            StateTransitionError::InvalidTransition(msg) => write!(f, "Invalid transition: {}", msg),
-            StateTransitionError::InvalidContext(msg) => write!(f, "Invalid context: {}", msg),
+            StateTransitionError::InvalidTransition(msg) => write!(f, "Invalid transition: {msg}"),
+            StateTransitionError::InvalidContext(msg) => write!(f, "Invalid context: {msg}"),
             StateTransitionError::TypeMismatch { expected, actual } => {
-                write!(f, "Type mismatch: expected {}, got {}", expected, actual)
+                write!(f, "Type mismatch: expected {expected}, got {actual}")
             }
-            StateTransitionError::PermissionDenied(msg) => write!(f, "Permission denied: {}", msg),
-            StateTransitionError::InvariantViolation(msg) => write!(f, "Invariant violation: {}", msg),
+            StateTransitionError::PermissionDenied(msg) => write!(f, "Permission denied: {msg}"),
+            StateTransitionError::InvariantViolation(msg) => write!(f, "Invariant violation: {msg}"),
             StateTransitionError::RuleError { rule, error } => {
-                write!(f, "Rule '{}' error: {}", rule, error)
+                write!(f, "Rule '{rule}' error: {error}")
             }
-            StateTransitionError::ConfigError(msg) => write!(f, "Configuration error: {}", msg),
+            StateTransitionError::ConfigError(msg) => write!(f, "Configuration error: {msg}"),
         }
     }
 }
@@ -337,10 +337,10 @@ impl StateTransitionValidator {
                         }
                     }
 
-                    if let Some(warning) = result.warning {
-                        if self.config.collect_warnings {
-                            summary.warnings.push(warning);
-                        }
+                    if let Some(warning) = result.warning
+                        && self.config.collect_warnings
+                    {
+                        summary.warnings.push(warning);
                     }
                 }
                 Err(e) => {
@@ -382,7 +382,7 @@ impl StateTransitionValidator {
                     }
                 }
                 Err(e) => {
-                    return Err(StateTransitionError::ValidationFailed(format!("Transition {} failed: {}", i, e)));
+                    return Err(StateTransitionError::ValidationFailed(format!("Transition {i} failed: {e}")));
                 }
             }
         }

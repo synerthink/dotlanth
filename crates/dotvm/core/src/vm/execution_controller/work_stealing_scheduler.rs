@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{ExecutionError, Task, TaskPriority};
+use super::{ExecutionError, Task};
 // Removed unused import - TaskPriority may be needed later for priority scheduling
 use crossbeam_deque::{Steal, Stealer, Worker};
 use std::collections::BinaryHeap;
@@ -35,6 +35,12 @@ pub struct WorkStealingScheduler {
 /// - Per-worker FIFO queues
 /// - Cross-worker task stealing
 /// - Priority-based preemption
+impl Default for WorkStealingScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WorkStealingScheduler {
     /// Initializes scheduler with:
     /// - CPU-count worker threads

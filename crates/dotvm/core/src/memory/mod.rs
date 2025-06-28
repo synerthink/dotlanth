@@ -293,7 +293,7 @@ impl<A: Architecture> MemoryManagement for MemoryManager<A> {
 
         // Calculate page range for batch update
         let start_page = phys_addr.0 / A::PAGE_SIZE;
-        let end_page = (phys_addr.0 + size + A::PAGE_SIZE - 1) / A::PAGE_SIZE;
+        let end_page = (phys_addr.0 + size).div_ceil(A::PAGE_SIZE);
         let flags = protection.into_page_flags();
 
         for page in start_page..end_page {

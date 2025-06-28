@@ -33,7 +33,7 @@ impl fmt::Display for SnapshotError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SnapshotError::SnapshotNotFound => write!(f, "Snapshot not found"),
-            SnapshotError::OperationFailed(msg) => write!(f, "Operation failed: {}", msg),
+            SnapshotError::OperationFailed(msg) => write!(f, "Operation failed: {msg}"),
             SnapshotError::NotImplemented => write!(f, "NotImplemented"),
         }
     }

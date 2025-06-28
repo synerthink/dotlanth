@@ -96,6 +96,12 @@ pub struct Validator {
     rules: HashMap<String, Box<dyn ValidationRule>>,
 }
 
+impl Default for Validator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Validator {
     /// Creates validator with default rules:
     /// - Non-empty content
@@ -164,17 +170,15 @@ impl Validator {
     fn prepare_validation_outcome(result: &ValidationResult) -> Result<(), ValidationError> {
         if result.is_valid {
             Ok(())
+        } else if result.errors.is_empty() {
+            // This case should ideally not happen if is_valid is false,
+            // but as a safeguard, return a generic error.
+            Err(ValidationError::RuleFailed("Validation failed with no specific errors".to_string()))
+        } else if result.errors.len() == 1 {
+            Err(result.errors[0].clone())
         } else {
-            if result.errors.is_empty() {
-                // This case should ideally not happen if is_valid is false,
-                // but as a safeguard, return a generic error.
-                Err(ValidationError::RuleFailed("Validation failed with no specific errors".to_string()))
-            } else if result.errors.len() == 1 {
-                Err(result.errors[0].clone())
-            } else {
-                let error_messages: Vec<String> = result.errors.iter().map(|e| e.to_string()).collect();
-                Err(ValidationError::Multiple(error_messages.join("; ")))
-            }
+            let error_messages: Vec<String> = result.errors.iter().map(|e| e.to_string()).collect();
+            Err(ValidationError::Multiple(error_messages.join("; ")))
         }
     }
 }

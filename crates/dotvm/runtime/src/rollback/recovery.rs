@@ -1,7 +1,6 @@
 use crate::rollback::checkpoint::CheckpointManager;
 use crate::rollback::lib::{LogLevel, RollbackError, RollbackResult, SystemState, log_event};
 use crate::rollback::state::StateRollback;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 /// Result of a recovery operation
@@ -31,7 +30,7 @@ pub struct RecoveryManager {
     checkpoint_manager: Arc<Mutex<dyn CheckpointManager + Send>>,
     rollback_manager: Arc<Mutex<dyn StateRollback + Send>>,
     pending_transactions: Mutex<Vec<Transaction>>,
-    recovery_listeners: Mutex<Vec<Box<dyn Fn(RecoveryResult) -> () + Send + Sync>>>,
+    recovery_listeners: Mutex<Vec<Box<dyn Fn(RecoveryResult) + Send + Sync>>>,
     system_state: Arc<Mutex<SystemState>>,
 }
 
@@ -70,7 +69,7 @@ impl RecoveryManager {
     }
 
     /// Adds a listener to be notified of recovery results
-    pub fn add_recovery_listener(&self, listener: impl Fn(RecoveryResult) -> () + Send + Sync + 'static) -> RollbackResult<()> {
+    pub fn add_recovery_listener(&self, listener: impl Fn(RecoveryResult) + Send + Sync + 'static) -> RollbackResult<()> {
         let mut listeners = self
             .recovery_listeners
             .lock()
@@ -104,7 +103,7 @@ impl RecoveryManager {
 
     /// Recovers the system from a specific checkpoint
     pub fn recover_from_checkpoint(&self, checkpoint_id: &str) -> RecoveryResult {
-        log_event(LogLevel::Info, "RecoveryManager", &format!("Starting recovery from checkpoint: {}", checkpoint_id));
+        log_event(LogLevel::Info, "RecoveryManager", &format!("Starting recovery from checkpoint: {checkpoint_id}"));
 
         // Step 1: Get the checkpoint
         let checkpoint_manager = match self.checkpoint_manager.lock() {
@@ -119,7 +118,7 @@ impl RecoveryManager {
         let checkpoint = match checkpoint_manager.get_checkpoint(checkpoint_id) {
             Ok(cp) => cp,
             Err(e) => {
-                let error_msg = format!("Failed to get checkpoint: {}", e);
+                let error_msg = format!("Failed to get checkpoint: {e}");
                 log_event(LogLevel::Error, "RecoveryManager", &error_msg);
                 return RecoveryResult::Failed(error_msg);
             }
@@ -138,7 +137,7 @@ impl RecoveryManager {
         };
 
         if let Err(e) = rollback_manager.rollback_to_checkpoint(&checkpoint.id) {
-            let error_msg = format!("Failed to rollback to checkpoint: {}", e);
+            let error_msg = format!("Failed to rollback to checkpoint: {e}");
             log_event(LogLevel::Error, "RecoveryManager", &error_msg);
             return RecoveryResult::Failed(error_msg);
         }

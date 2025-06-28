@@ -37,7 +37,7 @@ impl DependencyAnalysisEngine {
             Err("Empty state")
         } else {
             if self.config.verbosity > 0 {
-                println!("Analyzing state: {}", state);
+                println!("Analyzing state: {state}");
             }
             Ok(())
         }

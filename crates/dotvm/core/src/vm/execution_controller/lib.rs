@@ -29,6 +29,12 @@ pub struct ExecutionController {
 /// - Resource allocation
 /// - Load-balanced distribution
 /// - Work-stealing scheduling
+impl Default for ExecutionController {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExecutionController {
     /// Initializes all subsystems with default configurations:
     /// - Fresh instances of scheduler, executor, load balancer, and resource allocator

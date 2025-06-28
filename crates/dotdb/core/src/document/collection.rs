@@ -151,12 +151,11 @@ impl CollectionManager {
         let mut matching_docs = Vec::new();
 
         for id in doc_ids {
-            if let Some(document) = self.storage.get_document(&collection_name, &id)? {
-                if let Some(field_value) = document.content.get(field) {
-                    if field_value == value {
-                        matching_docs.push((id, document.content));
-                    }
-                }
+            if let Some(document) = self.storage.get_document(&collection_name, &id)?
+                && let Some(field_value) = document.content.get(field)
+                && field_value == value
+            {
+                matching_docs.push((id, document.content));
             }
         }
 

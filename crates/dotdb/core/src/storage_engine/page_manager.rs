@@ -20,10 +20,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 
-use crate::storage_engine::file_format::{FileFormat, Page, PageId, PageType};
-use crate::storage_engine::lib::StorageConfig;
+use crate::storage_engine::file_format::{FileFormat, PageId, PageType};
 use crate::storage_engine::lib::{Initializable, StorageError, StorageResult, VersionId};
-use tempfile::tempdir;
 
 /// Result of a page allocation operation
 #[derive(Debug, Clone)]
@@ -108,22 +106,22 @@ impl PageManager {
     /// 3. Return the allocation result.
     pub fn allocate_page(&mut self, page_type: PageType) -> StorageResult<PageAllocation> {
         // Check if we have any free pages of this type
-        if let Some(free_list) = self.free_pages.get_mut(&page_type) {
-            if let Some(page_id) = free_list.pop_front() {
-                // Found a free page of the right type
-                let allocation = PageAllocation {
-                    page_id,
-                    page_type,
-                    is_new: false,
-                    version: self.current_version,
-                };
+        if let Some(free_list) = self.free_pages.get_mut(&page_type)
+            && let Some(page_id) = free_list.pop_front()
+        {
+            // Found a free page of the right type
+            let allocation = PageAllocation {
+                page_id,
+                page_type,
+                is_new: false,
+                version: self.current_version,
+            };
 
-                // Track this allocation
-                self.allocated_pages.insert(page_id);
-                self.page_versions.entry(page_id).or_insert_with(Vec::new).push(self.current_version);
+            // Track this allocation
+            self.allocated_pages.insert(page_id);
+            self.page_versions.entry(page_id).or_default().push(self.current_version);
 
-                return Ok(allocation);
-            }
+            return Ok(allocation);
         }
 
         // No free pages of the requested type, allocate a new one
@@ -140,7 +138,7 @@ impl PageManager {
 
         // Track this allocation
         self.allocated_pages.insert(page.id);
-        self.page_versions.entry(page.id).or_insert_with(Vec::new).push(self.current_version);
+        self.page_versions.entry(page.id).or_default().push(self.current_version);
 
         Ok(allocation)
     }
@@ -161,7 +159,7 @@ impl PageManager {
         }
 
         // Add to the recently freed list for later processing
-        let freed_list = self.recently_freed.entry(page_type).or_insert_with(Vec::new);
+        let freed_list = self.recently_freed.entry(page_type).or_default();
 
         freed_list.push(page_id);
 
@@ -218,7 +216,7 @@ impl PageManager {
 
     /// Add a page to the free list if it's not full
     fn add_to_free_list(&mut self, page_type: PageType, page_id: PageId) {
-        let free_list = self.free_pages.entry(page_type).or_insert_with(VecDeque::new);
+        let free_list = self.free_pages.entry(page_type).or_default();
 
         if free_list.len() < self.max_free_list_size {
             free_list.push_back(page_id);

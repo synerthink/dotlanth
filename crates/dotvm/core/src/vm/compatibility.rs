@@ -74,7 +74,7 @@ impl<HostArch: Architecture + std::fmt::Debug> MemoryManagerInterface for Adapte
         let actual_alloc_size = if requested_size < host_alignment {
             host_alignment
         } else {
-            (requested_size + host_alignment - 1) / host_alignment * host_alignment
+            requested_size.div_ceil(host_alignment) * host_alignment
         };
 
         // Now, allocate this actual_alloc_size from the host_memory_manager.

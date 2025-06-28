@@ -48,13 +48,12 @@
 //! }
 //! ```
 
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::sync::{Arc, Mutex, RwLock};
+use std::collections::{BTreeMap, HashMap};
+use std::sync::{Mutex, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::state::contract_storage_layout::{ContractAddress, ContractStorageLayout, StorageLayoutError};
-use crate::state::mpt::{Hash, Key, MPTError, TrieResult, Value};
-use crate::state::{MerklePatriciaTrie, StateDiff, StateSnapshot};
+use crate::state::contract_storage_layout::{ContractAddress, StorageLayoutError};
+use crate::state::mpt::{Hash, MPTError};
 
 /// Timestamp type for versioning
 pub type Timestamp = u64;
@@ -305,7 +304,7 @@ impl ContractVersionManager {
 
         {
             let mut versions = self.versions.write().unwrap();
-            let contract_versions = versions.entry(contract_address).or_insert_with(BTreeMap::new);
+            let contract_versions = versions.entry(contract_address).or_default();
             contract_versions.insert(version_id, version);
 
             // Cleanup old versions if necessary
@@ -342,7 +341,7 @@ impl ContractVersionManager {
 
         {
             let mut versions = self.versions.write().unwrap();
-            let contract_versions = versions.entry(contract_address).or_insert_with(BTreeMap::new);
+            let contract_versions = versions.entry(contract_address).or_default();
             contract_versions.insert(version_id, version);
         }
 
@@ -565,28 +564,28 @@ impl std::fmt::Display for ContractVersioningError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ContractVersioningError::ContractNotFound(addr) => {
-                write!(f, "Contract not found: {:?}", addr)
+                write!(f, "Contract not found: {addr:?}")
             }
             ContractVersioningError::VersionNotFound(version) => {
-                write!(f, "Version not found: {:?}", version)
+                write!(f, "Version not found: {version:?}")
             }
             ContractVersioningError::VersionAlreadyExists(version) => {
-                write!(f, "Version already exists: {:?}", version)
+                write!(f, "Version already exists: {version:?}")
             }
             ContractVersioningError::InvalidUpgrade(msg) => {
-                write!(f, "Invalid upgrade: {}", msg)
+                write!(f, "Invalid upgrade: {msg}")
             }
             ContractVersioningError::StorageLayoutError(msg) => {
-                write!(f, "Storage layout error: {}", msg)
+                write!(f, "Storage layout error: {msg}")
             }
             ContractVersioningError::MPTError(msg) => {
-                write!(f, "MPT error: {}", msg)
+                write!(f, "MPT error: {msg}")
             }
             ContractVersioningError::SerializationError(msg) => {
-                write!(f, "Serialization error: {}", msg)
+                write!(f, "Serialization error: {msg}")
             }
             ContractVersioningError::InternalError(msg) => {
-                write!(f, "Internal error: {}", msg)
+                write!(f, "Internal error: {msg}")
             }
         }
     }
@@ -596,13 +595,13 @@ impl std::error::Error for ContractVersioningError {}
 
 impl From<StorageLayoutError> for ContractVersioningError {
     fn from(err: StorageLayoutError) -> Self {
-        ContractVersioningError::StorageLayoutError(format!("{:?}", err))
+        ContractVersioningError::StorageLayoutError(format!("{err:?}"))
     }
 }
 
 impl From<MPTError> for ContractVersioningError {
     fn from(err: MPTError) -> Self {
-        ContractVersioningError::MPTError(format!("{:?}", err))
+        ContractVersioningError::MPTError(format!("{err:?}"))
     }
 }
 
@@ -622,7 +621,7 @@ pub mod contract_version_utils {
 
     /// Calculate the time difference between versions
     pub fn version_time_diff(v1: StateVersionId, v2: StateVersionId) -> u64 {
-        if v1.timestamp > v2.timestamp { v1.timestamp - v2.timestamp } else { v2.timestamp - v1.timestamp }
+        v1.timestamp.abs_diff(v2.timestamp)
     }
 
     /// Find the common ancestor version between two versions
@@ -654,10 +653,10 @@ pub mod contract_version_utils {
     fn build_version_chain(version: &ContractStateVersion, all_versions: &[ContractStateVersion], chain: &mut Vec<StateVersionId>) {
         chain.push(version.version_id);
 
-        if let Some(parent_id) = version.parent_version {
-            if let Some(parent) = all_versions.iter().find(|v| v.version_id == parent_id) {
-                build_version_chain(parent, all_versions, chain);
-            }
+        if let Some(parent_id) = version.parent_version
+            && let Some(parent) = all_versions.iter().find(|v| v.version_id == parent_id)
+        {
+            build_version_chain(parent, all_versions, chain);
         }
     }
 

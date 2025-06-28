@@ -34,17 +34,16 @@
 //! - Performance optimizations for high concurrency
 
 // We'll use HashMap instead of HashIndex for now to avoid trait issues
-use crate::state::diff::{StateChange, StateDiff};
-use crate::statistics::access_patterns::{AccessPatternTracker, PatternType};
-use crate::statistics::cardinality::{CardinalityEstimator, CardinalityMethod, HyperLogLogEstimator};
-use crate::storage_engine::deadlock_detector::{DeadlockDetector, DeadlockResolutionPolicy};
-use crate::storage_engine::file_format::{Page, PageId};
-use crate::storage_engine::lib::{StorageError, StorageResult, VersionId, generate_timestamp};
-use crate::storage_engine::transaction::{Transaction, TransactionId, TransactionState};
-use crate::storage_engine::wal::{LogEntry, LogSequenceNumber, WalConfig, WriteAheadLog};
+use crate::statistics::access_patterns::AccessPatternTracker;
+use crate::statistics::cardinality::HyperLogLogEstimator;
+use crate::storage_engine::deadlock_detector::DeadlockDetector;
+use crate::storage_engine::file_format::PageId;
+use crate::storage_engine::lib::{StorageError, StorageResult, generate_timestamp};
+use crate::storage_engine::transaction::TransactionId;
+use crate::storage_engine::wal::{LogEntry, WriteAheadLog};
 
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 /// Types of conflicts that can occur between transactions
@@ -427,14 +426,14 @@ impl OCCManager {
         {
             let mut page_index = self.page_index.write().unwrap();
             for page_id in &write_set {
-                page_index.entry(*page_id).or_insert_with(Vec::new).push(transaction_id);
+                page_index.entry(*page_id).or_default().push(transaction_id);
             }
         }
 
         // Update timestamp index for range queries
         {
             let mut timestamp_index = self.timestamp_index.write().unwrap();
-            timestamp_index.entry(commit_timestamp).or_insert_with(Vec::new).push(transaction_id);
+            timestamp_index.entry(commit_timestamp).or_default().push(transaction_id);
         }
 
         // Integrate with deadlock detector if available
@@ -719,7 +718,7 @@ impl OCCTransactionManager {
             let mut active_txns = self.active_transactions.write().unwrap();
             active_txns
                 .remove(&transaction_id)
-                .ok_or_else(|| StorageError::NotFound(format!("Transaction {} not found", transaction_id)))?
+                .ok_or_else(|| StorageError::NotFound(format!("Transaction {transaction_id} not found")))?
         };
 
         // Update validation timestamp
@@ -759,7 +758,7 @@ impl OCCTransactionManager {
             context.read_set.insert(page_id);
             Ok(())
         } else {
-            Err(StorageError::NotFound(format!("Transaction {} not found", transaction_id)))
+            Err(StorageError::NotFound(format!("Transaction {transaction_id} not found")))
         }
     }
 
@@ -770,7 +769,7 @@ impl OCCTransactionManager {
             context.write_set.insert(page_id);
             Ok(())
         } else {
-            Err(StorageError::NotFound(format!("Transaction {} not found", transaction_id)))
+            Err(StorageError::NotFound(format!("Transaction {transaction_id} not found")))
         }
     }
 

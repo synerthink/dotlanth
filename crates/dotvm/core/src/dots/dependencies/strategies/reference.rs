@@ -32,7 +32,7 @@ impl DependencyDetectionStrategy for ReferenceDetectionStrategy {
         let segment_map: HashMap<&str, &DotSegment> = segments.iter().map(|s| (s.id.as_str(), s)).collect();
 
         for dependent in segments {
-            for (_potential_dependency_id, dependency) in &segment_map {
+            for dependency in segment_map.values() {
                 // Underscored unused variable
                 // Self-dependencies are not allowed
                 if dependent.id == dependency.id {
@@ -63,7 +63,7 @@ impl ReferenceDetectionStrategy {
                 if after_pattern.starts_with(dependency_id) {
                     // Ensure it's a complete word match (not part of a larger word)
                     let end_pos = dependency_id.len();
-                    if after_pattern.len() == end_pos || after_pattern.chars().nth(end_pos).map_or(true, |c| !c.is_alphanumeric() && c != '_') {
+                    if after_pattern.len() == end_pos || after_pattern.chars().nth(end_pos).is_none_or(|c| !c.is_alphanumeric() && c != '_') {
                         return true;
                     }
                 }

@@ -76,10 +76,10 @@ pub fn terminate_contract(instance: &mut ContractInstance) -> Result<(), String>
 /// Cleans up resources associated with a contract instance.
 /// This should only be invoked on a terminated contract.
 pub fn cleanup_resources(instance: &ContractInstance) {
-    if !instance.active {
-        if let Some(path) = &instance.temp_file {
-            let _ = std::fs::remove_file(path); // Remove temp file
-        }
+    if !instance.active
+        && let Some(path) = &instance.temp_file
+    {
+        let _ = std::fs::remove_file(path); // Remove temp file
     }
 }
 

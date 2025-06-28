@@ -20,7 +20,7 @@
 //! for 256-bit and 512-bit architectures. It provides vectorized operations
 //! that can process multiple data elements in parallel.
 
-use crate::wasm::ast::{WasmFunction, WasmInstruction, WasmValueType};
+use crate::wasm::ast::{WasmFunction, WasmInstruction};
 use dotvm_core::{
     bytecode::VmArchitecture,
     opcode::architecture_opcodes::{Opcode256, Opcode512},

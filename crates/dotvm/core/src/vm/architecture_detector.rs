@@ -49,6 +49,12 @@ pub struct ArchitectureDetector {
     // For now, we assume the VM can run any of the VmArchitecture types if explicitly chosen.
 }
 
+impl Default for ArchitectureDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ArchitectureDetector {
     pub fn new() -> Self {
         ArchitectureDetector {}

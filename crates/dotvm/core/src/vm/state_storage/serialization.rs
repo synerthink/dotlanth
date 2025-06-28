@@ -33,8 +33,8 @@ pub enum SerializationError {
 impl fmt::Display for SerializationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SerializationError::SerializeError(s) => write!(f, "SerializeError: {}", s),
-            SerializationError::DeserializeError(s) => write!(f, "DeserializeError: {}", s),
+            SerializationError::SerializeError(s) => write!(f, "SerializeError: {s}"),
+            SerializationError::DeserializeError(s) => write!(f, "DeserializeError: {s}"),
             SerializationError::NotImplemented => write!(f, "NotImplemented"),
         }
     }

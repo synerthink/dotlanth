@@ -24,7 +24,7 @@ use crate::opcode::arithmetic_opcodes::ArithmeticOpcode;
 use crate::opcode::control_flow_opcodes::ControlFlowOpcode;
 use crate::opcode::db_opcodes::DatabaseOpcode;
 use crate::opcode::stack_opcodes::{StackInstruction, StackOpcode};
-use crate::vm::database_bridge::{DatabaseBridge, DatabaseBridgeError};
+use crate::vm::database_bridge::DatabaseBridge;
 use crate::vm::stack::{OperandStack, StackError, StackValue};
 use std::collections::HashMap;
 use std::path::Path;
@@ -501,7 +501,7 @@ impl VmExecutor {
                 match self.database_bridge.list_documents(&collection_name) {
                     Ok(document_ids) => {
                         // Convert to JSON array string
-                        let json_array = serde_json::to_string(&document_ids).map_err(|e| ExecutorError::DatabaseError(format!("Failed to serialize document IDs: {}", e)))?;
+                        let json_array = serde_json::to_string(&document_ids).map_err(|e| ExecutorError::DatabaseError(format!("Failed to serialize document IDs: {e}")))?;
                         self.context.stack.push(StackValue::String(json_array))?;
                     }
                     Err(e) => {
@@ -632,7 +632,7 @@ impl VmExecutor {
             (StackValue::Float64(x), StackValue::Float64(y)) => Ok(StackValue::Float64(x + y)),
             (StackValue::Int64(x), StackValue::Float64(y)) => Ok(StackValue::Float64(*x as f64 + y)),
             (StackValue::Float64(x), StackValue::Int64(y)) => Ok(StackValue::Float64(x + *y as f64)),
-            (StackValue::String(x), StackValue::String(y)) => Ok(StackValue::String(format!("{}{}", x, y))),
+            (StackValue::String(x), StackValue::String(y)) => Ok(StackValue::String(format!("{x}{y}"))),
             _ => Err(ExecutorError::TypeMismatch {
                 operation: "add".to_string(),
                 left: a.type_name().to_string(),
@@ -813,7 +813,7 @@ impl DebugInfo {
     }
 
     pub fn log_instruction(&mut self, pc: usize, instruction: &Instruction) {
-        let log_entry = format!("PC:{:04X} {:?}", pc, instruction);
+        let log_entry = format!("PC:{pc:04X} {instruction:?}");
         self.instruction_log.push(log_entry);
     }
 }

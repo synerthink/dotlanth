@@ -18,8 +18,7 @@
 
 use std::fmt;
 use std::fs::{File, OpenOptions};
-use std::io::{self, Error, ErrorKind, Result};
-use std::ops::{Deref, DerefMut};
+use std::io::{self, Error, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};

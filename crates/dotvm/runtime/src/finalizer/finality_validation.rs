@@ -25,6 +25,12 @@ pub struct FinalityValidator {
     authorized_initiators: Vec<String>,
 }
 
+impl Default for FinalityValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FinalityValidator {
     /// Create a new FinalityValidator with default settings
     pub fn new() -> Self {

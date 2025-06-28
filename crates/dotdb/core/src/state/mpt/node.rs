@@ -34,7 +34,7 @@
 //! - Minimal memory usage through path compression
 //! - Fast node type checking using pattern matching
 
-use crate::state::mpt::lib::{CompactPath, Hash, Key, MPTError, NodeId, TrieResult, Value, keccak256};
+use crate::state::mpt::lib::{CompactPath, MPTError, NodeId, TrieResult, Value, keccak256};
 use bincode;
 use serde::{Deserialize, Serialize};
 

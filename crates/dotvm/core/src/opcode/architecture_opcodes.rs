@@ -46,7 +46,7 @@ impl Opcode64 {
     /// Get the opcode's numerical value for bytecode generation
     pub fn as_u16(&self) -> u16 {
         match self {
-            Opcode64::Arithmetic(op) => 0x0000 + op.as_u8() as u16,
+            Opcode64::Arithmetic(op) => op.as_u8() as u16,
             Opcode64::ControlFlow(op) => 0x0100 + op.as_u8() as u16,
             Opcode64::Memory(op) => 0x0200 + op.as_u8() as u16,
             Opcode64::SystemCall(op) => 0x0300 + op.as_u8() as u16,
@@ -116,7 +116,7 @@ impl Opcode128 {
     pub fn mnemonic(&self) -> String {
         match self {
             Opcode128::Base(op) => op.mnemonic(),
-            Opcode128::BigInt(op) => format!("BIGINT.{}", op),
+            Opcode128::BigInt(op) => format!("BIGINT.{op}"),
         }
     }
 
@@ -168,8 +168,8 @@ impl Opcode256 {
     pub fn mnemonic(&self) -> String {
         match self {
             Opcode256::Base(op) => op.mnemonic(),
-            Opcode256::Simd(op) => format!("SIMD.{}", op),
-            Opcode256::Math(op) => format!("MATH.{}", op),
+            Opcode256::Simd(op) => format!("SIMD.{op}"),
+            Opcode256::Math(op) => format!("MATH.{op}"),
         }
     }
 
@@ -225,9 +225,9 @@ impl Opcode512 {
     pub fn mnemonic(&self) -> String {
         match self {
             Opcode512::Base(op) => op.mnemonic(),
-            Opcode512::Vector(op) => format!("VEC.{}", op),
-            Opcode512::Parallel(op) => format!("PAR.{}", op),
-            Opcode512::Crypto(op) => format!("CRYPTO.{}", op),
+            Opcode512::Vector(op) => format!("VEC.{op}"),
+            Opcode512::Parallel(op) => format!("PAR.{op}"),
+            Opcode512::Crypto(op) => format!("CRYPTO.{op}"),
         }
     }
 

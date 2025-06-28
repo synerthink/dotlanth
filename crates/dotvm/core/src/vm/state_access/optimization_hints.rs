@@ -61,7 +61,7 @@ impl OptimizationAnalyzer {
         for (var, count) in &read_counts {
             let writes = *write_counts.get(var).unwrap_or(&0);
             if *count > 10 && writes < 2 {
-                hints.push(format!("Consider caching variable '{}' (read {} times, written {} times)", var, count, writes));
+                hints.push(format!("Consider caching variable '{var}' (read {count} times, written {writes} times)"));
             }
         }
 
@@ -70,7 +70,7 @@ impl OptimizationAnalyzer {
         sorted_pairs.sort_by(|a, b| b.1.cmp(a.1));
 
         if let Some(((var1, var2), count)) = sorted_pairs.first() {
-            hints.push(format!("Group '{}' and '{}' (accessed together {} times)", var1, var2, count));
+            hints.push(format!("Group '{var1}' and '{var2}' (accessed together {count} times)"));
         }
 
         hints

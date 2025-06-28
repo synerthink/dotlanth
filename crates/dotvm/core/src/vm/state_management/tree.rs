@@ -190,7 +190,7 @@ impl MerkleTree {
     pub fn generate_proof(&self, key: &StateKey) -> Result<MerkleProof> {
         let root = self.root.as_ref().ok_or_else(|| Error::MerkleError("Empty tree".to_string()))?;
 
-        let leaf = self.leaves.get(key).ok_or_else(|| Error::NotFound)?;
+        let leaf = self.leaves.get(key).ok_or(Error::NotFound)?;
 
         let mut siblings = Vec::new();
 
@@ -215,25 +215,25 @@ impl MerkleTree {
         }
 
         // This is an internal node, check left subtree first
-        if let Some(left) = &node.left {
-            if self.find_path_to_leaf(left, key, siblings)? {
-                // Key found in left subtree, add right sibling if it exists
-                if let Some(right) = &node.right {
-                    siblings.push((true, right.hash));
-                }
-                return Ok(true);
+        if let Some(left) = &node.left
+            && self.find_path_to_leaf(left, key, siblings)?
+        {
+            // Key found in left subtree, add right sibling if it exists
+            if let Some(right) = &node.right {
+                siblings.push((true, right.hash));
             }
+            return Ok(true);
         }
 
         // Check right subtree
-        if let Some(right) = &node.right {
-            if self.find_path_to_leaf(right, key, siblings)? {
-                // Key found in right subtree, add left sibling
-                if let Some(left) = &node.left {
-                    siblings.push((false, left.hash));
-                }
-                return Ok(true);
+        if let Some(right) = &node.right
+            && self.find_path_to_leaf(right, key, siblings)?
+        {
+            // Key found in right subtree, add left sibling
+            if let Some(left) = &node.left {
+                siblings.push((false, left.hash));
             }
+            return Ok(true);
         }
 
         // Key not found in this subtree

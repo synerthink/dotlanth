@@ -17,7 +17,6 @@
 use crate::async_runtime::executor::FutureExecutor;
 use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskState};
 use crate::async_runtime::scheduler::AsyncTaskScheduler;
-use futures_timer::Delay;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -189,16 +188,16 @@ impl Poller {
     /// 4. Update internal tracking
     pub fn poll_task(&self, task_id: TaskId) -> PollResult {
         // Check if the task is completed in the executor's records
-        if let Some(executor) = &self.executor {
-            if let Some(completed_task) = executor.get_completed_task(task_id) {
-                // Update last results and completion times
-                let mut last_results = self.last_results.lock().unwrap();
-                let result = completed_task.clone();
-                last_results.insert(task_id, result.clone());
-                let mut completion_times = self.completion_times.lock().unwrap();
-                completion_times.insert(task_id, Instant::now());
-                return result;
-            }
+        if let Some(executor) = &self.executor
+            && let Some(completed_task) = executor.get_completed_task(task_id)
+        {
+            // Update last results and completion times
+            let mut last_results = self.last_results.lock().unwrap();
+            let result = completed_task.clone();
+            last_results.insert(task_id, result.clone());
+            let mut completion_times = self.completion_times.lock().unwrap();
+            completion_times.insert(task_id, Instant::now());
+            return result;
         }
         // Check if task exists in scheduler
         if !self.scheduler.has_task(task_id) {
@@ -317,17 +316,17 @@ impl Poller {
 
             // Check if we've exceeded max polls
             poll_count += 1;
-            if let Some(max) = self.config.max_polls {
-                if poll_count >= max {
-                    return Err(RuntimeError::Timeout);
-                }
+            if let Some(max) = self.config.max_polls
+                && poll_count >= max
+            {
+                return Err(RuntimeError::Timeout);
             }
 
             // Check if we've exceeded timeout
-            if let Some(timeout) = self.config.timeout {
-                if start_time.elapsed() >= timeout {
-                    return Err(RuntimeError::Timeout);
-                }
+            if let Some(timeout) = self.config.timeout
+                && start_time.elapsed() >= timeout
+            {
+                return Err(RuntimeError::Timeout);
             }
 
             // Wait before polling again
@@ -373,17 +372,17 @@ impl Poller {
 
             // Check if we've exceeded max polls
             poll_count += 1;
-            if let Some(max) = self.config.max_polls {
-                if poll_count >= max {
-                    return Err(RuntimeError::Timeout);
-                }
+            if let Some(max) = self.config.max_polls
+                && poll_count >= max
+            {
+                return Err(RuntimeError::Timeout);
             }
 
             // Check if we've exceeded timeout
-            if let Some(timeout) = self.config.timeout {
-                if start_time.elapsed() >= timeout {
-                    return Err(RuntimeError::Timeout);
-                }
+            if let Some(timeout) = self.config.timeout
+                && start_time.elapsed() >= timeout
+            {
+                return Err(RuntimeError::Timeout);
             }
 
             // Wait before polling again
@@ -430,17 +429,17 @@ impl Poller {
 
             // Check if we've exceeded max polls
             poll_count += 1;
-            if let Some(max) = self.config.max_polls {
-                if poll_count >= max {
-                    return Err(RuntimeError::Timeout);
-                }
+            if let Some(max) = self.config.max_polls
+                && poll_count >= max
+            {
+                return Err(RuntimeError::Timeout);
             }
 
             // Check if we've exceeded timeout
-            if let Some(timeout) = self.config.timeout {
-                if start_time.elapsed() >= timeout {
-                    return Err(RuntimeError::Timeout);
-                }
+            if let Some(timeout) = self.config.timeout
+                && start_time.elapsed() >= timeout
+            {
+                return Err(RuntimeError::Timeout);
             }
 
             // Wait before polling again

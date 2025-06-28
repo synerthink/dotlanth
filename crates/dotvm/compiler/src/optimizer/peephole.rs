@@ -69,13 +69,13 @@ impl PeepholeOptimizer {
 
         while i < instructions.len() {
             // Look for patterns like: LOAD const1, LOAD const2, ADD -> LOAD (const1 + const2)
-            if i + 2 < instructions.len() {
-                if let Some(folded) = self.try_fold_arithmetic_constants(&instructions[i..i + 3]) {
-                    optimized.push(folded);
-                    self.stats.arithmetic_optimizations += 1;
-                    i += 3;
-                    continue;
-                }
+            if i + 2 < instructions.len()
+                && let Some(folded) = self.try_fold_arithmetic_constants(&instructions[i..i + 3])
+            {
+                optimized.push(folded);
+                self.stats.arithmetic_optimizations += 1;
+                i += 3;
+                continue;
             }
 
             // Look for identity operations: ADD 0, MUL 1, etc.
@@ -110,13 +110,13 @@ impl PeepholeOptimizer {
 
         while i < instructions.len() {
             // Look for redundant LOAD/STORE sequences
-            if i + 1 < instructions.len() {
-                if let Some(merged) = self.try_merge_memory_operations(&instructions[i..i + 2]) {
-                    optimized.extend(merged);
-                    self.stats.memory_optimizations += 1;
-                    i += 2;
-                    continue;
-                }
+            if i + 1 < instructions.len()
+                && let Some(merged) = self.try_merge_memory_operations(&instructions[i..i + 2])
+            {
+                optimized.extend(merged);
+                self.stats.memory_optimizations += 1;
+                i += 2;
+                continue;
             }
 
             optimized.push(instructions[i].clone());
@@ -156,11 +156,11 @@ impl PeepholeOptimizer {
 
         for instruction in &instructions {
             // Skip duplicate consecutive instructions (except for side-effect operations)
-            if let Some(last) = last_instruction {
-                if self.is_duplicate_safe_to_eliminate(last, instruction) {
-                    self.stats.redundant_eliminations += 1;
-                    continue;
-                }
+            if let Some(last) = last_instruction
+                && self.is_duplicate_safe_to_eliminate(last, instruction)
+            {
+                self.stats.redundant_eliminations += 1;
+                continue;
             }
 
             optimized.push(instruction.clone());

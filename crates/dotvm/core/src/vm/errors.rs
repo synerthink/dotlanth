@@ -44,21 +44,21 @@ impl fmt::Display for VMError {
             VMError::StackUnderflow => write!(f, "Stack underflow occurred"),
             VMError::DivisionByZero => write!(f, "Division by zero attempted"),
             VMError::UnknownOpcode => write!(f, "Unknown opcode encountered"),
-            VMError::InvalidJumpTarget(target) => write!(f, "Invalid jump target: {}", target),
+            VMError::InvalidJumpTarget(target) => write!(f, "Invalid jump target: {target}"),
             VMError::InvalidInstructionArguments => {
                 write!(f, "Invalid instruction arguments provided")
             }
             VMError::MissingInstructionArguments => write!(f, "Missing instruction arguments"),
             VMError::MemoryManagerUnavailable => write!(f, "Memory manager is unavailable"),
             VMError::PointerOverflow => write!(f, "Pointer overflow occurred"),
-            VMError::MemoryOperationError(msg) => write!(f, "Memory operation error: {}", msg),
-            VMError::SystemCallError(msg) => write!(f, "System call error: {}", msg),
-            VMError::ProcessError(msg) => write!(f, "Process error: {}", msg),
-            VMError::CryptoError(msg) => write!(f, "Cryptographic error: {}", msg),
-            VMError::InvalidOperand(msg) => write!(f, "Invalid operand: {}", msg),
+            VMError::MemoryOperationError(msg) => write!(f, "Memory operation error: {msg}"),
+            VMError::SystemCallError(msg) => write!(f, "System call error: {msg}"),
+            VMError::ProcessError(msg) => write!(f, "Process error: {msg}"),
+            VMError::CryptoError(msg) => write!(f, "Cryptographic error: {msg}"),
+            VMError::InvalidOperand(msg) => write!(f, "Invalid operand: {msg}"),
             VMError::IntegerOverflow => write!(f, "Integer overflow occurred"),
-            VMError::ArchitectureMismatch(msg) => write!(f, "Architecture mismatch: {}", msg),
-            VMError::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
+            VMError::ArchitectureMismatch(msg) => write!(f, "Architecture mismatch: {msg}"),
+            VMError::ConfigurationError(msg) => write!(f, "Configuration error: {msg}"),
         }
     }
 }

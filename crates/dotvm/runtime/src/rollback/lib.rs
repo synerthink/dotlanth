@@ -9,7 +9,7 @@ pub fn generate_checkpoint_id() -> String {
     // Use full nanoseconds since epoch for uniqueness even within the same millisecond
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
     let nanos = now.as_secs() as u128 * 1_000_000_000 + now.subsec_nanos() as u128;
-    format!("checkpoint-{}", nanos)
+    format!("checkpoint-{nanos}")
 }
 
 /// Log levels for the rollback system
@@ -30,7 +30,7 @@ pub fn log_event(level: LogLevel, component: &str, message: &str) {
         LogLevel::Error => "ERROR",
     };
 
-    eprintln!("[{}][{}][{}] {}", timestamp, level_str, component, message);
+    eprintln!("[{timestamp}][{level_str}][{component}] {message}");
 }
 
 /// Represents an error in the rollback system

@@ -23,6 +23,12 @@ use std::process::Command;
 
 pub struct WriteSysCallInstruction;
 
+impl Default for WriteSysCallInstruction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WriteSysCallInstruction {
     pub fn new() -> Self {
         WriteSysCallInstruction
@@ -33,12 +39,18 @@ impl Instruction for WriteSysCallInstruction {
     fn execute(&self, executor: &mut dyn ExecutorInterface) -> Result<(), VMError> {
         // Pop a value and print it to the console.
         let value = executor.pop_operand()?;
-        println!("{}", value);
+        println!("{value}");
         Ok(())
     }
 }
 
 pub struct ReadSysCallInstruction;
+
+impl Default for ReadSysCallInstruction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ReadSysCallInstruction {
     pub fn new() -> Self {

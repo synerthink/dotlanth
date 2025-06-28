@@ -135,7 +135,7 @@ impl MVCCStore {
         for op in operations {
             match op {
                 WriteOperation::Put(key, value) => {
-                    let entry = versions_map.entry(key).or_insert_with(Vec::new);
+                    let entry = versions_map.entry(key).or_default();
                     entry.push(VersionedValue::new(value, next_version));
                 }
                 WriteOperation::Delete(key) => {

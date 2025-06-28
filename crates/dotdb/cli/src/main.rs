@@ -137,7 +137,7 @@ fn handle_put(manager: &dotdb_core::document::CollectionManager, collection: &st
     let _: Value = serde_json::from_str(json)?;
 
     let id = manager.insert_json(collection, json)?;
-    println!("Document inserted with ID: {}", id);
+    println!("Document inserted with ID: {id}");
     info!("Inserted document {} into collection {}", id, collection);
     Ok(())
 }
@@ -147,7 +147,7 @@ fn handle_get(manager: &dotdb_core::document::CollectionManager, collection: &st
 
     match manager.get_json(collection, &id)? {
         Some(json) => {
-            println!("{}", json);
+            println!("{json}");
             info!("Retrieved document {} from collection {}", id, collection);
         }
         None => {
@@ -165,7 +165,7 @@ fn handle_update(manager: &dotdb_core::document::CollectionManager, collection: 
     let _: Value = serde_json::from_str(json)?;
 
     manager.update_json(collection, &id, json)?;
-    println!("Document updated: {}", id);
+    println!("Document updated: {id}");
     info!("Updated document {} in collection {}", id, collection);
     Ok(())
 }
@@ -175,10 +175,10 @@ fn handle_delete(manager: &dotdb_core::document::CollectionManager, collection: 
 
     let deleted = manager.delete(collection, &id)?;
     if deleted {
-        println!("Document deleted: {}", id);
+        println!("Document deleted: {id}");
         info!("Deleted document {} from collection {}", id, collection);
     } else {
-        println!("Document not found: {}", id);
+        println!("Document not found: {id}");
         info!("Document {} not found in collection {}", id, collection);
     }
     Ok(())
@@ -189,11 +189,11 @@ fn handle_list(manager: &dotdb_core::document::CollectionManager, collection: &s
     let count = doc_ids.len();
 
     if doc_ids.is_empty() {
-        println!("No documents found in collection '{}'", collection);
+        println!("No documents found in collection '{collection}'");
     } else {
-        println!("Documents in collection '{}':", collection);
+        println!("Documents in collection '{collection}':");
         for id in doc_ids {
-            println!("  {}", id);
+            println!("  {id}");
         }
     }
 
@@ -210,7 +210,7 @@ fn handle_list_collections(manager: &dotdb_core::document::CollectionManager) ->
     } else {
         println!("Collections:");
         for collection in collections {
-            println!("  {}", collection);
+            println!("  {collection}");
         }
     }
 
@@ -220,7 +220,7 @@ fn handle_list_collections(manager: &dotdb_core::document::CollectionManager) ->
 
 fn handle_create_collection(manager: &dotdb_core::document::CollectionManager, collection: &str) -> anyhow::Result<()> {
     manager.create_collection(collection)?;
-    println!("Collection created: {}", collection);
+    println!("Collection created: {collection}");
     info!("Created collection {}", collection);
     Ok(())
 }
@@ -228,10 +228,10 @@ fn handle_create_collection(manager: &dotdb_core::document::CollectionManager, c
 fn handle_delete_collection(manager: &dotdb_core::document::CollectionManager, collection: &str) -> anyhow::Result<()> {
     let deleted = manager.delete_collection(collection)?;
     if deleted {
-        println!("Collection deleted: {}", collection);
+        println!("Collection deleted: {collection}");
         info!("Deleted collection {}", collection);
     } else {
-        println!("Collection not found: {}", collection);
+        println!("Collection not found: {collection}");
         info!("Collection {} not found", collection);
     }
     Ok(())
@@ -239,7 +239,7 @@ fn handle_delete_collection(manager: &dotdb_core::document::CollectionManager, c
 
 fn handle_count(manager: &dotdb_core::document::CollectionManager, collection: &str) -> anyhow::Result<()> {
     let count = manager.count(collection)?;
-    println!("Documents in collection '{}': {}", collection, count);
+    println!("Documents in collection '{collection}': {count}");
     info!("Counted {} documents in collection {}", count, collection);
     Ok(())
 }
@@ -251,9 +251,9 @@ fn handle_find(manager: &dotdb_core::document::CollectionManager, collection: &s
     let count = matching_docs.len();
 
     if matching_docs.is_empty() {
-        println!("No documents found matching {}={}", field, value);
+        println!("No documents found matching {field}={value}");
     } else {
-        println!("Found {} documents matching {}={}:", count, field, value);
+        println!("Found {count} documents matching {field}={value}:");
         for (id, doc) in matching_docs {
             println!("  {}: {}", id, serde_json::to_string(&doc)?);
         }

@@ -34,10 +34,10 @@
 //! - Optimized change tracking and application
 //! - Thread-safe operations
 
-use crate::state::mpt::trie::{InMemoryStorage, NodeStorage};
-use crate::state::mpt::{Hash, Key, MPTError, MerklePatriciaTrie, TrieResult, Value};
+use crate::state::mpt::trie::NodeStorage;
+use crate::state::mpt::{Hash, Key, MerklePatriciaTrie, TrieResult, Value};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// Represents different types of changes in state
 ///
@@ -203,10 +203,10 @@ impl StateDiff {
 
         // 3. Copy unchanged keys
         for key in from_keys {
-            if !changed_keys.contains(&key) {
-                if let Some(value) = from_trie.get(&key)? {
-                    trie.put(key, value)?;
-                }
+            if !changed_keys.contains(&key)
+                && let Some(value) = from_trie.get(&key)?
+            {
+                trie.put(key, value)?;
             }
         }
 
@@ -383,13 +383,13 @@ impl StateDiffComputer {
 
         // Find removed keys
         for key in from_key_set.iter() {
-            if !to_key_set.contains(key) {
-                if let Some(old_value) = from_trie.get(key)? {
-                    diff.add_change(StateChange::Removed {
-                        key: key.clone(),
-                        old_value: old_value.clone(),
-                    });
-                }
+            if !to_key_set.contains(key)
+                && let Some(old_value) = from_trie.get(key)?
+            {
+                diff.add_change(StateChange::Removed {
+                    key: key.clone(),
+                    old_value: old_value.clone(),
+                });
             }
         }
 

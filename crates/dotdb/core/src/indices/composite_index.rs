@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::persistence::IndexPersistence;
-use crate::indices::{BPlusTree, CompositeKey, HashIndex, Index, IndexError, IndexKey, IndexMaintenance, IndexResult, IndexStats, IndexType, IndexValue, RangeQuery, create_composite_key};
+use crate::indices::{BPlusTree, CompositeKey, HashIndex, Index, IndexError, IndexMaintenance, IndexResult, IndexStats, IndexType, IndexValue, RangeQuery};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -97,7 +97,7 @@ pub struct BitmapIndex {
 
 impl BitmapIndex {
     pub fn new(capacity: usize) -> Self {
-        let word_count = (capacity + 63) / 64;
+        let word_count = capacity.div_ceil(64);
         Self {
             bitmap: vec![0; word_count],
             count: 0,
@@ -194,6 +194,12 @@ pub struct QueryPlan {
     pub field_selectivity: HashMap<String, f64>,
     /// Recommended execution order
     pub execution_order: Vec<String>,
+}
+
+impl Default for QueryPlan {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl QueryPlan {
@@ -390,7 +396,7 @@ where
             if let Some(&position) = self.field_positions.get(field_name.as_str()) {
                 ordered_values[position] = field_value.clone();
             } else {
-                return Err(IndexError::InvalidKey(format!("Unknown field: {}", field_name)));
+                return Err(IndexError::InvalidKey(format!("Unknown field: {field_name}")));
             }
         }
 
@@ -429,7 +435,7 @@ where
                     return Ok(false);
                 }
             } else {
-                return Err(IndexError::InvalidKey(format!("Unknown field: {}", field_name)));
+                return Err(IndexError::InvalidKey(format!("Unknown field: {field_name}")));
             }
         }
         Ok(true)
@@ -498,7 +504,7 @@ where
     fn update_bitmap_indices(&mut self, key: &CompositeKey, record_id: usize) -> IndexResult<()> {
         for (field_name, &position) in &self.field_positions {
             if let Some(field_value) = key.get_field(position) {
-                let field_bitmaps = self.bitmap_indices.entry(field_name.clone()).or_insert_with(HashMap::new);
+                let field_bitmaps = self.bitmap_indices.entry(field_name.clone()).or_default();
 
                 let bitmap = field_bitmaps.entry(field_value.clone()).or_insert_with(|| BitmapIndex::new(10000)); // Default capacity
 
@@ -825,7 +831,7 @@ where
                     stats.type_specific.insert("backend".to_string(), "btree".to_string());
                     stats.type_specific.insert("field_count".to_string(), self.config.fields.len().to_string());
                     for (i, field) in self.config.fields.iter().enumerate() {
-                        stats.type_specific.insert(format!("field_{}", i), field.name.clone());
+                        stats.type_specific.insert(format!("field_{i}"), field.name.clone());
                     }
                     stats
                 } else {
@@ -839,7 +845,7 @@ where
                     stats.type_specific.insert("backend".to_string(), "hash".to_string());
                     stats.type_specific.insert("field_count".to_string(), self.config.fields.len().to_string());
                     for (i, field) in self.config.fields.iter().enumerate() {
-                        stats.type_specific.insert(format!("field_{}", i), field.name.clone());
+                        stats.type_specific.insert(format!("field_{i}"), field.name.clone());
                     }
                     stats
                 } else {
@@ -871,7 +877,7 @@ where
         let mut data = Vec::new();
 
         // Serialize field configuration as JSON for simplicity
-        let fields_json = serde_json::to_string(&self.config.fields).map_err(|e| IndexError::SerializationError(format!("Failed to serialize fields: {}", e)))?;
+        let fields_json = serde_json::to_string(&self.config.fields).map_err(|e| IndexError::SerializationError(format!("Failed to serialize fields: {e}")))?;
         let fields_bytes = fields_json.as_bytes();
         data.extend_from_slice(&fields_bytes.len().to_le_bytes());
         data.extend_from_slice(fields_bytes);
@@ -928,7 +934,7 @@ where
         let fields_json = String::from_utf8(data[offset..offset + fields_len].to_vec()).map_err(|_| IndexError::SerializationError("Invalid UTF-8 in fields".to_string()))?;
         offset += fields_len;
 
-        let fields: Vec<FieldSpec> = serde_json::from_str(&fields_json).map_err(|e| IndexError::SerializationError(format!("Failed to deserialize fields: {}", e)))?;
+        let fields: Vec<FieldSpec> = serde_json::from_str(&fields_json).map_err(|e| IndexError::SerializationError(format!("Failed to deserialize fields: {e}")))?;
 
         if offset + 9 > data.len() {
             return Err(IndexError::SerializationError("Insufficient data for config flags".to_string()));
@@ -1011,11 +1017,11 @@ where
 
     fn save_to_disk<P: AsRef<std::path::Path>>(&self, path: P) -> IndexResult<()> {
         let data = self.serialize()?;
-        std::fs::write(path, data).map_err(|e| IndexError::IoError(format!("Failed to write to disk: {}", e)))
+        std::fs::write(path, data).map_err(|e| IndexError::IoError(format!("Failed to write to disk: {e}")))
     }
 
     fn load_from_disk<P: AsRef<std::path::Path>>(&mut self, path: P) -> IndexResult<()> {
-        let data = std::fs::read(path).map_err(|e| IndexError::IoError(format!("Failed to read from disk: {}", e)))?;
+        let data = std::fs::read(path).map_err(|e| IndexError::IoError(format!("Failed to read from disk: {e}")))?;
         self.deserialize(&data)
     }
 

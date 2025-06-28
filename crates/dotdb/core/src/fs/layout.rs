@@ -148,10 +148,10 @@ impl FileSystemLayout {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() {
-                if let Some(metadata) = self.parse_file_metadata(&path, file_type.clone())? {
-                    files.push(metadata);
-                }
+            if path.is_file()
+                && let Some(metadata) = self.parse_file_metadata(&path, file_type.clone())?
+            {
+                files.push(metadata);
             }
         }
 

@@ -172,19 +172,19 @@ pub enum StateAccessError {
 impl fmt::Display for StateAccessError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StateAccessError::StorageError(msg) => write!(f, "Storage error: {}", msg),
-            StateAccessError::InvalidKey(msg) => write!(f, "Invalid key: {}", msg),
-            StateAccessError::InvalidValue(msg) => write!(f, "Invalid value: {}", msg),
-            StateAccessError::ContractNotFound(addr) => write!(f, "Contract not found: {:?}", addr),
-            StateAccessError::LayoutNotFound(addr) => write!(f, "Layout not found for contract: {:?}", addr),
-            StateAccessError::CacheError(msg) => write!(f, "Cache error: {}", msg),
+            StateAccessError::StorageError(msg) => write!(f, "Storage error: {msg}"),
+            StateAccessError::InvalidKey(msg) => write!(f, "Invalid key: {msg}"),
+            StateAccessError::InvalidValue(msg) => write!(f, "Invalid value: {msg}"),
+            StateAccessError::ContractNotFound(addr) => write!(f, "Contract not found: {addr:?}"),
+            StateAccessError::LayoutNotFound(addr) => write!(f, "Layout not found for contract: {addr:?}"),
+            StateAccessError::CacheError(msg) => write!(f, "Cache error: {msg}"),
             StateAccessError::BatchTooLarge { size, max } => {
-                write!(f, "Batch too large: {} entries, max {}", size, max)
+                write!(f, "Batch too large: {size} entries, max {max}")
             }
-            StateAccessError::KeyEncodingError(msg) => write!(f, "Key encoding error: {}", msg),
-            StateAccessError::ValueEncodingError(msg) => write!(f, "Value encoding error: {}", msg),
+            StateAccessError::KeyEncodingError(msg) => write!(f, "Key encoding error: {msg}"),
+            StateAccessError::ValueEncodingError(msg) => write!(f, "Value encoding error: {msg}"),
             StateAccessError::AccessDenied => write!(f, "Access denied"),
-            StateAccessError::OperationNotSupported(op) => write!(f, "Operation not supported: {}", op),
+            StateAccessError::OperationNotSupported(op) => write!(f, "Operation not supported: {op}"),
         }
     }
 }
@@ -211,7 +211,7 @@ impl<S: NodeStorage> StateAccessManager<S> {
 
     /// Register a storage layout for a contract
     pub fn register_layout(&self, contract: ContractAddress, layout: ContractStorageLayout) -> StateAccessResult<()> {
-        let mut layouts = self.layouts.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {}", e)))?;
+        let mut layouts = self.layouts.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
         layouts.insert(contract, layout);
         Ok(())
@@ -219,7 +219,7 @@ impl<S: NodeStorage> StateAccessManager<S> {
 
     /// Get the storage layout for a contract
     pub fn get_layout(&self, contract: ContractAddress) -> StateAccessResult<ContractStorageLayout> {
-        let layouts = self.layouts.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {}", e)))?;
+        let layouts = self.layouts.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
         layouts.get(&contract).cloned().ok_or(StateAccessError::LayoutNotFound(contract))
     }
@@ -322,9 +322,9 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         let mpt_key = self.generate_mpt_key(contract, key)?;
 
         // Read from trie
-        let trie = self.trie.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {}", e)))?;
+        let trie = self.trie.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
-        let result = trie.get(&mpt_key).map_err(|e| StateAccessError::StorageError(e.to_string()))?.map(|value| value.into());
+        let result = trie.get(&mpt_key).map_err(|e| StateAccessError::StorageError(e.to_string()))?.map(|value| value);
 
         // Update cache
         self.update_cache(contract, key, result.clone());
@@ -337,7 +337,7 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         let mpt_key = self.generate_mpt_key(contract, key)?;
 
         // Store in trie
-        let mut trie = self.trie.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {}", e)))?;
+        let mut trie = self.trie.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
         let mpt_value = Value::from(value.to_vec());
         trie.put(mpt_key, mpt_value).map_err(|e| StateAccessError::StorageError(e.to_string()))?;
@@ -358,7 +358,7 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         let mpt_key = self.generate_mpt_key(contract, key)?;
 
         // Check existence in trie
-        let trie = self.trie.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {}", e)))?;
+        let trie = self.trie.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
         let exists = trie.get(&mpt_key).map_err(|e| StateAccessError::StorageError(e.to_string()))?.is_some();
 
@@ -377,7 +377,7 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         let mpt_key = self.generate_mpt_key(contract, key)?;
 
         // Remove from trie
-        let mut trie = self.trie.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {}", e)))?;
+        let mut trie = self.trie.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
         trie.delete(&mpt_key).map_err(|e| StateAccessError::StorageError(e.to_string()))?;
 

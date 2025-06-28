@@ -15,7 +15,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
 use thiserror::Error;
 
 use super::rules::{QueryPlan, RuleError};
@@ -81,11 +80,11 @@ impl RuleEngine {
                             if application.applied {
                                 let improvement = (application.original_cost - application.new_cost) / application.original_cost;
 
-                                if improvement >= self.cost_improvement_threshold {
-                                    if let Some(optimized_plan) = application.optimized_plan.clone() {
-                                        current_plan = optimized_plan;
-                                        improved = true;
-                                    }
+                                if improvement >= self.cost_improvement_threshold
+                                    && let Some(optimized_plan) = application.optimized_plan.clone()
+                                {
+                                    current_plan = optimized_plan;
+                                    improved = true;
                                 }
                             }
                             applications.push(application);

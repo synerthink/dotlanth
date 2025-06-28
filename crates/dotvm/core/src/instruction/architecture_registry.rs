@@ -63,6 +63,12 @@ pub struct Registry64 {
     _phantom: PhantomData<Arch64>,
 }
 
+impl Default for Registry64 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Registry64 {
     pub fn new() -> Self {
         Self { _phantom: PhantomData }
@@ -194,7 +200,7 @@ impl Registry64 {
             SystemCallOpcode::CreateProcess => Ok(Arc::new(CreateProcessInstruction::new(String::from("echo")))),
             SystemCallOpcode::TerminateProcess => {
                 if let Some(vals) = args {
-                    let pid = vals.get(0).cloned().unwrap_or(0) as u32;
+                    let pid = vals.first().cloned().unwrap_or(0) as u32;
                     Ok(Arc::new(TerminateProcessInstruction::new(pid)))
                 } else {
                     Err(VMError::InvalidInstructionArguments)
@@ -242,6 +248,12 @@ impl ArchitectureRegistry<Arch64> for Registry64 {
 pub struct Registry128 {
     base_registry: Registry64,
     _phantom: PhantomData<Arch128>,
+}
+
+impl Default for Registry128 {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Registry128 {

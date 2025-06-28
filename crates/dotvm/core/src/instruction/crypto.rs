@@ -21,6 +21,12 @@ use sha2::{Digest, Sha256};
 
 pub struct HashInstruction;
 
+impl Default for HashInstruction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HashInstruction {
     pub fn new() -> Self {
         HashInstruction
@@ -44,6 +50,12 @@ impl Instruction for HashInstruction {
 
 pub struct EncryptInstruction;
 
+impl Default for EncryptInstruction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EncryptInstruction {
     pub fn new() -> Self {
         EncryptInstruction
@@ -65,6 +77,12 @@ impl Instruction for EncryptInstruction {
 
 pub struct DecryptInstruction;
 
+impl Default for DecryptInstruction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DecryptInstruction {
     pub fn new() -> Self {
         DecryptInstruction
@@ -83,6 +101,12 @@ impl Instruction for DecryptInstruction {
 }
 
 pub struct SignInstruction;
+
+impl Default for SignInstruction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl SignInstruction {
     pub fn new() -> Self {
@@ -104,6 +128,12 @@ impl Instruction for SignInstruction {
 }
 
 pub struct VerifySignatureInstruction;
+
+impl Default for VerifySignatureInstruction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl VerifySignatureInstruction {
     pub fn new() -> Self {

@@ -138,7 +138,7 @@ impl Validator {
         // Build a Merkle tree from the state
         let tree = MerkleTree::build(&state).map_err(|e| VerificationError {
             code: VerificationErrorCode::VerificationFailed,
-            message: format!("Failed to build Merkle tree: {}", e),
+            message: format!("Failed to build Merkle tree: {e}"),
             details: None,
         })?;
 
@@ -151,15 +151,15 @@ impl Validator {
         for key in state.keys() {
             let proof = tree.generate_proof(key).map_err(|e| VerificationError {
                 code: VerificationErrorCode::VerificationFailed,
-                message: format!("Failed to generate proof for key {:?}: {}", key, e),
+                message: format!("Failed to generate proof for key {key:?}: {e}"),
                 details: None,
             })?;
 
             // Verify the proof against the root hash
-            if let Some(ref hash) = root_hash {
-                if !proof.verify(hash) {
-                    failed_keys.push(key.clone());
-                }
+            if let Some(ref hash) = root_hash
+                && !proof.verify(hash)
+            {
+                failed_keys.push(key.clone());
             }
         }
 
@@ -173,48 +173,48 @@ impl Validator {
         }
 
         // If we have a snapshot manager, compare with closest snapshot
-        if let Some(ref mgr) = self.snapshot_manager {
-            if let Ok(snapshots) = mgr.list_snapshots() {
-                // Find closest snapshot to the requested version
-                let closest = snapshots.iter().filter(|s| s.version <= version).max_by_key(|s| s.version);
+        if let Some(ref mgr) = self.snapshot_manager
+            && let Ok(snapshots) = mgr.list_snapshots()
+        {
+            // Find closest snapshot to the requested version
+            let closest = snapshots.iter().filter(|s| s.version <= version).max_by_key(|s| s.version);
 
-                if let Some(snapshot_meta) = closest {
-                    if let Ok(snapshot) = mgr.load_snapshot(&snapshot_meta.id) {
-                        let snapshot_state = snapshot.deserialize_state();
+            if let Some(snapshot_meta) = closest
+                && let Ok(snapshot) = mgr.load_snapshot(&snapshot_meta.id)
+            {
+                let snapshot_state = snapshot.deserialize_state();
 
-                        // Compare snapshot state with current state for keys that should be unchanged
-                        let mut inconsistent_keys = Vec::new();
+                // Compare snapshot state with current state for keys that should be unchanged
+                let mut inconsistent_keys = Vec::new();
 
-                        for (key, value) in &snapshot_state {
-                            // Only check keys that existed before this version
-                            if snapshot_meta.version < version {
-                                if let Some(current_value) = state.get(key) {
-                                    if current_value != value {
-                                        // The value has changed unexpectedly
-                                        inconsistent_keys.push(key.clone());
-                                    }
-                                }
-                            }
-                        }
-
-                        if !inconsistent_keys.is_empty() {
-                            warnings.push(format!("{} keys have unexpected changes since snapshot {}", inconsistent_keys.len(), snapshot_meta.id));
-                        }
-
-                        // Verify root hash matches if available
-                        if let (Some(snapshot_hash), Some(current_hash)) = (snapshot_meta.root_hash, root_hash) {
-                            if snapshot_meta.version == version && snapshot_hash != current_hash {
-                                return Err(VerificationError {
-                                    code: VerificationErrorCode::RootHashMismatch,
-                                    message: "Root hash mismatch with snapshot".to_string(),
-                                    details: Some(VerificationErrorDetails::HashMismatch {
-                                        expected: snapshot_hash,
-                                        actual: current_hash,
-                                    }),
-                                });
-                            }
-                        }
+                for (key, value) in &snapshot_state {
+                    // Only check keys that existed before this version
+                    if snapshot_meta.version < version
+                        && let Some(current_value) = state.get(key)
+                        && current_value != value
+                    {
+                        // The value has changed unexpectedly
+                        inconsistent_keys.push(key.clone());
                     }
+                }
+
+                if !inconsistent_keys.is_empty() {
+                    warnings.push(format!("{} keys have unexpected changes since snapshot {}", inconsistent_keys.len(), snapshot_meta.id));
+                }
+
+                // Verify root hash matches if available
+                if let (Some(snapshot_hash), Some(current_hash)) = (snapshot_meta.root_hash, root_hash)
+                    && snapshot_meta.version == version
+                    && snapshot_hash != current_hash
+                {
+                    return Err(VerificationError {
+                        code: VerificationErrorCode::RootHashMismatch,
+                        message: "Root hash mismatch with snapshot".to_string(),
+                        details: Some(VerificationErrorDetails::HashMismatch {
+                            expected: snapshot_hash,
+                            actual: current_hash,
+                        }),
+                    });
                 }
             }
         }
@@ -246,7 +246,7 @@ impl Validator {
 
         let snapshot = snapshot_manager.load_snapshot(snapshot_id).map_err(|e| VerificationError {
             code: VerificationErrorCode::VerificationFailed,
-            message: format!("Failed to load snapshot: {}", e),
+            message: format!("Failed to load snapshot: {e}"),
             details: None,
         })?;
 
@@ -255,24 +255,24 @@ impl Validator {
         // Build a Merkle tree from the snapshot state
         let tree = MerkleTree::build(&state).map_err(|e| VerificationError {
             code: VerificationErrorCode::VerificationFailed,
-            message: format!("Failed to build Merkle tree from snapshot: {}", e),
+            message: format!("Failed to build Merkle tree from snapshot: {e}"),
             details: None,
         })?;
 
         let computed_root_hash = tree.root_hash();
 
         // Compare with the stored root hash if available
-        if let (Some(stored_hash), Some(computed_hash)) = (snapshot.metadata.root_hash, computed_root_hash) {
-            if stored_hash != computed_hash {
-                return Err(VerificationError {
-                    code: VerificationErrorCode::RootHashMismatch,
-                    message: "Snapshot root hash mismatch".to_string(),
-                    details: Some(VerificationErrorDetails::HashMismatch {
-                        expected: stored_hash,
-                        actual: computed_hash,
-                    }),
-                });
-            }
+        if let (Some(stored_hash), Some(computed_hash)) = (snapshot.metadata.root_hash, computed_root_hash)
+            && stored_hash != computed_hash
+        {
+            return Err(VerificationError {
+                code: VerificationErrorCode::RootHashMismatch,
+                message: "Snapshot root hash mismatch".to_string(),
+                details: Some(VerificationErrorDetails::HashMismatch {
+                    expected: stored_hash,
+                    actual: computed_hash,
+                }),
+            });
         }
 
         // Validate individual entries
@@ -281,15 +281,15 @@ impl Validator {
         for key in state.keys() {
             let proof = tree.generate_proof(key).map_err(|e| VerificationError {
                 code: VerificationErrorCode::VerificationFailed,
-                message: format!("Failed to generate proof for key {:?}: {}", key, e),
+                message: format!("Failed to generate proof for key {key:?}: {e}"),
                 details: None,
             })?;
 
             // Verify the proof against the root hash
-            if let Some(ref hash) = computed_root_hash {
-                if !proof.verify(hash) {
-                    failed_keys.push(key.clone());
-                }
+            if let Some(ref hash) = computed_root_hash
+                && !proof.verify(hash)
+            {
+                failed_keys.push(key.clone());
             }
         }
 
@@ -308,7 +308,7 @@ impl Validator {
             version: snapshot.metadata.version,
             root_hash: computed_root_hash,
             entries_count: state.len(),
-            details: Some(format!("Snapshot {} verification successful", snapshot_id)),
+            details: Some(format!("Snapshot {snapshot_id} verification successful")),
             warnings: Vec::new(),
         })
     }
@@ -342,13 +342,13 @@ impl Validator {
         let _old_tree = MerkleTree::build(&old_state).map_err(|e| VerificationError {
             // Prefixed with _
             code: VerificationErrorCode::VerificationFailed,
-            message: format!("Failed to build tree for version {}: {}", from_version, e),
+            message: format!("Failed to build tree for version {from_version}: {e}"),
             details: None,
         })?;
 
         let new_tree = MerkleTree::build(&new_state).map_err(|e| VerificationError {
             code: VerificationErrorCode::VerificationFailed,
-            message: format!("Failed to build tree for version {}: {}", to_version, e),
+            message: format!("Failed to build tree for version {to_version}: {e}"),
             details: None,
         })?;
 
@@ -383,7 +383,7 @@ impl Validator {
             version: to_version,
             root_hash: new_tree.root_hash(),
             entries_count: new_state.len(),
-            details: Some(format!("Transition from {} to {} validated", from_version, to_version)),
+            details: Some(format!("Transition from {from_version} to {to_version} validated")),
             warnings,
         })
     }
