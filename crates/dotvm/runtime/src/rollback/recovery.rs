@@ -1,4 +1,4 @@
-use crate::rollback::checkpoint::{Checkpoint, CheckpointManager};
+use crate::rollback::checkpoint::CheckpointManager;
 use crate::rollback::lib::{LogLevel, RollbackError, RollbackResult, SystemState, log_event};
 use crate::rollback::state::StateRollback;
 use std::collections::HashMap;

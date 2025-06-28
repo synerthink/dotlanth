@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::async_runtime::Priority;
 use crate::async_runtime::executor::FutureExecutor;
-use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskMetrics, TaskState};
-use crate::async_runtime::scheduler::AsyncTaskScheduler;
+use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId};
+use crate::async_runtime::scheduler::{AsyncTaskScheduler, Priority};
 use std::collections::HashMap;
 use std::sync::{
     Arc, Mutex,

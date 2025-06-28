@@ -20,7 +20,6 @@
 //! code and unused variables/functions.
 
 use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
-use dotvm_core::opcode::control_flow_opcodes::ControlFlowOpcode;
 use std::collections::{HashMap, HashSet};
 
 /// Dead code eliminator for DotVM bytecode

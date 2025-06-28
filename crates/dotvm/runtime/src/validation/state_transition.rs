@@ -29,7 +29,7 @@
 //! - Gas cost accounting for state changes
 //! - Custom validation rules
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 

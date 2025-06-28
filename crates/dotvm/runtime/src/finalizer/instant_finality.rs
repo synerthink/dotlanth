@@ -18,12 +18,11 @@ use crate::finalizer::finality_confirmation::FinalityConfirmation;
 use crate::finalizer::finality_validation::FinalityValidator;
 use crate::finalizer::lib::FinalityError;
 use crate::finalizer::lib::FinalityResult;
-use crate::finalizer::lib::{FinalityStatus, State, StateTransition, TransitionMetadata, ValidationResult, generate_unique_id};
+use crate::finalizer::lib::{FinalityStatus, State, StateTransition};
 use crate::finalizer::logging_audit::AuditLogger;
 use dashmap::DashMap;
-use futures::StreamExt;
-use futures::stream::FuturesUnordered;
-use ring::signature::{Ed25519KeyPair, KeyPair};
+use futures::{StreamExt, stream::FuturesUnordered};
+use ring::signature::Ed25519KeyPair;
 use std::io::{Error, ErrorKind};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -44,7 +43,7 @@ impl InstantFinalityModule {
         let state_store = Arc::new(Mutex::new(DashMap::new()));
 
         {
-            let mut state_store_locked = state_store.lock().await;
+            let state_store_locked = state_store.lock().await;
             state_store_locked.insert("current".to_string(), initial_state);
         }
 
@@ -88,7 +87,7 @@ impl InstantFinalityModule {
 
     /// Atomic state transition finalization
     pub async fn finalize_transition(&self, transition: StateTransition) -> FinalityResult<FinalityConfirmation> {
-        let mut state_store = self.state_store.lock().await; // Mutex ile state_store'a erişim
+        let state_store = self.state_store.lock().await; // Mutex ile state_store'a erişim
 
         // Verify state version consistency
         let current = state_store
@@ -123,7 +122,7 @@ impl InstantFinalityModule {
 
     /// Set current state
     pub async fn set_current_state(&self, state: State) {
-        let mut state_store = self.state_store.lock().await;
+        let state_store = self.state_store.lock().await;
         state_store.insert("current".to_string(), state);
     }
 

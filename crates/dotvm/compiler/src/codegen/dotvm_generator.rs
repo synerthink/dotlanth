@@ -498,7 +498,7 @@ impl BytecodeGenerator {
 
     /// Apply bytecode optimizations
     fn apply_optimizations(&mut self) -> Result<u32, BytecodeGenerationError> {
-        let mut optimizations_applied = 0;
+        let optimizations_applied = 0;
 
         // TODO: Implement various optimization passes:
         // - Dead code elimination
@@ -566,9 +566,9 @@ impl BytecodeGenerator {
 
     /// Generate debug information
     fn generate_debug_info(&self, functions: &[TranspiledFunction]) -> Result<DebugInfo, BytecodeGenerationError> {
-        let mut source_map = HashMap::new();
-        let mut function_names = HashMap::new();
-        let mut local_names = HashMap::new();
+        let source_map = HashMap::new();
+        let function_names = HashMap::new();
+        let local_names = HashMap::new();
 
         // TODO: Implement debug info generation
         // This would include mapping bytecode offsets to original WASM instructions,

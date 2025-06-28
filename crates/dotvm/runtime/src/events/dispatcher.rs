@@ -18,7 +18,7 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
-use crate::events::lib::{Event, EventHandler, HandlerId, event_downcast, generate_handler_id};
+use crate::events::lib::{Event, HandlerId, event_downcast, generate_handler_id};
 use crate::events::queue::EventQueue;
 
 /// The EventDispatcher handles registration of event handlers

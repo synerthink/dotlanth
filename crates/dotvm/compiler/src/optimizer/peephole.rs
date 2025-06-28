@@ -20,11 +20,7 @@
 //! of instructions and replace them with more efficient equivalents.
 
 use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
-use dotvm_core::{
-    bytecode::VmArchitecture,
-    opcode::{arithmetic_opcodes::ArithmeticOpcode, bigint_opcodes::BigIntOpcode, control_flow_opcodes::ControlFlowOpcode, memory_opcodes::MemoryOpcode},
-};
-use std::collections::HashMap;
+use dotvm_core::bytecode::VmArchitecture;
 
 /// Peephole optimizer for DotVM bytecode
 pub struct PeepholeOptimizer {

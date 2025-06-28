@@ -1,4 +1,4 @@
-use crate::rollback::lib::{LogLevel, RollbackError, RollbackResult, SystemState, generate_checkpoint_id, log_event};
+use crate::rollback::lib::{LogLevel, RollbackError, RollbackResult, SystemState, log_event};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Mutex;

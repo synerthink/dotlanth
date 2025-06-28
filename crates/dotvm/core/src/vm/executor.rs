@@ -442,8 +442,8 @@ impl VmExecutor {
         match opcode {
             DatabaseOpcode::DbGet => {
                 // Stack: [collection_name, document_id] -> [document_json]
-                let document_id = self.context.stack.pop()?.to_string();
-                let collection_name = self.context.stack.pop()?.to_string();
+                let document_id = self.context.stack.pop()?.as_string_value();
+                let collection_name = self.context.stack.pop()?.as_string_value();
 
                 match self.database_bridge.get_document(&collection_name, &document_id) {
                     Ok(Some(document_json)) => {
@@ -460,8 +460,8 @@ impl VmExecutor {
 
             DatabaseOpcode::DbPut => {
                 // Stack: [collection_name, document_json] -> [document_id]
-                let document_json = self.context.stack.pop()?.to_string();
-                let collection_name = self.context.stack.pop()?.to_string();
+                let document_json = self.context.stack.pop()?.as_string_value();
+                let collection_name = self.context.stack.pop()?.as_string_value();
 
                 match self.database_bridge.put_document(&collection_name, &document_json) {
                     Ok(document_id) => {
@@ -475,9 +475,9 @@ impl VmExecutor {
 
             DatabaseOpcode::DbUpdate => {
                 // Stack: [collection_name, document_id, document_json] -> []
-                let document_json = self.context.stack.pop()?.to_string();
-                let document_id = self.context.stack.pop()?.to_string();
-                let collection_name = self.context.stack.pop()?.to_string();
+                let document_json = self.context.stack.pop()?.as_string_value();
+                let document_id = self.context.stack.pop()?.as_string_value();
+                let collection_name = self.context.stack.pop()?.as_string_value();
 
                 if let Err(e) = self.database_bridge.update_document(&collection_name, &document_id, &document_json) {
                     return Err(ExecutorError::DatabaseError(e.to_string()));
@@ -486,8 +486,8 @@ impl VmExecutor {
 
             DatabaseOpcode::DbDelete => {
                 // Stack: [collection_name, document_id] -> []
-                let document_id = self.context.stack.pop()?.to_string();
-                let collection_name = self.context.stack.pop()?.to_string();
+                let document_id = self.context.stack.pop()?.as_string_value();
+                let collection_name = self.context.stack.pop()?.as_string_value();
 
                 if let Err(e) = self.database_bridge.delete_document(&collection_name, &document_id) {
                     return Err(ExecutorError::DatabaseError(e.to_string()));
@@ -496,13 +496,12 @@ impl VmExecutor {
 
             DatabaseOpcode::DbList => {
                 // Stack: [collection_name] -> [document_ids_array]
-                let collection_name = self.context.stack.pop()?.to_string();
+                let collection_name = self.context.stack.pop()?.as_string_value();
 
                 match self.database_bridge.list_documents(&collection_name) {
                     Ok(document_ids) => {
                         // Convert to JSON array string
-                        let json_array = serde_json::to_string(&document_ids)
-                            .map_err(|e| ExecutorError::DatabaseError(format!("Failed to serialize document IDs: {}", e)))?;
+                        let json_array = serde_json::to_string(&document_ids).map_err(|e| ExecutorError::DatabaseError(format!("Failed to serialize document IDs: {}", e)))?;
                         self.context.stack.push(StackValue::String(json_array))?;
                     }
                     Err(e) => {
@@ -513,7 +512,7 @@ impl VmExecutor {
 
             DatabaseOpcode::DbCreateCollection => {
                 // Stack: [collection_name] -> []
-                let collection_name = self.context.stack.pop()?.to_string();
+                let collection_name = self.context.stack.pop()?.as_string_value();
 
                 if let Err(e) = self.database_bridge.create_collection(&collection_name) {
                     return Err(ExecutorError::DatabaseError(e.to_string()));
@@ -522,7 +521,7 @@ impl VmExecutor {
 
             DatabaseOpcode::DbDeleteCollection => {
                 // Stack: [collection_name] -> []
-                let collection_name = self.context.stack.pop()?.to_string();
+                let collection_name = self.context.stack.pop()?.as_string_value();
 
                 if let Err(e) = self.database_bridge.delete_collection(&collection_name) {
                     return Err(ExecutorError::DatabaseError(e.to_string()));
@@ -541,12 +540,10 @@ impl VmExecutor {
                 // For now, implement a simple unconditional jump
                 // In a real implementation, this would need jump targets
                 // For the MVP, we'll implement a simple relative jump using the top stack value
-                let offset = self.context.stack.pop()?.to_i64().ok_or_else(|| {
-                    ExecutorError::TypeMismatch {
-                        operation: "jump".to_string(),
-                        left: "stack_value".to_string(),
-                        right: "integer".to_string(),
-                    }
+                let offset = self.context.stack.pop()?.to_i64().ok_or_else(|| ExecutorError::TypeMismatch {
+                    operation: "jump".to_string(),
+                    left: "stack_value".to_string(),
+                    right: "integer".to_string(),
                 })?;
 
                 // Calculate new PC (with bounds checking)
@@ -568,20 +565,16 @@ impl VmExecutor {
             ControlFlowOpcode::IfElse => {
                 // Conditional execution based on stack top
                 // Stack: [condition, true_offset, false_offset] -> []
-                let false_offset = self.context.stack.pop()?.to_i64().ok_or_else(|| {
-                    ExecutorError::TypeMismatch {
-                        operation: "if_else".to_string(),
-                        left: "stack_value".to_string(),
-                        right: "integer".to_string(),
-                    }
+                let false_offset = self.context.stack.pop()?.to_i64().ok_or_else(|| ExecutorError::TypeMismatch {
+                    operation: "if_else".to_string(),
+                    left: "stack_value".to_string(),
+                    right: "integer".to_string(),
                 })?;
 
-                let true_offset = self.context.stack.pop()?.to_i64().ok_or_else(|| {
-                    ExecutorError::TypeMismatch {
-                        operation: "if_else".to_string(),
-                        left: "stack_value".to_string(),
-                        right: "integer".to_string(),
-                    }
+                let true_offset = self.context.stack.pop()?.to_i64().ok_or_else(|| ExecutorError::TypeMismatch {
+                    operation: "if_else".to_string(),
+                    left: "stack_value".to_string(),
+                    right: "integer".to_string(),
                 })?;
 
                 let condition = self.context.stack.pop()?.to_bool();
@@ -607,12 +600,10 @@ impl VmExecutor {
             ControlFlowOpcode::ForLoop | ControlFlowOpcode::WhileLoop | ControlFlowOpcode::DoWhileLoop => {
                 // For the MVP, we'll implement these as simple jumps
                 // In a full implementation, these would have more sophisticated loop handling
-                let offset = self.context.stack.pop()?.to_i64().ok_or_else(|| {
-                    ExecutorError::TypeMismatch {
-                        operation: "loop".to_string(),
-                        left: "stack_value".to_string(),
-                        right: "integer".to_string(),
-                    }
+                let offset = self.context.stack.pop()?.to_i64().ok_or_else(|| ExecutorError::TypeMismatch {
+                    operation: "loop".to_string(),
+                    left: "stack_value".to_string(),
+                    right: "integer".to_string(),
                 })?;
 
                 let new_pc = if offset >= 0 {

@@ -20,9 +20,8 @@
 //! into our internal AST representation for further transpilation to DotVM bytecode.
 
 use crate::wasm::ast::*;
-use std::collections::HashMap;
 use thiserror::Error;
-use wasmparser::{BinaryReader, Export, FuncType, Import, Operator, Parser, Payload, TypeRef, ValType, WasmFeatures};
+use wasmparser::{Export, FuncType, Import, Operator, Parser, Payload, TypeRef, ValType, WasmFeatures};
 
 /// Errors that can occur during WASM parsing
 #[derive(Error, Debug)]
@@ -400,8 +399,8 @@ impl WasmParser {
                     align: memarg.align as u32,
                 },
             }),
-            Operator::MemorySize { mem, .. } => Ok(WasmInstruction::MemorySize),
-            Operator::MemoryGrow { mem, .. } => Ok(WasmInstruction::MemoryGrow),
+            Operator::MemorySize { .. } => Ok(WasmInstruction::MemorySize),
+            Operator::MemoryGrow { .. } => Ok(WasmInstruction::MemoryGrow),
 
             // Numeric instructions - Constants
             Operator::I32Const { value } => Ok(WasmInstruction::I32Const { value: *value }),

@@ -15,7 +15,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Represents a WebAssembly value type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

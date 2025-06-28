@@ -23,10 +23,7 @@
 use crate::wasm::ast::{WasmFunction, WasmInstruction, WasmValueType};
 use dotvm_core::{
     bytecode::VmArchitecture,
-    opcode::{
-        architecture_opcodes::{Opcode128, Opcode256, Opcode512},
-        arithmetic_opcodes::ArithmeticOpcode,
-    },
+    opcode::architecture_opcodes::{Opcode128, Opcode256, Opcode512},
 };
 use std::collections::HashMap;
 use thiserror::Error;

@@ -156,7 +156,7 @@ impl StackValue {
     }
 
     /// Convert to string (for database operations)
-    pub fn to_string(&self) -> String {
+    pub fn as_string_value(&self) -> String {
         match self {
             StackValue::String(s) => s.clone(),
             StackValue::DocumentId(s) => s.clone(),

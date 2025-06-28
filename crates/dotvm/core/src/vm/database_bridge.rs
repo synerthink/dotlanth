@@ -48,10 +48,10 @@ impl DatabaseBridge {
     /// Get a document from the database
     pub fn get_document(&self, collection: &str, document_id: &str) -> Result<Option<String>, DatabaseBridgeError> {
         let manager = self.collection_manager.lock().map_err(|_| DatabaseBridgeError::LockError)?;
-        
+
         // Parse document ID
         let doc_id = DocumentId::from_string(document_id).map_err(|e| DatabaseBridgeError::InvalidDocumentId(e.to_string()))?;
-        
+
         // Get document
         match manager.get_json(collection, &doc_id) {
             Ok(Some(json_str)) => Ok(Some(json_str)),
@@ -62,67 +62,73 @@ impl DatabaseBridge {
 
     /// Put a document to the database
     pub fn put_document(&self, collection: &str, document_json: &str) -> Result<String, DatabaseBridgeError> {
+        // Validate JSON first
+        serde_json::from_str::<Value>(document_json).map_err(|e| DatabaseBridgeError::InvalidJson(e.to_string()))?;
+
         let manager = self.collection_manager.lock().map_err(|_| DatabaseBridgeError::LockError)?;
-        
+
         // Insert JSON document
         let doc_id = manager.insert_json(collection, document_json).map_err(|e| DatabaseBridgeError::DatabaseError(e.to_string()))?;
-        
+
         Ok(doc_id.to_string())
     }
 
     /// Update a document in the database
     pub fn update_document(&self, collection: &str, document_id: &str, document_json: &str) -> Result<(), DatabaseBridgeError> {
+        // Validate JSON first
+        serde_json::from_str::<Value>(document_json).map_err(|e| DatabaseBridgeError::InvalidJson(e.to_string()))?;
+
         let manager = self.collection_manager.lock().map_err(|_| DatabaseBridgeError::LockError)?;
-        
+
         // Parse document ID
         let doc_id = DocumentId::from_string(document_id).map_err(|e| DatabaseBridgeError::InvalidDocumentId(e.to_string()))?;
-        
+
         // Update document
         manager.update_json(collection, &doc_id, document_json).map_err(|e| DatabaseBridgeError::DatabaseError(e.to_string()))?;
-        
+
         Ok(())
     }
 
     /// Delete a document from the database
     pub fn delete_document(&self, collection: &str, document_id: &str) -> Result<(), DatabaseBridgeError> {
         let manager = self.collection_manager.lock().map_err(|_| DatabaseBridgeError::LockError)?;
-        
+
         // Parse document ID
         let doc_id = DocumentId::from_string(document_id).map_err(|e| DatabaseBridgeError::InvalidDocumentId(e.to_string()))?;
-        
+
         // Delete document
         manager.delete(collection, &doc_id).map_err(|e| DatabaseBridgeError::DatabaseError(e.to_string()))?;
-        
+
         Ok(())
     }
 
     /// List documents in a collection
     pub fn list_documents(&self, collection: &str) -> Result<Vec<String>, DatabaseBridgeError> {
         let manager = self.collection_manager.lock().map_err(|_| DatabaseBridgeError::LockError)?;
-        
+
         // List documents
         let doc_ids = manager.list_document_ids(collection).map_err(|e| DatabaseBridgeError::DatabaseError(e.to_string()))?;
-        
+
         Ok(doc_ids.into_iter().map(|id| id.to_string()).collect())
     }
 
     /// Create a collection
     pub fn create_collection(&self, collection: &str) -> Result<(), DatabaseBridgeError> {
         let manager = self.collection_manager.lock().map_err(|_| DatabaseBridgeError::LockError)?;
-        
+
         // Create collection
         manager.create_collection(collection).map_err(|e| DatabaseBridgeError::DatabaseError(e.to_string()))?;
-        
+
         Ok(())
     }
 
     /// Delete a collection
     pub fn delete_collection(&self, collection: &str) -> Result<(), DatabaseBridgeError> {
         let manager = self.collection_manager.lock().map_err(|_| DatabaseBridgeError::LockError)?;
-        
+
         // Delete collection
         manager.delete_collection(collection).map_err(|e| DatabaseBridgeError::DatabaseError(e.to_string()))?;
-        
+
         Ok(())
     }
 
@@ -140,9 +146,7 @@ impl Default for DatabaseBridge {
 
 impl std::fmt::Debug for DatabaseBridge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DatabaseBridge")
-            .field("collection_manager", &"Arc<Mutex<CollectionManager>>")
-            .finish()
+        f.debug_struct("DatabaseBridge").field("collection_manager", &"Arc<Mutex<CollectionManager>>").finish()
     }
 }
 
@@ -178,21 +182,21 @@ mod tests {
     #[test]
     fn test_put_and_get_document() {
         let bridge = DatabaseBridge::new();
-        
+
         // Create collection first
         bridge.create_collection("test_collection").unwrap();
-        
+
         // Put document
         let doc_json = r#"{"name": "Alice", "age": 30}"#;
         let doc_id = bridge.put_document("test_collection", doc_json).unwrap();
-        
+
         // Get document
         let retrieved = bridge.get_document("test_collection", &doc_id).unwrap();
         assert!(retrieved.is_some());
-        
+
         let retrieved_json: Value = serde_json::from_str(&retrieved.unwrap()).unwrap();
         let original_json: Value = serde_json::from_str(doc_json).unwrap();
-        
+
         // Compare the data (ignoring potential ordering differences)
         assert_eq!(retrieved_json["name"], original_json["name"]);
         assert_eq!(retrieved_json["age"], original_json["age"]);
@@ -201,39 +205,39 @@ mod tests {
     #[test]
     fn test_update_document() {
         let bridge = DatabaseBridge::new();
-        
+
         // Create collection
         bridge.create_collection("test_collection").unwrap();
-        
+
         // Put document
         let doc_json = r#"{"name": "Bob", "age": 25}"#;
         let doc_id = bridge.put_document("test_collection", doc_json).unwrap();
-        
+
         // Update document
         let updated_json = r#"{"name": "Bob", "age": 26}"#;
         bridge.update_document("test_collection", &doc_id, updated_json).unwrap();
-        
+
         // Get updated document
         let retrieved = bridge.get_document("test_collection", &doc_id).unwrap().unwrap();
         let retrieved_json: Value = serde_json::from_str(&retrieved).unwrap();
-        
+
         assert_eq!(retrieved_json["age"], 26);
     }
 
     #[test]
     fn test_delete_document() {
         let bridge = DatabaseBridge::new();
-        
+
         // Create collection
         bridge.create_collection("test_collection").unwrap();
-        
+
         // Put document
         let doc_json = r#"{"name": "Charlie", "age": 35}"#;
         let doc_id = bridge.put_document("test_collection", doc_json).unwrap();
-        
+
         // Delete document
         bridge.delete_document("test_collection", &doc_id).unwrap();
-        
+
         // Try to get deleted document
         let retrieved = bridge.get_document("test_collection", &doc_id).unwrap();
         assert!(retrieved.is_none());
@@ -242,17 +246,17 @@ mod tests {
     #[test]
     fn test_list_documents() {
         let bridge = DatabaseBridge::new();
-        
+
         // Create collection
         bridge.create_collection("test_collection").unwrap();
-        
+
         // Put multiple documents
         let doc1_id = bridge.put_document("test_collection", r#"{"name": "Doc1"}"#).unwrap();
         let doc2_id = bridge.put_document("test_collection", r#"{"name": "Doc2"}"#).unwrap();
-        
+
         // List documents
         let doc_ids = bridge.list_documents("test_collection").unwrap();
-        
+
         assert_eq!(doc_ids.len(), 2);
         assert!(doc_ids.contains(&doc1_id));
         assert!(doc_ids.contains(&doc2_id));
@@ -261,10 +265,10 @@ mod tests {
     #[test]
     fn test_invalid_json() {
         let bridge = DatabaseBridge::new();
-        
+
         // Create collection
         bridge.create_collection("test_collection").unwrap();
-        
+
         // Try to put invalid JSON
         let result = bridge.put_document("test_collection", "invalid json");
         assert!(matches!(result, Err(DatabaseBridgeError::InvalidJson(_))));

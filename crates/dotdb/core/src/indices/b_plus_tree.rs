@@ -16,7 +16,7 @@
 
 use super::lib::{Index, IndexError, IndexIterator, IndexKey, IndexMaintenance, IndexResult, IndexStats, IndexType, IndexValue, RangeQuery};
 use super::persistence::IndexPersistence;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::{Arc, RwLock};
 

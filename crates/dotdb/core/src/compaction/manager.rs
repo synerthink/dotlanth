@@ -19,7 +19,7 @@ use super::strategy::{LeveledStrategy, SizeTieredStrategy, TimeWindowStrategy};
 use crate::fs::FileMetadata;
 use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::mpsc;

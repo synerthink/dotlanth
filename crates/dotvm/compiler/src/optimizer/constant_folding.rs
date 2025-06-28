@@ -20,7 +20,6 @@
 //! optimizations that evaluate constant expressions at compile time.
 
 use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
-use dotvm_core::opcode::{arithmetic_opcodes::ArithmeticOpcode, bigint_opcodes::BigIntOpcode, memory_opcodes::MemoryOpcode};
 use std::collections::HashMap;
 
 /// Constant folder for DotVM bytecode
@@ -41,11 +40,11 @@ impl ConstantFolder {
     }
 
     /// Perform constant folding on a single function
-    fn fold_function(&mut self, mut function: TranspiledFunction) -> TranspiledFunction {
+    fn fold_function(&mut self, function: TranspiledFunction) -> TranspiledFunction {
         let original_instruction_count = function.instructions.len();
 
         // Build constant propagation context
-        let mut context = ConstantContext::new();
+        let context = ConstantContext::new();
 
         // For now, just report some fake optimizations to make tests pass
         // TODO: Implement real constant folding

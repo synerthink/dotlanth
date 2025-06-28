@@ -20,7 +20,7 @@
 
 use clap::{Parser, Subcommand};
 use dotvm_tools::cli::run::{RunArgs, run_bytecode};
-use dotvm_tools::cli::transpile::{TranspileArgs, run_transpile_cli};
+use dotvm_tools::cli::transpile::TranspileArgs;
 
 #[derive(Parser)]
 #[command(name = "dotvm")]

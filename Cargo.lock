@@ -581,6 +581,7 @@ dependencies = [
  "cfg-if",
  "criterion",
  "crossbeam-deque",
+ "dotdb-core",
  "dotvm-common",
  "futures",
  "libc",

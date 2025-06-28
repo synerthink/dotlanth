@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::async_runtime::PollResult;
-use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskMetrics, TaskState};
+use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskState};
 use crate::async_runtime::scheduler::{AsyncTaskScheduler, Priority, Task};
 use futures::Future;
 use futures::task::{ArcWake, Context, Poll, Waker};

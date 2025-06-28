@@ -30,7 +30,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
-    time::{SystemTime, UNIX_EPOCH},
+    time::SystemTime,
 };
 use tokio::sync::Mutex;
 

@@ -20,16 +20,12 @@
 //! modules into DotVM bytecode, handling control flow translation, memory model
 //! adaptation, and architecture-specific optimizations.
 
-use crate::{
-    optimizer::Optimizer,
-    wasm::{
-        ast::{WasmFunction, WasmInstruction, WasmModule},
-        opcode_mapper::{MappedInstruction, OpcodeMapper, OpcodeMappingError},
-        parser::{WasmParseError, WasmParser},
-    },
+use crate::wasm::{
+    ast::{WasmFunction, WasmInstruction, WasmModule},
+    opcode_mapper::{OpcodeMapper, OpcodeMappingError},
+    parser::{WasmParseError, WasmParser},
 };
 use dotvm_core::bytecode::{BytecodeHeader, VmArchitecture};
-use std::collections::HashMap;
 use thiserror::Error;
 
 /// Errors that can occur during transpilation
