@@ -20,7 +20,7 @@ use crate::{
         instruction::{ExecutorInterface, Instruction, MemoryManagerInterface},
         registry::{InstructionRegistry, Opcode},
     },
-    memory::Architecture,
+    memory::{Architecture, MemoryManager},
     vm::{errors::VMError, vm_factory::VmInstance},
 };
 use std::marker::PhantomData;
@@ -470,21 +470,5 @@ mod tests {
         assert!(exec.is_compatibility_mode); // Still in compat mode conceptually
         assert_eq!(exec.guest_vm_arch_label, VmArchitecture::Arch32);
         assert_eq!(exec.host_vm_arch_label, VmArchitecture::Arch128);
-    }
-
-    // Removed the TestMemoryManagerInterfaceExt and related complexity,
-    // as direct testing of the boxed trait object's underlying type is non-trivial
-    // and better covered by behavior (e.g., does compat mode work as expected).
-    // The MemoryManager<A>::architecture_word_size() helper is also removed as it was
-    // part of the problematic test structure. The executor's own labels are the source of truth now.
-    impl<A: Architecture> MemoryManager<A> {
-        // This test-only helper was defined in the original file, keeping it if it's used by other tests
-        // not being modified here. If not, it can be removed.
-        // It seems it was used by the old `test_new_executors`.
-        // The new `test_new_executors_native_mode` doesn't use it directly on memory_manager field anymore.
-        // Let's remove it to clean up as it's no longer directly used by the refactored tests.
-        // pub fn architecture_word_size(&self) -> usize {
-        //     A::WORD_SIZE
-        // }
     }
 }

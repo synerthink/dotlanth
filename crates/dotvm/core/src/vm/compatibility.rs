@@ -29,7 +29,7 @@ use crate::{
 pub struct AdaptedMemoryManager<HostArch: Architecture> {
     host_memory_manager: MemoryManager<HostArch>, // MemoryManager is Debug
     #[allow(dead_code)]
-    guest_arch: VmArchitecture,                   // VmArchitecture is Debug
+    guest_arch: VmArchitecture, // VmArchitecture is Debug
 }
 
 impl<HostArch: Architecture + std::fmt::Debug> AdaptedMemoryManager<HostArch> {

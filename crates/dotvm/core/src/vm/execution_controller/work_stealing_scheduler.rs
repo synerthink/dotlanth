@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{ExecutionError, Task}; // TaskPriority removed from here
+use super::{ExecutionError, Task, TaskPriority};
 // Removed unused import - TaskPriority may be needed later for priority scheduling
 use crossbeam_deque::{Steal, Stealer, Worker};
 use std::collections::BinaryHeap;
