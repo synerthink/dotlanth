@@ -56,10 +56,14 @@ pub struct TranspiledFunction {
     pub name: String,
     /// DotVM bytecode instructions
     pub instructions: Vec<TranspiledInstruction>,
+    /// Parameter count
+    pub param_count: usize,
     /// Local variable count
     pub local_count: usize,
-    /// Parameter count
-    pub parameter_count: usize,
+    /// Whether this function is exported
+    pub is_exported: bool,
+    /// Debug information (source file, line numbers, etc.)
+    pub debug_info: Option<String>,
 }
 
 /// A single transpiled instruction with additional information
@@ -68,7 +72,22 @@ pub struct TranspiledInstruction {
     /// Opcode string
     pub opcode: String,
     /// Operands
-    pub operands: Vec<String>,
+    pub operands: Vec<Operand>,
+    /// Optional label for this instruction
+    pub label: Option<String>,
+}
+
+/// Operand types for instructions
+#[derive(Debug, Clone)]
+pub enum Operand {
+    /// Immediate value
+    Immediate(u32),
+    /// Register reference
+    Register(u16),
+    /// Label reference for jumps
+    Label(String),
+    /// Memory reference with base register and offset
+    Memory { base: u16, offset: u32 },
 }
 
 /// Local variable information
@@ -159,7 +178,7 @@ pub struct ExportInfo {
     pub index: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ExportKind {
     Function,
     Memory,
@@ -170,17 +189,29 @@ pub enum ExportKind {
 /// Import information
 #[derive(Debug, Clone)]
 pub struct ImportInfo {
-    pub module: String,
     pub name: String,
+    pub module_name: String,
     pub kind: ImportKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ImportKind {
     Function { type_index: u32 },
     Memory,
     Global,
     Table,
+}
+
+impl ImportKind {
+    /// Convert to u8 for serialization
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            ImportKind::Function { .. } => 0,
+            ImportKind::Memory => 1,
+            ImportKind::Global => 2,
+            ImportKind::Table => 3,
+        }
+    }
 }
 
 /// Configuration for the transpilation process
@@ -345,7 +376,22 @@ impl TranspilationEngine {
             for mapped in mapped_instructions {
                 let transpiled = TranspiledInstruction {
                     opcode: format!("{:?}", mapped.opcode), // Convert to string representation
-                    operands: mapped.operands.iter().map(|op| op.to_string()).collect(),
+                    operands: mapped
+                        .operands
+                        .iter()
+                        .map(|&op| {
+                            // Convert u64 operands to proper Operand enum
+                            // For now, treat all as immediate values
+                            // TODO: Implement proper operand type detection based on instruction context
+                            if op <= u32::MAX as u64 {
+                                Operand::Immediate(op as u32)
+                            } else {
+                                // For large values, we might need to split or handle differently
+                                Operand::Immediate((op & 0xFFFFFFFF) as u32)
+                            }
+                        })
+                        .collect(),
+                    label: None, // TODO: Extract labels from control flow analysis
                 };
 
                 instructions.push(transpiled);
@@ -353,14 +399,16 @@ impl TranspilationEngine {
         }
 
         // Calculate local and parameter counts
-        let parameter_count = wasm_function.signature.params.len();
-        let local_count = parameter_count + wasm_function.locals.len();
+        let param_count = wasm_function.signature.params.len();
+        let local_count = param_count + wasm_function.locals.len();
 
         Ok(TranspiledFunction {
             name: format!("func_{index}"), // Generate a name since WasmFunction doesn't have one
             instructions,
+            param_count,
             local_count,
-            parameter_count,
+            is_exported: false, // Will be set during export processing
+            debug_info: if self.config.preserve_debug_info { Some(format!("wasm_function_{index}")) } else { None },
         })
     }
 
@@ -461,8 +509,8 @@ impl TranspilationEngine {
             };
 
             imports.push(ImportInfo {
-                module: import.module.clone(),
                 name: import.name.clone(),
+                module_name: import.module.clone(),
                 kind,
             });
         }

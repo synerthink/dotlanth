@@ -345,7 +345,9 @@ mod tests {
             name: "test".to_string(),
             instructions: vec![],
             local_count: 0,
-            parameter_count: 0,
+            param_count: 0,
+            is_exported: false,
+            debug_info: None,
         };
 
         let optimized = optimizer.optimize_function(empty_function);

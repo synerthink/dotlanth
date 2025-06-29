@@ -20,10 +20,10 @@
 //! to optimized DotVM bytecode output.
 
 use dotvm_compiler::{
-    codegen::dotvm_generator::DotVMGenerator,
+    codegen::DotVMGenerator,
     optimizer::Optimizer,
     transpiler::engine::{TranspilationEngine, TranspiledModule},
-    wasm::{ast::*, parser::WasmParser},
+    wasm::ast::*,
 };
 use dotvm_core::bytecode::VmArchitecture;
 
@@ -52,8 +52,8 @@ fn test_complete_pipeline_arithmetic() {
         };
 
         // Generate bytecode
-        let mut generator = DotVMGenerator::with_architecture(arch);
-        let bytecode = generator.generate_bytecode(optimized_module).expect("Bytecode generation should succeed");
+        let mut generator = DotVMGenerator::with_architecture(arch).expect("Generator creation should succeed");
+        let bytecode = generator.generate_bytecode(&optimized_module).expect("Bytecode generation should succeed");
 
         assert!(!bytecode.is_empty(), "Bytecode should not be empty for {:?}", arch);
 
@@ -144,7 +144,7 @@ fn test_error_handling() {
 
     // Test invalid function
     let invalid_module = create_invalid_function_module();
-    let result = transpiler.transpile_module(invalid_module);
+    let _result = transpiler.transpile_module(invalid_module);
     // Should handle gracefully (exact behavior depends on implementation)
 }
 
@@ -171,8 +171,8 @@ fn test_performance_large_module() {
         imports: transpiled_module.imports,
     };
 
-    let mut generator = DotVMGenerator::with_architecture(arch);
-    let _bytecode = generator.generate_bytecode(optimized_module).expect("Large module bytecode generation should succeed");
+    let mut generator = DotVMGenerator::with_architecture(arch).expect("Generator creation should succeed");
+    let _bytecode = generator.generate_bytecode(&optimized_module).expect("Large module bytecode generation should succeed");
 
     let duration = start.elapsed();
 
@@ -192,8 +192,8 @@ fn test_bytecode_compatibility() {
         let mut transpiler = TranspilationEngine::with_architecture(arch);
         let transpiled_module = transpiler.transpile_module(wasm_module.clone()).expect("Transpilation should succeed");
 
-        let mut generator = DotVMGenerator::with_architecture(arch);
-        let bytecode = generator.generate_bytecode(transpiled_module).expect("Bytecode generation should succeed");
+        let mut generator = DotVMGenerator::with_architecture(arch).expect("Generator creation should succeed");
+        let bytecode = generator.generate_bytecode(&transpiled_module).expect("Bytecode generation should succeed");
 
         bytecodes.push((arch, bytecode));
     }

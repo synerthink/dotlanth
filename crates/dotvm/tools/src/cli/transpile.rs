@@ -21,7 +21,7 @@
 
 use clap::{Parser, ValueEnum};
 use dotvm_compiler::{
-    codegen::dotvm_generator::DotVMGenerator,
+    codegen::DotVMGenerator,
     transpiler::engine::TranspilationEngine,
     wasm::{ast::WasmModule, parser::WasmParser},
 };
@@ -278,7 +278,7 @@ impl TranspilationPipeline {
             .transpile_module(wasm_module)
             .map_err(|e| TranspilationError::Transpilation(format!("Transpilation failed: {e:?}")))?;
 
-        let mut generator = DotVMGenerator::with_architecture(target_arch);
+        let mut generator = DotVMGenerator::with_architecture(target_arch).map_err(|e| TranspilationError::BytecodeGeneration(format!("Generator creation failed: {e:?}")))?;
         let generated_bytecode = generator
             .generate(&transpiled_module)
             .map_err(|e| TranspilationError::BytecodeGeneration(format!("Bytecode generation failed: {e:?}")))?;

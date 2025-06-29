@@ -19,7 +19,7 @@
 //! This module implements constant folding and constant propagation
 //! optimizations that evaluate constant expressions at compile time.
 
-use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
+use crate::transpiler::engine::{Operand, TranspiledFunction, TranspiledInstruction};
 use std::collections::HashMap;
 
 /// Constant folder for DotVM bytecode
@@ -214,6 +214,7 @@ impl ConstantFolder {
         TranspiledInstruction {
             opcode: "DUP".to_string(),
             operands: vec![],
+            label: None,
         }
     }
 
@@ -228,15 +229,18 @@ impl ConstantFolder {
         match value {
             ConstantValue::Integer(i) => TranspiledInstruction {
                 opcode: "CONST_I32".to_string(),
-                operands: vec![i.to_string()],
+                operands: vec![Operand::Immediate(i as u32)],
+                label: None,
             },
             ConstantValue::Float(f) => TranspiledInstruction {
                 opcode: "CONST_F32".to_string(),
-                operands: vec![f.to_string()],
+                operands: vec![Operand::Immediate(f.to_bits() as u32)],
+                label: None,
             },
             ConstantValue::Boolean(b) => TranspiledInstruction {
                 opcode: "CONST_I32".to_string(),
-                operands: vec![if b { "1" } else { "0" }.to_string()],
+                operands: vec![Operand::Immediate(if b { 1 } else { 0 })],
+                label: None,
             },
         }
     }
@@ -380,10 +384,10 @@ mod tests {
 
         let int_inst = folder.create_constant_instruction(ConstantValue::Integer(42));
         assert_eq!(int_inst.opcode, "CONST_I32");
-        assert_eq!(int_inst.operands, vec!["42"]);
+        assert!(matches!(int_inst.operands[0], Operand::Immediate(42)));
 
         let bool_inst = folder.create_constant_instruction(ConstantValue::Boolean(true));
         assert_eq!(bool_inst.opcode, "CONST_I32");
-        assert_eq!(bool_inst.operands, vec!["1"]);
+        assert!(matches!(bool_inst.operands[0], Operand::Immediate(1)));
     }
 }

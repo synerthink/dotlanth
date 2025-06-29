@@ -20,7 +20,7 @@
 //! and hot reloading capabilities for development.
 
 use dotvm_compiler::{
-    codegen::dotvm_generator::DotVMGenerator,
+    codegen::DotVMGenerator,
     transpiler::engine::TranspilationEngine,
     wasm::{ast::WasmModule, parser::WasmParser},
 };
@@ -56,7 +56,7 @@ impl JitTranspiler {
             cache: Arc::new(RwLock::new(BytecodeCache::new())),
             wasm_parser: WasmParser::new(),
             transpiler: Arc::new(Mutex::new(TranspilationEngine::with_architecture(target_arch))),
-            generator: Arc::new(Mutex::new(DotVMGenerator::with_architecture(target_arch))),
+            generator: Arc::new(Mutex::new(DotVMGenerator::with_architecture(target_arch).expect("Failed to create DotVM generator"))),
         }
     }
 
