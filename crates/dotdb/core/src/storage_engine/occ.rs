@@ -40,7 +40,7 @@ use crate::storage_engine::deadlock_detector::DeadlockDetector;
 use crate::storage_engine::file_format::PageId;
 use crate::storage_engine::lib::{StorageError, StorageResult, generate_timestamp};
 use crate::storage_engine::transaction::TransactionId;
-use crate::storage_engine::wal::{LogEntry, WriteAheadLog};
+use crate::storage_engine::wal::{LogEntry, WalConfig, WriteAheadLog};
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, RwLock};

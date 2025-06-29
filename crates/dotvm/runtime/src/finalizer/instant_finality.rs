@@ -21,7 +21,7 @@ use crate::finalizer::lib::FinalityResult;
 use crate::finalizer::lib::{FinalityStatus, State, StateTransition};
 use crate::finalizer::logging_audit::AuditLogger;
 use dashmap::DashMap;
-use futures::StreamExt;
+use futures::{StreamExt, stream::FuturesUnordered};
 use ring::signature::Ed25519KeyPair;
 use std::io::{Error, ErrorKind};
 use std::sync::Arc;

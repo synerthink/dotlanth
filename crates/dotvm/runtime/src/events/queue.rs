@@ -18,7 +18,7 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use crate::events::lib::Event;
+use crate::events::lib::{Event, Priority, event_downcast};
 
 /// Statistics for monitoring queue performance
 ///

@@ -18,6 +18,7 @@
 // This module provides in-memory caching of pages, coordinates I/O operations, and implements buffer replacement policies. It manages the buffer pool, page pinning, flushing, and background writing.
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock, Weak};
 use std::thread;

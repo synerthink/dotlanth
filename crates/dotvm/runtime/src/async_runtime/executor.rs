@@ -19,6 +19,7 @@ use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskState};
 use crate::async_runtime::scheduler::{AsyncTaskScheduler, Priority, Task};
 use futures::Future;
 use futures::task::{ArcWake, Context, Poll, Waker};
+use futures_timer::Delay;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::task::Wake;

@@ -1,6 +1,7 @@
 use crate::rollback::checkpoint::CheckpointManager;
 use crate::rollback::lib::{LogLevel, RollbackError, RollbackResult, SystemState, log_event};
 use crate::rollback::state::StateRollback;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 /// Result of a recovery operation

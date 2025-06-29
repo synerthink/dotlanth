@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskMetrics};
+use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskMetrics, TaskState};
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fmt;
 use std::future::Future;

@@ -949,7 +949,7 @@ impl ConcurrentTransactionManager {
 mod tests {
     use super::*;
     use crate::storage_engine::file_format::FileFormat;
-    use crate::storage_engine::lib::StorageConfig;
+    use crate::storage_engine::lib::{Initializable, StorageConfig};
     use std::sync::Mutex;
     use tempfile::tempdir;
 

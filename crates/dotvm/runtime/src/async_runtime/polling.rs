@@ -17,6 +17,7 @@
 use crate::async_runtime::executor::FutureExecutor;
 use crate::async_runtime::lib::{RuntimeError, RuntimeResult, TaskId, TaskState};
 use crate::async_runtime::scheduler::AsyncTaskScheduler;
+use futures_timer::Delay;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};

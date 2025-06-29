@@ -15,11 +15,13 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::*;
-use std::arch::asm;
-use std::fs;
 use cfg_if::cfg_if;
 use std::collections::HashMap;
 use std::env;
+use std::fs;
+
+#[cfg(target_arch = "x86_64")]
+use std::arch::asm;
 
 // Constants
 const PAGE_SIZE: usize = 4096;
