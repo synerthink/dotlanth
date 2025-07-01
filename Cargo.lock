@@ -563,6 +563,7 @@ version = "0.1.0"
 dependencies = [
  "dotvm-common",
  "dotvm-core",
+ "regex",
  "serde",
  "thiserror",
  "tokio",
