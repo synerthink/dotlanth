@@ -312,22 +312,14 @@ impl ControlFlowAnalyzer {
     /// Create edges for a specific node based on its type
     fn create_edges_for_node(&self, node: &ControlFlowNode, nodes: &[ControlFlowNode], index: usize) -> Vec<ControlFlowEdge> {
         match node.node_type {
-            ControlFlowNodeType::BasicBlock | ControlFlowNodeType::FunctionCall => {
-                self.create_sequential_edge(node, nodes, index)
-            }
-            ControlFlowNodeType::Conditional => {
-                self.create_conditional_edges(node, nodes, index)
-            }
-            ControlFlowNodeType::LoopHeader => {
-                self.create_loop_edges(node, nodes, index)
-            }
+            ControlFlowNodeType::BasicBlock | ControlFlowNodeType::FunctionCall => self.create_sequential_edge(node, nodes, index),
+            ControlFlowNodeType::Conditional => self.create_conditional_edges(node, nodes, index),
+            ControlFlowNodeType::LoopHeader => self.create_loop_edges(node, nodes, index),
             ControlFlowNodeType::Return => {
                 // No outgoing edges for return statements
                 Vec::new()
             }
-            _ => {
-                self.create_sequential_edge(node, nodes, index)
-            }
+            _ => self.create_sequential_edge(node, nodes, index),
         }
     }
 
