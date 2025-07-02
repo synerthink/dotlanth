@@ -65,8 +65,8 @@ impl ExportsProcessor {
             let kind = match &import.kind {
                 WasmImportKind::Function { type_index } => ImportKind::Function { type_index: *type_index },
                 WasmImportKind::Memory(memory) => ImportKind::Memory {
-                    min_pages: memory.min_pages,
-                    max_pages: memory.max_pages,
+                    min_pages: memory.initial_pages(),
+                    max_pages: memory.max_pages(),
                 },
                 WasmImportKind::Global { .. } => ImportKind::Global {
                     var_type: GlobalType::I32, // Simplified

@@ -40,7 +40,7 @@ impl GlobalsProcessor {
             globals.push(GlobalVariable::new(
                 index as u32,
                 VariableType::I32, // Simplified - would need proper type mapping
-                global.mutable,
+                global.is_mutable(),
             ));
         }
 

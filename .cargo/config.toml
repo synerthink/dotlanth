@@ -1,0 +1,4 @@
+[env]
+TMPDIR = "/tmp"
+TEMP = "/tmp"
+TMP = "/tmp"

@@ -24,8 +24,8 @@ use super::{
     PipelineStage,
 };
 use crate::wasm::{
+    OpcodeMapper,
     ast::{WasmFunction, WasmInstruction, WasmModule},
-    opcode_mapper::OpcodeMapper,
 };
 use dotvm_core::bytecode::VmArchitecture;
 
@@ -623,7 +623,7 @@ impl Analyzer {
         // Estimate memory usage
         profile.estimated_memory_usage = (module.globals.len() * 8) as u64; // Rough estimate
         for memory in &module.memories {
-            profile.estimated_memory_usage += memory.min_pages as u64 * 65536;
+            profile.estimated_memory_usage += memory.initial_pages() as u64 * 65536;
         }
 
         // Count allocations (simplified)

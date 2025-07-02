@@ -21,7 +21,7 @@ use super::super::{
     error::{TranspilationError, TranspilationResult},
     types::{Operand, TranspiledInstruction},
 };
-use crate::wasm::{ast::WasmInstruction, opcode_mapper::OpcodeMapper};
+use crate::wasm::{OpcodeMapper, ast::WasmInstruction};
 
 /// Processor for converting WASM instructions to DotVM instructions
 pub struct InstructionProcessor {

@@ -128,14 +128,16 @@ fn test_error_handling() {
     let empty_module = WasmModule {
         types: vec![],
         functions: vec![],
+        function_types: vec![],
         imports: vec![],
         exports: vec![],
         memories: vec![],
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     };
 
     let mut transpiler = TranspilationEngine::with_architecture(VmArchitecture::Arch64);
@@ -208,16 +210,16 @@ fn test_bytecode_compatibility() {
 // Helper functions to create test modules
 
 fn create_simple_arithmetic_module() -> WasmModule {
+    let func_type = WasmFunctionType {
+        params: vec![WasmValueType::I32, WasmValueType::I32],
+        results: vec![WasmValueType::I32],
+    };
+
     WasmModule {
-        types: vec![WasmFunctionType {
-            params: vec![WasmValueType::I32, WasmValueType::I32],
-            results: vec![WasmValueType::I32],
-        }],
+        types: vec![func_type.clone()],
+        function_types: vec![0],
         functions: vec![WasmFunction {
-            signature: WasmFunctionType {
-                params: vec![WasmValueType::I32, WasmValueType::I32],
-                results: vec![WasmValueType::I32],
-            },
+            signature: func_type,
             locals: vec![],
             body: vec![WasmInstruction::LocalGet { local_index: 0 }, WasmInstruction::LocalGet { local_index: 1 }, WasmInstruction::I32Add],
         }],
@@ -231,22 +233,23 @@ fn create_simple_arithmetic_module() -> WasmModule {
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     }
 }
 
 fn create_optimization_test_module() -> WasmModule {
+    let func_type = WasmFunctionType {
+        params: vec![WasmValueType::I32],
+        results: vec![WasmValueType::I32],
+    };
+
     WasmModule {
-        types: vec![WasmFunctionType {
-            params: vec![WasmValueType::I32],
-            results: vec![WasmValueType::I32],
-        }],
+        types: vec![func_type.clone()],
+        function_types: vec![0],
         functions: vec![WasmFunction {
-            signature: WasmFunctionType {
-                params: vec![WasmValueType::I32],
-                results: vec![WasmValueType::I32],
-            },
+            signature: func_type,
             locals: vec![],
             body: vec![
                 WasmInstruction::LocalGet { local_index: 0 },
@@ -266,22 +269,23 @@ fn create_optimization_test_module() -> WasmModule {
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     }
 }
 
 fn create_bigint_test_module() -> WasmModule {
+    let func_type = WasmFunctionType {
+        params: vec![WasmValueType::I64, WasmValueType::I64],
+        results: vec![WasmValueType::I64],
+    };
+
     WasmModule {
-        types: vec![WasmFunctionType {
-            params: vec![WasmValueType::I64, WasmValueType::I64],
-            results: vec![WasmValueType::I64],
-        }],
+        types: vec![func_type.clone()],
+        function_types: vec![0],
         functions: vec![WasmFunction {
-            signature: WasmFunctionType {
-                params: vec![WasmValueType::I64, WasmValueType::I64],
-                results: vec![WasmValueType::I64],
-            },
+            signature: func_type,
             locals: vec![],
             body: vec![WasmInstruction::LocalGet { local_index: 0 }, WasmInstruction::LocalGet { local_index: 1 }, WasmInstruction::I64Add],
         }],
@@ -291,22 +295,23 @@ fn create_bigint_test_module() -> WasmModule {
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     }
 }
 
 fn create_simd_test_module() -> WasmModule {
+    let func_type = WasmFunctionType {
+        params: vec![WasmValueType::V128, WasmValueType::V128],
+        results: vec![WasmValueType::V128],
+    };
+
     WasmModule {
-        types: vec![WasmFunctionType {
-            params: vec![WasmValueType::V128, WasmValueType::V128],
-            results: vec![WasmValueType::V128],
-        }],
+        types: vec![func_type.clone()],
+        function_types: vec![0],
         functions: vec![WasmFunction {
-            signature: WasmFunctionType {
-                params: vec![WasmValueType::V128, WasmValueType::V128],
-                results: vec![WasmValueType::V128],
-            },
+            signature: func_type,
             locals: vec![],
             body: vec![
                 WasmInstruction::LocalGet { local_index: 0 },
@@ -321,22 +326,23 @@ fn create_simd_test_module() -> WasmModule {
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     }
 }
 
 fn create_vector_test_module() -> WasmModule {
+    let func_type = WasmFunctionType {
+        params: vec![WasmValueType::V128],
+        results: vec![WasmValueType::V128],
+    };
+
     WasmModule {
-        types: vec![WasmFunctionType {
-            params: vec![WasmValueType::V128],
-            results: vec![WasmValueType::V128],
-        }],
+        types: vec![func_type.clone()],
+        function_types: vec![0],
         functions: vec![WasmFunction {
-            signature: WasmFunctionType {
-                params: vec![WasmValueType::V128],
-                results: vec![WasmValueType::V128],
-            },
+            signature: func_type,
             locals: vec![],
             body: vec![
                 WasmInstruction::LocalGet { local_index: 0 },
@@ -349,22 +355,23 @@ fn create_vector_test_module() -> WasmModule {
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     }
 }
 
 fn create_invalid_function_module() -> WasmModule {
+    let func_type = WasmFunctionType {
+        params: vec![],
+        results: vec![WasmValueType::I32],
+    };
+
     WasmModule {
-        types: vec![WasmFunctionType {
-            params: vec![],
-            results: vec![WasmValueType::I32],
-        }],
+        types: vec![func_type.clone()],
+        function_types: vec![0],
         functions: vec![WasmFunction {
-            signature: WasmFunctionType {
-                params: vec![],
-                results: vec![WasmValueType::I32],
-            },
+            signature: func_type,
             locals: vec![],
             body: vec![
                 // Missing return value - should be handled gracefully
@@ -376,30 +383,33 @@ fn create_invalid_function_module() -> WasmModule {
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     }
 }
 
 fn create_large_test_module(function_count: usize) -> WasmModule {
+    let func_type = WasmFunctionType {
+        params: vec![WasmValueType::I32],
+        results: vec![WasmValueType::I32],
+    };
+
     let mut functions = Vec::new();
+    let mut function_types = Vec::new();
 
     for i in 0..function_count {
         functions.push(WasmFunction {
-            signature: WasmFunctionType {
-                params: vec![WasmValueType::I32],
-                results: vec![WasmValueType::I32],
-            },
+            signature: func_type.clone(),
             locals: vec![],
             body: vec![WasmInstruction::LocalGet { local_index: 0 }, WasmInstruction::I32Const { value: i as i32 }, WasmInstruction::I32Add],
         });
+        function_types.push(0);
     }
 
     WasmModule {
-        types: vec![WasmFunctionType {
-            params: vec![WasmValueType::I32],
-            results: vec![WasmValueType::I32],
-        }],
+        types: vec![func_type],
+        function_types,
         functions,
         imports: vec![],
         exports: vec![],
@@ -407,22 +417,23 @@ fn create_large_test_module(function_count: usize) -> WasmModule {
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     }
 }
 
 fn create_compatibility_test_module() -> WasmModule {
+    let func_type = WasmFunctionType {
+        params: vec![WasmValueType::I32, WasmValueType::F32],
+        results: vec![WasmValueType::F32],
+    };
+
     WasmModule {
-        types: vec![WasmFunctionType {
-            params: vec![WasmValueType::I32, WasmValueType::F32],
-            results: vec![WasmValueType::F32],
-        }],
+        types: vec![func_type.clone()],
+        function_types: vec![0],
         functions: vec![WasmFunction {
-            signature: WasmFunctionType {
-                params: vec![WasmValueType::I32, WasmValueType::F32],
-                results: vec![WasmValueType::F32],
-            },
+            signature: func_type,
             locals: vec![WasmValueType::I32],
             body: vec![
                 WasmInstruction::LocalGet { local_index: 0 },
@@ -442,7 +453,8 @@ fn create_compatibility_test_module() -> WasmModule {
         tables: vec![],
         globals: vec![],
         start_function: None,
-        element_segments: vec![],
+        elements: vec![],
         data_segments: vec![],
+        custom_sections: vec![],
     }
 }

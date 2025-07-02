@@ -14,31 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Refactored WASM module with improved separation of concerns
+//! Modular WebAssembly parser
 //!
-//! This module provides a clean, modular architecture for handling WebAssembly
-//! parsing, AST representation, and opcode mapping with clear separation of
-//! responsibilities and extensible design for WASM proposals.
+//! This module provides a clean, extensible parser architecture with
+//! separate components for different aspects of WASM parsing.
 
-// Core modules
-pub mod ast;
-pub mod error;
+pub mod config;
+pub mod context;
+pub mod core;
 
-// Parsing modules
-pub mod parser;
-pub mod sections;
-pub mod validation;
-
-// Mapping modules
-pub mod features;
-pub mod mapping;
-
-// Re-export commonly used types
-pub use ast::*;
-pub use error::*;
-pub use mapping::OpcodeMapper;
-pub use parser::WasmParser;
-
-// Tests
-#[cfg(test)]
-pub mod test_integration;
+// Re-export main parser
+pub use config::*;
+pub use context::*;
+pub use core::WasmParser;

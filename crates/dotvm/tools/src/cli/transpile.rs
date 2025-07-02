@@ -255,7 +255,7 @@ impl TranspilationPipeline {
 
         let wasm_bytes = fs::read(wasm_path).map_err(|e| TranspilationError::FileSystem(format!("Cannot read Wasm file: {e}")))?;
 
-        let parser = WasmParser::new();
+        let mut parser = WasmParser::new();
         let module = parser.parse(&wasm_bytes).map_err(|e| TranspilationError::WasmParsing(format!("Wasm parsing failed: {e:?}")))?;
 
         if self.args.verbose {

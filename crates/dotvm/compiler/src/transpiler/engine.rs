@@ -21,9 +21,8 @@
 //! adaptation, and architecture-specific optimizations.
 
 use crate::wasm::{
+    OpcodeMapper, WasmError, WasmParser,
     ast::{WasmFunction, WasmInstruction, WasmModule},
-    opcode_mapper::{OpcodeMapper, OpcodeMappingError},
-    parser::{WasmParseError, WasmParser},
 };
 use dotvm_core::bytecode::{BytecodeHeader, VmArchitecture};
 use thiserror::Error;
@@ -31,10 +30,8 @@ use thiserror::Error;
 /// Errors that can occur during transpilation
 #[derive(Error, Debug)]
 pub enum TranspilationError {
-    #[error("WASM parsing error: {0}")]
-    ParseError(#[from] WasmParseError),
-    #[error("Opcode mapping error: {0}")]
-    MappingError(#[from] OpcodeMappingError),
+    #[error("WASM error: {0}")]
+    WasmError(#[from] WasmError),
     #[error("Control flow error: {0}")]
     ControlFlowError(String),
     #[error("Memory model incompatibility: {0}")]
@@ -445,7 +442,7 @@ impl TranspilationEngine {
             globals.push(GlobalVariable {
                 index: index as u32,
                 var_type: VariableType::I32, // Default type for simplified structure
-                is_mutable: global.mutable,
+                is_mutable: global.is_mutable(),
                 initial_value: None, // TODO: Parse init expression
             });
         }
@@ -458,8 +455,8 @@ impl TranspilationEngine {
         // WASM typically has one memory, use the first one or default
         if let Some(memory) = wasm_module.memories.first() {
             Ok(MemoryLayout {
-                initial_pages: memory.min_pages,
-                maximum_pages: memory.max_pages,
+                initial_pages: memory.initial_pages(),
+                maximum_pages: memory.max_pages(),
                 page_size: 65536, // WASM page size is 64KB
             })
         } else {

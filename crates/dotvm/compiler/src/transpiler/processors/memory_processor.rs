@@ -35,7 +35,7 @@ impl MemoryProcessor {
     /// Process memory layout
     pub fn process_memory(&mut self, wasm_memories: &[WasmMemory], _config: &TranspilationConfig) -> TranspilationResult<MemoryLayout> {
         if let Some(memory) = wasm_memories.first() {
-            Ok(MemoryLayout::new(memory.min_pages, 65536).with_max_pages(memory.max_pages.unwrap_or(u32::MAX)))
+            Ok(MemoryLayout::new(memory.initial_pages(), 65536).with_max_pages(memory.max_pages().unwrap_or(u32::MAX)))
         } else {
             Ok(MemoryLayout::default())
         }

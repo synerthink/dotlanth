@@ -41,7 +41,7 @@ pub struct JitTranspiler {
     /// Bytecode cache
     cache: Arc<RwLock<BytecodeCache>>,
     /// Wasm parser
-    wasm_parser: WasmParser,
+    wasm_parser: Arc<Mutex<WasmParser>>,
     /// Transpiler engine
     transpiler: Arc<Mutex<TranspilationEngine>>,
     /// Bytecode generator
@@ -54,7 +54,7 @@ impl JitTranspiler {
         Self {
             target_arch,
             cache: Arc::new(RwLock::new(BytecodeCache::new())),
-            wasm_parser: WasmParser::new(),
+            wasm_parser: Arc::new(Mutex::new(WasmParser::new())),
             transpiler: Arc::new(Mutex::new(TranspilationEngine::with_architecture(target_arch))),
             generator: Arc::new(Mutex::new(DotVMGenerator::with_architecture(target_arch).expect("Failed to create DotVM generator"))),
         }
@@ -71,7 +71,8 @@ impl JitTranspiler {
         }
 
         // Parse Wasm
-        let wasm_module = self.wasm_parser.parse(wasm_bytes).map_err(|e| JitError::WasmParsing(format!("Failed to parse Wasm: {e:?}")))?;
+        let mut parser = self.wasm_parser.lock().await;
+        let wasm_module = parser.parse(wasm_bytes).map_err(|e| JitError::WasmParsing(format!("Failed to parse Wasm: {e:?}")))?;
 
         // Transpile to DotVM
         let bytecode = self.transpile_module(wasm_module).await?;

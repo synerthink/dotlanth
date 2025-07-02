@@ -16,15 +16,15 @@
 
 //! Comprehensive error handling for the transpiler module
 
-use crate::wasm::{opcode_mapper::OpcodeMappingError, parser::WasmParseError};
+use crate::wasm::WasmError;
 use thiserror::Error;
 
 /// Errors that can occur during transpilation
 #[derive(Error, Debug)]
 pub enum TranspilationError {
     // Input/Parsing Errors
-    #[error("WASM parsing error: {0}")]
-    ParseError(#[from] WasmParseError),
+    #[error("WASM error: {0}")]
+    WasmError(#[from] WasmError),
 
     #[error("Invalid input format: {0}")]
     InvalidInputFormat(String),
@@ -34,7 +34,7 @@ pub enum TranspilationError {
 
     // Opcode Mapping Errors
     #[error("Opcode mapping error: {0}")]
-    MappingError(#[from] OpcodeMappingError),
+    MappingError(String),
 
     #[error("Unsupported WASM instruction: {instruction} at position {position}")]
     UnsupportedInstruction { instruction: String, position: u32 },
@@ -198,7 +198,7 @@ impl TranspilationError {
     /// Check if this is a recoverable error
     pub fn is_recoverable(&self) -> bool {
         match self {
-            Self::ParseError(_) => false,
+            Self::WasmError(_) => false,
             Self::MalformedModule(_) => false,
             Self::ArchitectureIncompatibility(_) => false,
             Self::UnsupportedArchitectureFeatures { .. } => false,
@@ -211,7 +211,7 @@ impl TranspilationError {
     /// Get the error category
     pub fn category(&self) -> ErrorCategory {
         match self {
-            Self::ParseError(_) | Self::InvalidInputFormat(_) | Self::MalformedModule(_) => ErrorCategory::Input,
+            Self::WasmError(_) | Self::InvalidInputFormat(_) | Self::MalformedModule(_) => ErrorCategory::Input,
             Self::MappingError(_) | Self::UnsupportedInstruction { .. } => ErrorCategory::Mapping,
             Self::ControlFlowError(_) | Self::InvalidControlFlow { .. } | Self::UnreachableCode { .. } => ErrorCategory::ControlFlow,
             Self::MemoryModelError(_) | Self::InvalidMemoryAccess { .. } | Self::MemoryLayoutConflict(_) => ErrorCategory::Memory,
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_error_categories() {
-        let error = TranspilationError::ParseError(WasmParseError::InvalidBinary("test".to_string()));
+        let error = TranspilationError::WasmError(WasmError::InvalidBinary("test".to_string()));
         assert_eq!(error.category(), ErrorCategory::Input);
         assert!(!error.is_recoverable());
 
