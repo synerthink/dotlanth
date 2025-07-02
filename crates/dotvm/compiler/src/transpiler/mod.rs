@@ -17,8 +17,33 @@
 //! Transpiler module for converting WASM to DotVM bytecode
 //!
 //! This module contains the core transpilation engine that converts
-//! WebAssembly modules into DotVM bytecode.
+//! WebAssembly modules into DotVM bytecode using a modular pipeline architecture.
 
-pub mod engine;
+// Core modules
+pub mod config;
+pub mod engine; // Legacy engine (will be deprecated)
+pub mod engine_new; // New pipeline-based engine
+pub mod error;
+pub mod types;
 
-pub use engine::*;
+// Pipeline modules
+pub mod adapters;
+pub mod analysis;
+pub mod pipeline;
+pub mod processors;
+
+// Tests
+#[cfg(test)]
+pub mod test_basic;
+
+// Re-export commonly used types and functions
+pub use config::*;
+pub use error::*;
+pub use types::*;
+
+// Re-export both engines for migration period
+pub use engine::*; // Legacy engine
+pub use engine_new::NewTranspilationEngine; // New engine
+
+// Convenience type alias for the new engine
+pub type TranspilationEngine = engine_new::NewTranspilationEngine;
