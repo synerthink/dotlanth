@@ -1,0 +1,648 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Transpilation - Dotlanth Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../favicon.svg">
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../../theme/custom.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Dotlanth Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/synerthink-organization/dotVM" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/synerthink-organization/dotVM/edit/main/docs/src/dotvm/usage/transpilation.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="transpilation-guide"><a class="header" href="#transpilation-guide">Transpilation Guide</a></h1>
+<p>This guide covers the complete process of transpiling Rust source code to DotVM bytecode, including optimization strategies, debugging techniques, and advanced features.</p>
+<h2 id="transpilation-overview"><a class="header" href="#transpilation-overview">Transpilation Overview</a></h2>
+<p>The DotVM transpilation process converts Rust source code to DotVM bytecode through a multi-stage pipeline:</p>
+<pre><code>Rust Source Code
+       ↓
+   Rust Compiler (rustc)
+       ↓
+   WebAssembly (WASM)
+       ↓
+   WASM Parser
+       ↓
+   DotVM Translator
+       ↓
+   Architecture Optimizer
+       ↓
+   DotVM Bytecode
+</code></pre>
+<h2 id="basic-transpilation"><a class="header" href="#basic-transpilation">Basic Transpilation</a></h2>
+<h3 id="simple-example"><a class="header" href="#simple-example">Simple Example</a></h3>
+<p>Let’s start with a basic Rust program:</p>
+<pre><pre class="playground"><code class="language-rust">// hello.rs
+fn main() {
+    println!("Hello, DotVM!");
+    let result = add_numbers(10, 5);
+    println!("Result: {}", result);
+}
+
+fn add_numbers(a: i32, b: i32) -&gt; i32 {
+    a + b
+}</code></pre></pre>
+<p><strong>Transpile to bytecode:</strong></p>
+<pre><code class="language-bash">dotvm transpile -i hello.rs -o hello.dotvm
+</code></pre>
+<p><strong>Execute the bytecode:</strong></p>
+<pre><code class="language-bash">dotvm run hello.dotvm
+</code></pre>
+<h3 id="command-line-options"><a class="header" href="#command-line-options">Command Line Options</a></h3>
+<p>The <code>dotvm transpile</code> command supports various options:</p>
+<pre><code class="language-bash">dotvm transpile [OPTIONS] --input &lt;INPUT&gt; --output &lt;OUTPUT&gt;
+</code></pre>
+<p><strong>Required Options:</strong></p>
+<ul>
+<li><code>-i, --input &lt;INPUT&gt;</code>: Input Rust source file or project directory</li>
+<li><code>-o, --output &lt;OUTPUT&gt;</code>: Output DotVM bytecode file</li>
+</ul>
+<p><strong>Optional Parameters:</strong></p>
+<ul>
+<li><code>-a, --architecture &lt;ARCH&gt;</code>: Target architecture (arch32, arch64, arch128, arch256, arch512)</li>
+<li><code>--opt-level &lt;LEVEL&gt;</code>: Optimization level (0-3)</li>
+<li><code>--debug</code>: Include debug information</li>
+<li><code>-v, --verbose</code>: Verbose output</li>
+<li><code>--keep-intermediate</code>: Keep intermediate WASM files</li>
+<li><code>--target-dir &lt;DIR&gt;</code>: Custom target directory for Rust compilation</li>
+</ul>
+<h2 id="architecture-selection"><a class="header" href="#architecture-selection">Architecture Selection</a></h2>
+<h3 id="choosing-the-right-architecture"><a class="header" href="#choosing-the-right-architecture">Choosing the Right Architecture</a></h3>
+<p>Select the architecture based on your application’s requirements:</p>
+<p><strong>Arch64 (Default):</strong></p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm -a arch64
+</code></pre>
+<ul>
+<li><strong>Best for</strong>: General-purpose applications</li>
+<li><strong>Word size</strong>: 64 bits</li>
+<li><strong>Memory</strong>: Up to 16 EB addressable</li>
+<li><strong>Performance</strong>: Balanced</li>
+</ul>
+<p><strong>Arch256 (Blockchain):</strong></p>
+<pre><code class="language-bash">dotvm transpile -i crypto_app.rs -o crypto_app.dotvm -a arch256
+</code></pre>
+<ul>
+<li><strong>Best for</strong>: Cryptocurrency and blockchain applications</li>
+<li><strong>Word size</strong>: 256 bits</li>
+<li><strong>Features</strong>: Native 256-bit integer support</li>
+<li><strong>Use cases</strong>: Smart contracts, cryptographic operations</li>
+</ul>
+<p><strong>Arch128 (Scientific):</strong></p>
+<pre><code class="language-bash">dotvm transpile -i simulation.rs -o simulation.dotvm -a arch128
+</code></pre>
+<ul>
+<li><strong>Best for</strong>: Scientific computing, high-precision calculations</li>
+<li><strong>Word size</strong>: 128 bits</li>
+<li><strong>Features</strong>: Extended precision arithmetic</li>
+<li><strong>Use cases</strong>: Mathematical simulations, financial calculations</li>
+</ul>
+<h3 id="architecture-specific-considerations"><a class="header" href="#architecture-specific-considerations">Architecture-Specific Considerations</a></h3>
+<p><strong>Data Type Mapping:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Rust Type</th><th>Arch32</th><th>Arch64</th><th>Arch128</th><th>Arch256</th><th>Arch512</th></tr></thead><tbody>
+<tr><td><code>i32</code></td><td>Native</td><td>Promoted</td><td>Promoted</td><td>Promoted</td><td>Promoted</td></tr>
+<tr><td><code>i64</code></td><td>Emulated</td><td>Native</td><td>Promoted</td><td>Promoted</td><td>Promoted</td></tr>
+<tr><td><code>i128</code></td><td>Emulated</td><td>Emulated</td><td>Native</td><td>Promoted</td><td>Promoted</td></tr>
+<tr><td><code>usize</code></td><td>32-bit</td><td>64-bit</td><td>128-bit</td><td>256-bit</td><td>512-bit</td></tr>
+</tbody></table>
+</div>
+<h2 id="optimization-levels"><a class="header" href="#optimization-levels">Optimization Levels</a></h2>
+<h3 id="optimization-strategies"><a class="header" href="#optimization-strategies">Optimization Strategies</a></h3>
+<p>DotVM supports four optimization levels:</p>
+<p><strong>Level 0 (No Optimization):</strong></p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm --opt-level 0
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Fastest compilation, debugging</li>
+<li><strong>Features</strong>: No optimizations applied</li>
+<li><strong>Use cases</strong>: Development, debugging</li>
+</ul>
+<p><strong>Level 1 (Basic Optimization):</strong></p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm --opt-level 1
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Basic optimizations with fast compilation</li>
+<li><strong>Features</strong>: Dead code elimination, basic constant folding</li>
+<li><strong>Use cases</strong>: Development builds with some optimization</li>
+</ul>
+<p><strong>Level 2 (Standard Optimization - Default):</strong></p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm --opt-level 2
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Good balance of compilation time and performance</li>
+<li><strong>Features</strong>: Advanced optimizations, inlining, loop optimizations</li>
+<li><strong>Use cases</strong>: Production builds, general use</li>
+</ul>
+<p><strong>Level 3 (Maximum Optimization):</strong></p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm --opt-level 3
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Maximum performance</li>
+<li><strong>Features</strong>: Aggressive optimizations, vectorization</li>
+<li><strong>Use cases</strong>: Performance-critical applications</li>
+</ul>
+<h3 id="optimization-examples"><a class="header" href="#optimization-examples">Optimization Examples</a></h3>
+<p><strong>Performance Comparison:</strong></p>
+<pre><pre class="playground"><code class="language-rust">// fibonacci.rs
+fn fibonacci(n: u32) -&gt; u64 {
+    match n {
+        0 =&gt; 0,
+        1 =&gt; 1,
+        _ =&gt; fibonacci(n - 1) + fibonacci(n - 2),
+    }
+}
+
+fn main() {
+    let result = fibonacci(30);
+    println!("Fibonacci(30) = {}", result);
+}</code></pre></pre>
+<p><strong>Compile with different optimization levels:</strong></p>
+<pre><code class="language-bash"># No optimization
+dotvm transpile -i fibonacci.rs -o fib_o0.dotvm --opt-level 0
+time dotvm run fib_o0.dotvm
+
+# Maximum optimization
+dotvm transpile -i fibonacci.rs -o fib_o3.dotvm --opt-level 3
+time dotvm run fib_o3.dotvm
+</code></pre>
+<h2 id="debug-information"><a class="header" href="#debug-information">Debug Information</a></h2>
+<h3 id="including-debug-information"><a class="header" href="#including-debug-information">Including Debug Information</a></h3>
+<p>Enable debug information for better debugging experience:</p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm --debug --verbose
+</code></pre>
+<p><strong>Debug information includes:</strong></p>
+<ul>
+<li>Source code mapping</li>
+<li>Function names and locations</li>
+<li>Variable names and scopes</li>
+<li>Line number information</li>
+</ul>
+<h3 id="debugging-transpiled-code"><a class="header" href="#debugging-transpiled-code">Debugging Transpiled Code</a></h3>
+<p><strong>Step-by-step execution:</strong></p>
+<pre><code class="language-bash">dotvm run program.dotvm --debug --step
+</code></pre>
+<p><strong>Debug output example:</strong></p>
+<pre><code>[DEBUG] Loading bytecode: program.dotvm
+[DEBUG] Architecture: Arch64
+[DEBUG] Entry point: 0x0000000000000000
+[DEBUG] Executing instruction at 0x00000000: PUSH 0x00000001
+[DEBUG] Stack: [1]
+[DEBUG] Executing instruction at 0x00000004: PUSH 0x00000002
+[DEBUG] Stack: [1, 2]
+[DEBUG] Executing instruction at 0x00000008: ADD
+[DEBUG] Stack: [3]
+</code></pre>
+<h2 id="advanced-transpilation-features"><a class="header" href="#advanced-transpilation-features">Advanced Transpilation Features</a></h2>
+<h3 id="project-transpilation"><a class="header" href="#project-transpilation">Project Transpilation</a></h3>
+<p>Transpile entire Rust projects:</p>
+<pre><code class="language-bash"># Transpile a Cargo project
+dotvm transpile -i ./my_project -o my_project.dotvm --target-dir ./target
+</code></pre>
+<p><strong>Project structure:</strong></p>
+<pre><code>my_project/
+├── Cargo.toml
+├── src/
+│   ├── main.rs
+│   ├── lib.rs
+│   └── modules/
+│       ├── mod.rs
+│       └── utils.rs
+└── target/          # Build artifacts
+</code></pre>
+<h3 id="custom-target-directory"><a class="header" href="#custom-target-directory">Custom Target Directory</a></h3>
+<p>Use a custom target directory for Rust compilation:</p>
+<pre><code class="language-bash">dotvm transpile -i project.rs -o project.dotvm --target-dir /tmp/dotvm_build
+</code></pre>
+<h3 id="keeping-intermediate-files"><a class="header" href="#keeping-intermediate-files">Keeping Intermediate Files</a></h3>
+<p>Keep intermediate WASM files for analysis:</p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm --keep-intermediate
+</code></pre>
+<p><strong>Generated files:</strong></p>
+<pre><code>program.rs          # Original source
+program.wasm        # Intermediate WASM
+program.dotvm       # Final bytecode
+</code></pre>
+<h2 id="error-handling-and-troubleshooting"><a class="header" href="#error-handling-and-troubleshooting">Error Handling and Troubleshooting</a></h2>
+<h3 id="common-transpilation-errors"><a class="header" href="#common-transpilation-errors">Common Transpilation Errors</a></h3>
+<p><strong>Rust Compilation Errors:</strong></p>
+<pre><code class="language-bash">error[E0425]: cannot find value `undefined_variable` in this scope
+ --&gt; src/main.rs:3:13
+  |
+3 |     println!("{}", undefined_variable);
+  |             ^^^^^^^^^^^^^^^^^^^ not found in this scope
+</code></pre>
+<p><strong>Solution:</strong> Fix Rust compilation errors first.</p>
+<p><strong>WASM Parsing Errors:</strong></p>
+<pre><code>Error: Failed to parse WebAssembly module
+Caused by: Invalid WASM magic number
+</code></pre>
+<p><strong>Solution:</strong> Ensure Rust code compiles to valid WebAssembly.</p>
+<p><strong>Translation Errors:</strong></p>
+<pre><code>Error: Unsupported WASM instruction: unreachable
+</code></pre>
+<p><strong>Solution:</strong> Avoid unsupported Rust features or WASM instructions.</p>
+<h3 id="debugging-transpilation-issues"><a class="header" href="#debugging-transpilation-issues">Debugging Transpilation Issues</a></h3>
+<p><strong>Verbose Output:</strong></p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm --verbose
+</code></pre>
+<p><strong>Check Intermediate WASM:</strong></p>
+<pre><code class="language-bash">dotvm transpile -i program.rs -o program.dotvm --keep-intermediate
+wasm-objdump -d program.wasm  # Inspect WASM
+</code></pre>
+<p><strong>Validate Bytecode:</strong></p>
+<pre><code class="language-bash">dotvm validate program.dotvm
+</code></pre>
+<h2 id="performance-optimization"><a class="header" href="#performance-optimization">Performance Optimization</a></h2>
+<h3 id="rust-code-optimization"><a class="header" href="#rust-code-optimization">Rust Code Optimization</a></h3>
+<p><strong>Optimize Rust source for better transpilation:</strong></p>
+<pre><pre class="playground"><code class="language-rust">// Use appropriate data types
+fn efficient_calculation(data: &amp;[i32]) -&gt; i32 {
+    // Use iterators for better optimization
+    data.iter().sum()
+}
+
+// Avoid unnecessary allocations
+fn process_string(s: &amp;str) -&gt; String {
+    // Use string slices when possible
+    s.to_uppercase()
+}
+
+// Use const for compile-time constants
+const BUFFER_SIZE: usize = 1024;
+
+fn main() {
+    let data = vec![1, 2, 3, 4, 5];
+    let result = efficient_calculation(&amp;data);
+    println!("Result: {}", result);
+}</code></pre></pre>
+<h3 id="architecture-specific-optimization"><a class="header" href="#architecture-specific-optimization">Architecture-Specific Optimization</a></h3>
+<p><strong>Optimize for target architecture:</strong></p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// For Arch256 (blockchain applications)
+fn hash_calculation(data: &amp;[u8]) -&gt; [u8; 32] {
+    // Use 256-bit operations
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hasher.finalize().into()
+}
+
+// For Arch128 (scientific computing)
+fn high_precision_calculation(a: f64, b: f64) -&gt; f64 {
+    // Use high-precision arithmetic
+    (a * b).sqrt()
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="compilation-flags"><a class="header" href="#compilation-flags">Compilation Flags</a></h3>
+<p><strong>Optimize Rust compilation:</strong></p>
+<pre><code class="language-bash"># Create optimized WASM
+export RUSTFLAGS="-C target-cpu=native -C opt-level=3"
+dotvm transpile -i program.rs -o program.dotvm --opt-level 3
+</code></pre>
+<h2 id="integration-examples"><a class="header" href="#integration-examples">Integration Examples</a></h2>
+<h3 id="database-integration"><a class="header" href="#database-integration">Database Integration</a></h3>
+<pre><pre class="playground"><code class="language-rust">// database_app.rs
+fn main() {
+    // This will use DotDB opcodes in the generated bytecode
+    store_user_data("alice", 30);
+    let age = get_user_age("alice");
+    println!("Alice's age: {}", age);
+}
+
+fn store_user_data(name: &amp;str, age: u32) {
+    // In the transpiled bytecode, this becomes DB_PUT operations
+    println!("Storing user: {} age: {}", name, age);
+}
+
+fn get_user_age(name: &amp;str) -&gt; u32 {
+    // In the transpiled bytecode, this becomes DB_GET operations
+    println!("Getting age for user: {}", name);
+    30 // Placeholder
+}</code></pre></pre>
+<p><strong>Transpile and run:</strong></p>
+<pre><code class="language-bash">dotvm transpile -i database_app.rs -o database_app.dotvm
+dotvm run database_app.dotvm --verbose
+</code></pre>
+<h3 id="cryptographic-operations"><a class="header" href="#cryptographic-operations">Cryptographic Operations</a></h3>
+<pre><pre class="playground"><code class="language-rust">// crypto_app.rs
+use sha2::{Sha256, Digest};
+
+fn main() {
+    let data = b"Hello, DotVM!";
+    let hash = calculate_hash(data);
+    println!("Hash: {:?}", hash);
+}
+
+fn calculate_hash(data: &amp;[u8]) -&gt; [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hasher.finalize().into()
+}</code></pre></pre>
+<p><strong>Transpile for blockchain architecture:</strong></p>
+<pre><code class="language-bash">dotvm transpile -i crypto_app.rs -o crypto_app.dotvm -a arch256 --opt-level 3
+</code></pre>
+<h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
+<h3 id="code-organization"><a class="header" href="#code-organization">Code Organization</a></h3>
+<ol>
+<li><strong>Modular Design</strong>: Organize code into logical modules</li>
+<li><strong>Function Size</strong>: Keep functions reasonably sized for better optimization</li>
+<li><strong>Data Structures</strong>: Use appropriate data structures for your use case</li>
+<li><strong>Error Handling</strong>: Implement proper error handling</li>
+</ol>
+<h3 id="performance-guidelines"><a class="header" href="#performance-guidelines">Performance Guidelines</a></h3>
+<ol>
+<li><strong>Choose Appropriate Architecture</strong>: Match architecture to your data requirements</li>
+<li><strong>Optimize Hot Paths</strong>: Focus optimization on frequently executed code</li>
+<li><strong>Profile Performance</strong>: Use timing and profiling tools</li>
+<li><strong>Test Different Optimization Levels</strong>: Compare performance across optimization levels</li>
+</ol>
+<h3 id="development-workflow"><a class="header" href="#development-workflow">Development Workflow</a></h3>
+<ol>
+<li><strong>Start with Arch64</strong>: Use default architecture for development</li>
+<li><strong>Enable Debug Information</strong>: Use <code>--debug</code> during development</li>
+<li><strong>Incremental Testing</strong>: Test transpilation frequently during development</li>
+<li><strong>Performance Testing</strong>: Benchmark critical code paths</li>
+</ol>
+<h2 id="automation-and-scripting"><a class="header" href="#automation-and-scripting">Automation and Scripting</a></h2>
+<h3 id="build-scripts"><a class="header" href="#build-scripts">Build Scripts</a></h3>
+<p>Create build scripts for automated transpilation:</p>
+<pre><code class="language-bash">#!/bin/bash
+# build.sh
+
+set -e
+
+echo "Building DotVM bytecode..."
+
+# Clean previous builds
+rm -f *.dotvm
+
+# Transpile for different architectures
+dotvm transpile -i src/main.rs -o app_64.dotvm -a arch64 --opt-level 2
+dotvm transpile -i src/main.rs -o app_256.dotvm -a arch256 --opt-level 2
+
+# Validate bytecode
+dotvm validate app_64.dotvm
+dotvm validate app_256.dotvm
+
+echo "Build complete!"
+</code></pre>
+<h3 id="makefile-example"><a class="header" href="#makefile-example">Makefile Example</a></h3>
+<pre><code class="language-makefile"># Makefile for DotVM projects
+
+RUST_SRC = src/main.rs
+BYTECODE_64 = app_64.dotvm
+BYTECODE_256 = app_256.dotvm
+
+.PHONY: all clean test
+
+all: $(BYTECODE_64) $(BYTECODE_256)
+
+$(BYTECODE_64): $(RUST_SRC)
+	dotvm transpile -i $(RUST_SRC) -o $(BYTECODE_64) -a arch64 --opt-level 2
+
+$(BYTECODE_256): $(RUST_SRC)
+	dotvm transpile -i $(RUST_SRC) -o $(BYTECODE_256) -a arch256 --opt-level 2
+
+test: $(BYTECODE_64)
+	dotvm run $(BYTECODE_64) --verbose
+
+clean:
+	rm -f *.dotvm *.wasm
+
+debug: $(RUST_SRC)
+	dotvm transpile -i $(RUST_SRC) -o debug.dotvm --debug --opt-level 0
+	dotvm run debug.dotvm --debug --step
+</code></pre>
+<p>For more information about executing bytecode, see the <a href="execution.html">Execution Guide</a>.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../dotvm/usage/basic-operations.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../dotvm/usage/execution.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../dotvm/usage/basic-operations.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../dotvm/usage/execution.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../elasticlunr.min.js"></script>
+        <script src="../../mark.min.js"></script>
+        <script src="../../searcher.js"></script>
+
+        <script src="../../clipboard.min.js"></script>
+        <script src="../../highlight.js"></script>
+        <script src="../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

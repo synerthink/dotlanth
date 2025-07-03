@@ -102,14 +102,33 @@
     border-radius: 4px;
 }
 
+/* Remove navigation arrows completely */
+.nav-chapters {
+    display: none !important;
+}
+
 /* Print-friendly styles */
 @media print {
     .sidebar {
-        display: none;
+        display: none !important;
+    }
+    
+    .sidebar-toggle {
+        display: none !important;
+    }
+
+    .page {
+        margin-left: 0 !important;
     }
 
     .content {
-        margin-left: 0;
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
         width: 100%;
+    }
+    
+    .nav-chapters {
+        display: none !important;
     }
 }

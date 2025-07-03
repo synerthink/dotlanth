@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Overview - DOTVM &amp; DOTDB Documentation</title>
+        <title>Overview - Dotlanth Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -24,9 +24,9 @@
         <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="../highlight.css">
-        <link rel="stylesheet" href="../tomorrow-night.css">
-        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="../theme/custom.css">
@@ -34,21 +34,33 @@
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 
-        <!-- Provide site root to javascript -->
+        <!-- Provide site root and default themes to javascript -->
         <script>
-            var path_to_root = "../";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc.js"></script>
     </head>
     <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
     <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -62,7 +74,8 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
@@ -75,8 +88,8 @@
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -112,18 +125,19 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DOTVM &amp; DOTDB Documentation</h1>
+                    <h1 class="menu-title">Dotlanth Documentation</h1>
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
@@ -161,13 +175,250 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
+                        <h1 id="dotvm-overview"><a class="header" href="#dotvm-overview">DotVM Overview</a></h1>
+<p>DotVM (Dotlanth Virtual Machine) is a high-performance, multi-architecture virtual machine designed for executing smart contracts and general-purpose programs with advanced parallelization capabilities.</p>
+<h2 id="what-is-dotvm"><a class="header" href="#what-is-dotvm">What is DotVM?</a></h2>
+<p>DotVM is a stack-based virtual machine that provides:</p>
+<ul>
+<li><strong>Multi-architecture support</strong>: 32, 64, 128, 256, and 512-bit architectures</li>
+<li><strong>Comprehensive instruction set</strong>: Arithmetic, control flow, memory, cryptographic, SIMD, and parallel operations</li>
+<li><strong>Rust-to-bytecode transpilation</strong>: Complete toolchain from Rust source code to optimized bytecode</li>
+<li><strong>Advanced execution features</strong>: Debugging, profiling, and step-by-step execution</li>
+<li><strong>Database integration</strong>: Seamless integration with DotDB for state management</li>
+<li><strong>Security and isolation</strong>: Memory protection and secure execution environment</li>
+</ul>
+<h2 id="key-features"><a class="header" href="#key-features">Key Features</a></h2>
+<h3 id="multi-architecture-support"><a class="header" href="#multi-architecture-support">Multi-Architecture Support</a></h3>
+<p>DotVM supports five different architectures, each optimized for specific use cases:</p>
+<div class="table-wrapper"><table><thead><tr><th>Architecture</th><th>Word Size</th><th>Best For</th></tr></thead><tbody>
+<tr><td>Arch32</td><td>32-bit</td><td>IoT, embedded systems</td></tr>
+<tr><td>Arch64</td><td>64-bit</td><td>General-purpose applications (default)</td></tr>
+<tr><td>Arch128</td><td>128-bit</td><td>Scientific computing, high precision</td></tr>
+<tr><td>Arch256</td><td>256-bit</td><td>Blockchain, cryptocurrency applications</td></tr>
+<tr><td>Arch512</td><td>512-bit</td><td>Advanced cryptography, research</td></tr>
+</tbody></table>
+</div>
+<h3 id="comprehensive-instruction-set"><a class="header" href="#comprehensive-instruction-set">Comprehensive Instruction Set</a></h3>
+<p>DotVM provides a rich set of instructions organized into categories:</p>
+<ul>
+<li><strong>Stack Operations</strong>: <code>PUSH</code>, <code>POP</code>, <code>DUP</code>, <code>SWAP</code>, <code>ROT</code></li>
+<li><strong>Arithmetic</strong>: <code>ADD</code>, <code>SUB</code>, <code>MUL</code>, <code>DIV</code>, <code>MOD</code>, <code>NEG</code></li>
+<li><strong>Control Flow</strong>: <code>JMP</code>, <code>JZ</code>, <code>JNZ</code>, <code>CALL</code>, <code>RET</code>, <code>HALT</code></li>
+<li><strong>Memory</strong>: <code>LOAD</code>, <code>STORE</code>, <code>ALLOC</code>, <code>FREE</code></li>
+<li><strong>Cryptographic</strong>: <code>HASH</code>, <code>SIGN</code>, <code>VERIFY</code>, <code>ENCRYPT</code>, <code>DECRYPT</code></li>
+<li><strong>Database</strong>: <code>DB_GET</code>, <code>DB_PUT</code>, <code>DB_DELETE</code>, <code>DB_QUERY</code></li>
+<li><strong>SIMD</strong>: Vector operations for parallel processing</li>
+<li><strong>BigInt</strong>: Arbitrary precision integer operations</li>
+</ul>
+<h3 id="transpilation-pipeline"><a class="header" href="#transpilation-pipeline">Transpilation Pipeline</a></h3>
+<p>The complete Rust-to-DotVM pipeline:</p>
+<pre><code>Rust Source Code
+       |
+   rustc (to WebAssembly)
+       |
+   WASM Parser
+       |
+   DotVM Translator
+       |
+   Architecture Optimizer
+       |
+   DotVM Bytecode
+</code></pre>
+<h3 id="execution-environment"><a class="header" href="#execution-environment">Execution Environment</a></h3>
+<p>DotVM provides a sophisticated execution environment with:</p>
+<ul>
+<li><strong>Stack-based execution</strong>: Efficient stack machine with configurable stack size</li>
+<li><strong>Memory management</strong>: Protected memory with allocation tracking</li>
+<li><strong>Database bridge</strong>: Direct integration with DotDB for persistent state</li>
+<li><strong>Debug capabilities</strong>: Instruction-level debugging and profiling</li>
+<li><strong>Error handling</strong>: Comprehensive error reporting and recovery</li>
+</ul>
+<h2 id="architecture-overview"><a class="header" href="#architecture-overview">Architecture Overview</a></h2>
+<h3 id="virtual-machine-components"><a class="header" href="#virtual-machine-components">Virtual Machine Components</a></h3>
+<pre><code>+-------------------------------------------------------------+
+|                    DotVM Runtime                            |
++-------------------------------------------------------------+
+|  +-------------+  +-------------+  +-------------------+  |
+|  |   Executor  |  |   Memory    |  |   Database Bridge |  |
+|  |             |  |  Manager    |  |                   |  |
+|  +-------------+  +-------------+  +-------------------+  |
++-------------------------------------------------------------+
+|  +-------------+  +-------------+  +-------------------+  |
+|  | Instruction |  |    Stack    |  |   State Manager   |  |
+|  |  Decoder    |  |   Machine   |  |                   |  |
+|  +-------------+  +-------------+  +-------------------+  |
++-------------------------------------------------------------+
+|                    Bytecode Loader                         |
++-------------------------------------------------------------+
+</code></pre>
+<h3 id="bytecode-format"><a class="header" href="#bytecode-format">Bytecode Format</a></h3>
+<p>DotVM bytecode files have a structured format:</p>
+<pre><code>+-------------------------------------------------------------+
+|                    Bytecode Header                         |
++-------------------------------------------------------------+
+| Magic Number | Version | Architecture | Flags | Entry Point |
+|   (4 bytes)  |(2 bytes)|   (1 byte)   |(1 byte)|  (8 bytes) |
++-------------------------------------------------------------+
+|                    Code Section                            |
++-------------------------------------------------------------+
+|                    Data Section                            |
++-------------------------------------------------------------+
+|                   Debug Section                            |
+|                   (optional)                               |
++-------------------------------------------------------------+
+</code></pre>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use Cases</a></h2>
+<h3 id="smart-contracts"><a class="header" href="#smart-contracts">Smart Contracts</a></h3>
+<ul>
+<li>Blockchain applications</li>
+<li>Decentralized finance (DeFi)</li>
+<li>NFT platforms</li>
+<li>Governance systems</li>
+</ul>
+<h3 id="general-computing"><a class="header" href="#general-computing">General Computing</a></h3>
+<ul>
+<li>Web application backends</li>
+<li>Microservices</li>
+<li>Data processing pipelines</li>
+<li>Scientific computing</li>
+</ul>
+<h3 id="embedded-systems"><a class="header" href="#embedded-systems">Embedded Systems</a></h3>
+<ul>
+<li>IoT devices</li>
+<li>Edge computing</li>
+<li>Real-time systems</li>
+<li>Resource-constrained environments</li>
+</ul>
+<h3 id="cryptographic-applications"><a class="header" href="#cryptographic-applications">Cryptographic Applications</a></h3>
+<ul>
+<li>Cryptocurrency wallets</li>
+<li>Digital signature systems</li>
+<li>Secure communication</li>
+<li>Privacy-preserving protocols</li>
+</ul>
+<h2 id="performance-characteristics"><a class="header" href="#performance-characteristics">Performance Characteristics</a></h2>
+<h3 id="execution-speed"><a class="header" href="#execution-speed">Execution Speed</a></h3>
+<ul>
+<li><strong>Optimized instruction dispatch</strong>: Fast instruction decoding and execution</li>
+<li><strong>Architecture-specific optimizations</strong>: Tailored performance for each architecture</li>
+<li><strong>Minimal overhead</strong>: Efficient stack operations and memory management</li>
+<li><strong>Parallel execution</strong>: Support for concurrent operations (ParaContracts)</li>
+</ul>
+<h3 id="memory-efficiency"><a class="header" href="#memory-efficiency">Memory Efficiency</a></h3>
+<ul>
+<li><strong>Compact bytecode</strong>: Efficient instruction encoding</li>
+<li><strong>Stack-based design</strong>: Minimal register pressure</li>
+<li><strong>Memory protection</strong>: Safe memory access with bounds checking</li>
+<li><strong>Garbage collection</strong>: Automatic memory management (optional)</li>
+</ul>
+<h3 id="scalability"><a class="header" href="#scalability">Scalability</a></h3>
+<ul>
+<li><strong>Multi-threading</strong>: Parallel execution capabilities</li>
+<li><strong>State management</strong>: Efficient state persistence and retrieval</li>
+<li><strong>Resource isolation</strong>: Secure execution boundaries</li>
+<li><strong>Load balancing</strong>: Distributed execution support</li>
+</ul>
+<h2 id="security-features"><a class="header" href="#security-features">Security Features</a></h2>
+<h3 id="memory-safety"><a class="header" href="#memory-safety">Memory Safety</a></h3>
+<ul>
+<li><strong>Bounds checking</strong>: All memory accesses are validated</li>
+<li><strong>Stack overflow protection</strong>: Configurable stack limits</li>
+<li><strong>Type safety</strong>: Strong typing throughout execution</li>
+<li><strong>Memory isolation</strong>: Programs cannot access unauthorized memory</li>
+</ul>
+<h3 id="execution-safety"><a class="header" href="#execution-safety">Execution Safety</a></h3>
+<ul>
+<li><strong>Instruction validation</strong>: All instructions are verified before execution</li>
+<li><strong>Resource limits</strong>: Configurable limits on execution time and memory</li>
+<li><strong>Error handling</strong>: Graceful handling of runtime errors</li>
+<li><strong>Sandboxing</strong>: Isolated execution environment</li>
+</ul>
+<h3 id="cryptographic-security"><a class="header" href="#cryptographic-security">Cryptographic Security</a></h3>
+<ul>
+<li><strong>Secure random number generation</strong>: Cryptographically secure randomness</li>
+<li><strong>Hash function support</strong>: Multiple hash algorithms</li>
+<li><strong>Digital signatures</strong>: Built-in signature verification</li>
+<li><strong>Encryption support</strong>: Symmetric and asymmetric encryption</li>
+</ul>
+<h2 id="integration-with-dotdb"><a class="header" href="#integration-with-dotdb">Integration with DotDB</a></h2>
+<p>DotVM seamlessly integrates with DotDB for state management:</p>
+<h3 id="database-operations"><a class="header" href="#database-operations">Database Operations</a></h3>
+<ul>
+<li><strong>Direct access</strong>: Native database opcodes for efficient operations</li>
+<li><strong>Transaction support</strong>: Atomic operations across VM and database</li>
+<li><strong>Query capabilities</strong>: Complex queries through VM instructions</li>
+<li><strong>State persistence</strong>: Automatic state saving and restoration</li>
+</ul>
+<h3 id="performance-optimization"><a class="header" href="#performance-optimization">Performance Optimization</a></h3>
+<ul>
+<li><strong>Caching</strong>: Intelligent caching of frequently accessed data</li>
+<li><strong>Batch operations</strong>: Efficient bulk database operations</li>
+<li><strong>Index utilization</strong>: Automatic use of database indices</li>
+<li><strong>Connection pooling</strong>: Efficient database connection management</li>
+</ul>
+<h2 id="development-workflow"><a class="header" href="#development-workflow">Development Workflow</a></h2>
+<h3 id="1-write-rust-code"><a class="header" href="#1-write-rust-code">1. Write Rust Code</a></h3>
+<pre><pre class="playground"><code class="language-rust">fn main() {
+    println!("Hello, DotVM!");
+    let result = calculate_fibonacci(10);
+    println!("Fibonacci(10) = {}", result);
+}
+
+fn calculate_fibonacci(n: u32) -&gt; u32 {
+    match n {
+        0 =&gt; 0,
+        1 =&gt; 1,
+        _ =&gt; calculate_fibonacci(n - 1) + calculate_fibonacci(n - 2),
+    }
+}</code></pre></pre>
+<h3 id="2-transpile-to-bytecode"><a class="header" href="#2-transpile-to-bytecode">2. Transpile to Bytecode</a></h3>
+<pre><code class="language-bash">dotvm transpile -i fibonacci.rs -o fibonacci.dotvm -a arch64 --opt-level 2
+</code></pre>
+<h3 id="3-execute-bytecode"><a class="header" href="#3-execute-bytecode">3. Execute Bytecode</a></h3>
+<pre><code class="language-bash">dotvm run fibonacci.dotvm --verbose
+</code></pre>
+<h3 id="4-debug-if-needed"><a class="header" href="#4-debug-if-needed">4. Debug if Needed</a></h3>
+<pre><code class="language-bash">dotvm run fibonacci.dotvm --debug --step
+</code></pre>
+<h2 id="cli-tools"><a class="header" href="#cli-tools">CLI Tools</a></h2>
+<p>DotVM provides comprehensive command-line tools:</p>
+<h3 id="transpilation-tool"><a class="header" href="#transpilation-tool">Transpilation Tool</a></h3>
+<ul>
+<li><strong>Input formats</strong>: Rust source files or projects</li>
+<li><strong>Output formats</strong>: DotVM bytecode files</li>
+<li><strong>Architecture selection</strong>: Choose target VM architecture</li>
+<li><strong>Optimization levels</strong>: Control compilation optimizations</li>
+<li><strong>Debug information</strong>: Include debugging metadata</li>
+</ul>
+<h3 id="execution-tool"><a class="header" href="#execution-tool">Execution Tool</a></h3>
+<ul>
+<li><strong>Bytecode execution</strong>: Run DotVM bytecode files</li>
+<li><strong>Debug mode</strong>: Step-by-step execution with state inspection</li>
+<li><strong>Profiling</strong>: Performance analysis and timing information</li>
+<li><strong>Resource monitoring</strong>: Memory and execution time tracking</li>
+</ul>
+<h2 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h2>
+<ol>
+<li><strong>Install DotVM</strong>: Follow the <a href="../getting-started/installation.html">installation guide</a></li>
+<li><strong>Try the quickstart</strong>: Complete the <a href="../getting-started/quickstart.html">quickstart tutorial</a></li>
+<li><strong>Learn the CLI</strong>: Read the <a href="../cli/dotvm.html">CLI reference</a></li>
+<li><strong>Explore examples</strong>: Check out example programs in the repository</li>
+<li><strong>Read the architecture docs</strong>: Understand <a href="architecture/vm-architectures.html">VM architectures</a></li>
+</ol>
+<h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
+<ul>
+<li><strong>Architecture Details</strong>: Learn about <a href="architecture/vm-architectures.html">VM architectures</a></li>
+<li><strong>Instruction Set</strong>: Explore the <a href="architecture/instruction-set.html">instruction set reference</a></li>
+<li><strong>Bytecode Format</strong>: Understand the <a href="architecture/bytecode-format.html">bytecode format</a></li>
+<li><strong>Usage Guide</strong>: Read about <a href="usage/basic-operations.html">basic operations</a></li>
+<li><strong>API Reference</strong>: Check the <a href="api/core.html">Core API documentation</a></li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../getting-started/development-setup.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../cli/dotdb.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
@@ -181,7 +432,7 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../getting-started/development-setup.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../cli/dotdb.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 

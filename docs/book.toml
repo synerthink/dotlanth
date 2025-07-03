@@ -8,7 +8,7 @@ title = "Dotlanth Documentation"
 [output.html]
 default-theme = "light"
 preferred-dark-theme = "navy"
-curly-quotes = true
+smart-punctuation = true
 mathjax-support = true
 copy-fonts = true
 additional-css = ["theme/custom.css"]
