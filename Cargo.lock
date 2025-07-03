@@ -548,6 +548,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dotlanth-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+]
+
+[[package]]
 name = "dotvm-common"
 version = "0.1.0"
 dependencies = [

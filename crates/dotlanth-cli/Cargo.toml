@@ -1,0 +1,12 @@
+[package]
+name = "dotlanth-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "dotlanth"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+anyhow.workspace = true

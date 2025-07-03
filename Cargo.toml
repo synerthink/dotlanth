@@ -10,6 +10,7 @@ members = [
     "crates/dotdb/common",
     "crates/dotdb/core",
     "crates/dotdb/cli",
+    "crates/dotlanth-cli",
 ]
 
 [workspace.package]
