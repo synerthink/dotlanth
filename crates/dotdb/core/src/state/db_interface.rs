@@ -557,9 +557,12 @@ impl DatabaseInterface for Database {
 
     fn snapshot(&self) -> DbResult<Box<dyn DatabaseSnapshot>> {
         let version = VersionId(crate::storage_engine::generate_timestamp());
-        // For now, create an empty snapshot - this would need to be implemented properly
-        // for production use with the actual storage backend
-        let snapshot_data = HashMap::new();
+
+        // Create a snapshot by copying current cache data
+        // In a production system, this would need to capture the entire database state
+        let cache = self.cache.read();
+        let snapshot_data = cache.clone();
+        drop(cache);
 
         Ok(Box::new(DatabaseSnapshotImpl { data: snapshot_data, version }))
     }

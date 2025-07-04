@@ -13,3 +13,10 @@ Thumbs.db
 .idea
 .vscode
 test_out.txt
+
+# Ignore database files and data directories
+*.db
+data/
+.dotdb/
+**/data/
+**/test_data/
