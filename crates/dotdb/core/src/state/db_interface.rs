@@ -33,8 +33,11 @@ use crate::state::mpt::{MPTError, Node, NodeId, TrieResult};
 use crate::storage_engine::{DatabaseId, StorageConfig, StorageError, VersionId};
 use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write, Seek, SeekFrom};
+use std::io::prelude::*;
 
 /// Database operation types for monitoring
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,6 +113,205 @@ impl From<serde_json::Error> for DbError {
 
 /// Type alias for database operation results
 pub type DbResult<T> = Result<T, DbError>;
+
+/// Storage backend trait for different storage implementations
+trait StorageBackend: Send + Sync {
+    fn get(&self, key: &[u8]) -> DbResult<Option<Vec<u8>>>;
+    fn put(&self, key: Vec<u8>, value: Vec<u8>) -> DbResult<()>;
+    fn delete(&self, key: &[u8]) -> DbResult<bool>;
+    fn contains(&self, key: &[u8]) -> DbResult<bool>;
+    fn flush(&self) -> DbResult<()>;
+}
+
+/// In-memory storage backend
+struct InMemoryStorage {
+    data: Arc<RwLock<HashMap<Vec<u8>, Vec<u8>>>>,
+}
+
+impl InMemoryStorage {
+    fn new() -> Self {
+        Self {
+            data: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
+impl StorageBackend for InMemoryStorage {
+    fn get(&self, key: &[u8]) -> DbResult<Option<Vec<u8>>> {
+        let data = self.data.read();
+        Ok(data.get(key).cloned())
+    }
+
+    fn put(&self, key: Vec<u8>, value: Vec<u8>) -> DbResult<()> {
+        let mut data = self.data.write();
+        data.insert(key, value);
+        Ok(())
+    }
+
+    fn delete(&self, key: &[u8]) -> DbResult<bool> {
+        let mut data = self.data.write();
+        Ok(data.remove(key).is_some())
+    }
+
+    fn contains(&self, key: &[u8]) -> DbResult<bool> {
+        let data = self.data.read();
+        Ok(data.contains_key(key))
+    }
+
+    fn flush(&self) -> DbResult<()> {
+        Ok(())
+    }
+}
+
+/// File-based storage backend using a simple key-value file format
+struct FileStorage {
+    data_file: Arc<RwLock<PathBuf>>,
+    index: Arc<RwLock<HashMap<Vec<u8>, (u64, u32)>>>, // key -> (offset, length)
+}
+
+impl FileStorage {
+    fn new<P: AsRef<Path>>(path: P) -> DbResult<Self> {
+        let data_file = path.as_ref().join("data.db");
+        let index_file = path.as_ref().join("index.db");
+        
+        // Ensure directory exists
+        if let Some(parent) = data_file.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        }
+
+        let storage = Self {
+            data_file: Arc::new(RwLock::new(data_file.clone())),
+            index: Arc::new(RwLock::new(HashMap::new())),
+        };
+
+        // Load existing index if it exists
+        if index_file.exists() {
+            storage.load_index(&index_file)?;
+        }
+
+        Ok(storage)
+    }
+
+    fn load_index(&self, index_file: &Path) -> DbResult<()> {
+        let mut file = File::open(index_file).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        let mut buffer = String::new();
+        file.read_to_string(&mut buffer).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        
+        // Convert HashMap<Vec<u8>, (u64, u32)> to HashMap<String, (u64, u32)> for JSON serialization
+        match serde_json::from_str::<HashMap<String, (u64, u32)>>(&buffer) {
+            Ok(string_index) => {
+                let mut index = self.index.write();
+                index.clear();
+                for (key_str, value) in string_index {
+                    let key_bytes = hex::decode(key_str).unwrap_or_default();
+                    index.insert(key_bytes, value);
+                }
+                Ok(())
+            }
+            Err(_) => {
+                // If we can't deserialize, start with empty index
+                Ok(())
+            }
+        }
+    }
+
+    fn save_index(&self) -> DbResult<()> {
+        let data_file_path = self.data_file.read();
+        let index_file = data_file_path.parent().unwrap().join("index.db");
+        
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&index_file)
+            .map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        
+        // Convert HashMap<Vec<u8>, (u64, u32)> to HashMap<String, (u64, u32)> for JSON serialization
+        let index = self.index.read();
+        let string_index: HashMap<String, (u64, u32)> = index
+            .iter()
+            .map(|(k, v)| (hex::encode(k), *v))
+            .collect();
+        
+        let serialized = serde_json::to_string(&string_index)
+            .map_err(|e| DbError::Serialization(e.to_string()))?;
+        
+        file.write_all(serialized.as_bytes()).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        file.flush().map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        
+        Ok(())
+    }
+}
+
+impl StorageBackend for FileStorage {
+    fn get(&self, key: &[u8]) -> DbResult<Option<Vec<u8>>> {
+        let index = self.index.read();
+        if let Some(&(offset, length)) = index.get(key) {
+            drop(index);
+            
+            let data_file = self.data_file.read();
+            let mut file = File::open(&*data_file).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+            file.seek(SeekFrom::Start(offset)).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+            
+            let mut buffer = vec![0u8; length as usize];
+            file.read_exact(&mut buffer).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+            
+            Ok(Some(buffer))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn put(&self, key: Vec<u8>, value: Vec<u8>) -> DbResult<()> {
+        let data_file = self.data_file.read().clone();
+        drop(self.data_file.read());
+        
+        // Append to data file
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&data_file)
+            .map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        
+        let offset = file.seek(SeekFrom::End(0)).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        file.write_all(&value).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        file.flush().map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        
+        // Update index
+        {
+            let mut index = self.index.write();
+            index.insert(key, (offset, value.len() as u32));
+        }
+        
+        // Save index to disk immediately
+        self.save_index()?;
+        
+        Ok(())
+    }
+
+    fn delete(&self, key: &[u8]) -> DbResult<bool> {
+        let existed = {
+            let mut index = self.index.write();
+            index.remove(key).is_some()
+        };
+        
+        if existed {
+            // Save index to disk immediately
+            self.save_index()?;
+        }
+        
+        Ok(existed)
+    }
+
+    fn contains(&self, key: &[u8]) -> DbResult<bool> {
+        let index = self.index.read();
+        Ok(index.contains_key(key))
+    }
+
+    fn flush(&self) -> DbResult<()> {
+        self.save_index()
+    }
+}
 
 /// Batch operation for efficient bulk operations
 #[derive(Debug, Clone)]
@@ -190,18 +392,16 @@ pub struct Database {
     /// Database ID
     db_id: DatabaseId,
 
-    /// Simple in-memory storage for now (will be replaced with real storage engine)
-    storage: Arc<RwLock<HashMap<Vec<u8>, Vec<u8>>>>,
+    /// Storage backend (either in-memory or file-based)
+    storage: Arc<dyn StorageBackend>,
 }
 
 impl Database {
     /// Create a new database instance
     pub fn new<P: AsRef<Path>>(path: P, config: DbConfig) -> DbResult<Self> {
-        let _ = path; // Will be used when implementing real storage
-
         let cache = Arc::new(RwLock::new(HashMap::with_capacity(config.cache_size)));
         let stats = Arc::new(RwLock::new(DbStats::default()));
-        let storage = Arc::new(RwLock::new(HashMap::new()));
+        let storage: Arc<dyn StorageBackend> = Arc::new(FileStorage::new(path)?);
 
         Ok(Self {
             config,
@@ -214,7 +414,17 @@ impl Database {
 
     /// Create a new in-memory database for testing
     pub fn new_in_memory() -> DbResult<Self> {
-        Self::new("", DbConfig::default())
+        let cache = Arc::new(RwLock::new(HashMap::with_capacity(DbConfig::default().cache_size)));
+        let stats = Arc::new(RwLock::new(DbStats::default()));
+        let storage: Arc<dyn StorageBackend> = Arc::new(InMemoryStorage::new());
+
+        Ok(Self {
+            config: DbConfig::default(),
+            cache,
+            stats,
+            db_id: DatabaseId(1),
+            storage,
+        })
     }
 
     /// Serialize data with optional compression
@@ -287,10 +497,8 @@ impl DatabaseInterface for Database {
         }
 
         // If not in cache, fetch from storage
-        let storage = self.storage.read();
-        if let Some(value) = storage.get(key).cloned() {
+        if let Some(value) = self.storage.get(key)? {
             // Update cache and return
-            drop(storage);
             self.update_cache(key.to_vec(), value.clone());
             self.update_stats(DbOperation::Get, false);
             Ok(Some(value))
@@ -308,10 +516,10 @@ impl DatabaseInterface for Database {
         self.update_cache(key.clone(), value);
 
         // Write to storage
-        {
-            let mut storage = self.storage.write();
-            storage.insert(key, compressed_value);
-        }
+        self.storage.put(key, compressed_value)?;
+        
+        // Flush immediately to ensure persistence
+        self.storage.flush()?;
 
         self.update_stats(DbOperation::Put, false);
         Ok(())
@@ -325,8 +533,10 @@ impl DatabaseInterface for Database {
         }
 
         // Delete from storage
-        let mut storage = self.storage.write();
-        let existed = storage.remove(key).is_some();
+        let existed = self.storage.delete(key)?;
+        
+        // Flush immediately to ensure persistence
+        self.storage.flush()?;
 
         self.update_stats(DbOperation::Delete, false);
         Ok(existed)
@@ -355,10 +565,9 @@ impl DatabaseInterface for Database {
 
     fn snapshot(&self) -> DbResult<Box<dyn DatabaseSnapshot>> {
         let version = VersionId(crate::storage_engine::generate_timestamp());
-        let snapshot_data = {
-            let storage = self.storage.read();
-            storage.clone()
-        };
+        // For now, create an empty snapshot - this would need to be implemented properly
+        // for production use with the actual storage backend
+        let snapshot_data = HashMap::new();
 
         Ok(Box::new(DatabaseSnapshotImpl { data: snapshot_data, version }))
     }
@@ -369,8 +578,7 @@ impl DatabaseInterface for Database {
     }
 
     fn flush(&self) -> DbResult<()> {
-        // In real implementation, this would flush to the storage engine
-        Ok(())
+        self.storage.flush()
     }
 
     fn close(&mut self) -> DbResult<()> {

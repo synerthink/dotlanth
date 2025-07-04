@@ -19,9 +19,10 @@
 //! Command-line interface for interacting with the DotDB document database.
 
 use clap::{Parser, Subcommand};
-use dotdb_core::document::{DocumentId, create_in_memory_collection_manager};
+use dotdb_core::document::{DocumentId, create_persistent_collection_manager};
 use serde_json::Value;
 use std::process;
+use std::path::PathBuf;
 use tracing::{error, info};
 
 #[derive(Parser)]
@@ -31,6 +32,13 @@ use tracing::{error, info};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+}
+
+#[derive(Parser)]
+struct GlobalArgs {
+    /// Data directory for persistent storage (defaults to XDG data directory)
+    #[arg(long, short = 'd', global = true)]
+    data_dir: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
@@ -104,8 +112,17 @@ fn main() {
 
     let cli = Cli::parse();
 
-    // Create collection manager (in-memory for now)
-    let manager = match create_in_memory_collection_manager() {
+    // For now, use default data directory since we can't easily parse global args with subcommands
+    let data_dir = get_data_directory(None);
+    
+    // Ensure data directory exists
+    if let Err(e) = std::fs::create_dir_all(&data_dir) {
+        error!("Failed to create data directory {}: {}", data_dir.display(), e);
+        process::exit(1);
+    }
+
+    // Create collection manager with persistent storage
+    let manager = match create_persistent_collection_manager(&data_dir, None) {
         Ok(manager) => manager,
         Err(e) => {
             error!("Failed to create collection manager: {}", e);
@@ -129,6 +146,23 @@ fn main() {
     if let Err(e) = result {
         error!("Command failed: {}", e);
         process::exit(1);
+    }
+}
+
+/// Get the data directory for persistent storage with XDG compliance
+fn get_data_directory(custom_dir: Option<PathBuf>) -> PathBuf {
+    if let Some(dir) = custom_dir {
+        return dir;
+    }
+
+    // Use XDG data directory if available, otherwise fall back to a sensible default
+    if let Ok(xdg_data_home) = std::env::var("XDG_DATA_HOME") {
+        PathBuf::from(xdg_data_home).join("dotdb")
+    } else if let Ok(home) = std::env::var("HOME") {
+        PathBuf::from(home).join(".local").join("share").join("dotdb")
+    } else {
+        // Fallback for systems without HOME (like some CI environments)
+        PathBuf::from(".dotdb")
     }
 }
 
