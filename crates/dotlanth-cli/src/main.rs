@@ -1,6 +1,16 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+mod commands;
+mod config;
+mod database;
+mod tui;
+
+use crate::commands::CommandContext;
+use crate::config::DotLanthConfig;
+use crate::tui::run_tui;
+use anyhow::Result;
+
 /// CLI for DotLanth infrastructure management
 #[derive(Parser, Debug)]
 #[command(name = "dotlanth", about = "DotLanth Infrastructure Management")]
@@ -105,8 +115,45 @@ pub enum Commands {
     },
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
-    // TODO: Invoke command dispatchers when implemented
-    println!("{:#?}", cli);
+
+    // Load configuration
+    let config = DotLanthConfig::resolve_config(cli.config, cli.data_dir)?;
+
+    // Create command context
+    let ctx = CommandContext::new(config)?;
+
+    // Dispatch commands
+    match cli.command {
+        Commands::Run => {
+            run_tui(ctx)?;
+        }
+        Commands::Status => {
+            commands::cluster::show_status(&ctx)?;
+        }
+        Commands::Deploy { dot_file } => {
+            commands::deploy::deploy_dot(&ctx, &dot_file)?;
+        }
+        Commands::Monitor => {
+            commands::monitor::start_monitoring(&ctx)?;
+        }
+        Commands::Logs => {
+            commands::monitor::show_logs(&ctx)?;
+        }
+        Commands::Nodes { command } => {
+            commands::nodes::handle_node_command(&ctx, command)?;
+        }
+        Commands::Cluster { command } => {
+            commands::cluster::handle_cluster_command(&ctx, command)?;
+        }
+        Commands::Backup { command } => {
+            commands::backup::handle_backup_command(&ctx, command)?;
+        }
+        Commands::Config { command } => {
+            commands::config::handle_config_command(&ctx, command)?;
+        }
+    }
+
+    Ok(())
 }
