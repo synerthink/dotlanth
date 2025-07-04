@@ -40,8 +40,7 @@ impl DatabaseBridge {
 
     /// Create a new database bridge with persistent storage
     pub fn new_persistent<P: AsRef<std::path::Path>>(path: P) -> Result<Self, DatabaseBridgeError> {
-        let collection_manager = dotdb_core::document::create_persistent_collection_manager(path, None)
-            .map_err(|e| DatabaseBridgeError::DatabaseError(e.to_string()))?;
+        let collection_manager = dotdb_core::document::create_persistent_collection_manager(path, None).map_err(|e| DatabaseBridgeError::DatabaseError(e.to_string()))?;
         Ok(Self {
             collection_manager: Arc::new(Mutex::new(collection_manager)),
         })

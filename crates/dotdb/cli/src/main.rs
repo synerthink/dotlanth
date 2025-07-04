@@ -21,8 +21,8 @@
 use clap::{Parser, Subcommand};
 use dotdb_core::document::{DocumentId, create_persistent_collection_manager};
 use serde_json::Value;
-use std::process;
 use std::path::PathBuf;
+use std::process;
 use tracing::{error, info};
 
 #[derive(Parser)]
@@ -114,7 +114,7 @@ fn main() {
 
     // For now, use default data directory since we can't easily parse global args with subcommands
     let data_dir = get_data_directory(None);
-    
+
     // Ensure data directory exists
     if let Err(e) = std::fs::create_dir_all(&data_dir) {
         error!("Failed to create data directory {}: {}", data_dir.display(), e);

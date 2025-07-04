@@ -33,11 +33,11 @@ use crate::state::mpt::{MPTError, Node, NodeId, TrieResult};
 use crate::storage_engine::{DatabaseId, StorageConfig, StorageError, VersionId};
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::fs::{File, OpenOptions};
+use std::io::prelude::*;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Write, Seek, SeekFrom};
-use std::io::prelude::*;
 
 /// Database operation types for monitoring
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -173,7 +173,7 @@ impl FileStorage {
     fn new<P: AsRef<Path>>(path: P) -> DbResult<Self> {
         let data_file = path.as_ref().join("data.db");
         let index_file = path.as_ref().join("index.db");
-        
+
         // Ensure directory exists
         if let Some(parent) = data_file.parent() {
             std::fs::create_dir_all(parent).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
@@ -196,7 +196,7 @@ impl FileStorage {
         let mut file = File::open(index_file).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
         let mut buffer = String::new();
         file.read_to_string(&mut buffer).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
-        
+
         // Convert HashMap<Vec<u8>, (u64, u32)> to HashMap<String, (u64, u32)> for JSON serialization
         match serde_json::from_str::<HashMap<String, (u64, u32)>>(&buffer) {
             Ok(string_index) => {
@@ -218,27 +218,23 @@ impl FileStorage {
     fn save_index(&self) -> DbResult<()> {
         let data_file_path = self.data_file.read();
         let index_file = data_file_path.parent().unwrap().join("index.db");
-        
+
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
             .open(&index_file)
             .map_err(|e| DbError::Storage(StorageError::Io(e)))?;
-        
+
         // Convert HashMap<Vec<u8>, (u64, u32)> to HashMap<String, (u64, u32)> for JSON serialization
         let index = self.index.read();
-        let string_index: HashMap<String, (u64, u32)> = index
-            .iter()
-            .map(|(k, v)| (hex::encode(k), *v))
-            .collect();
-        
-        let serialized = serde_json::to_string(&string_index)
-            .map_err(|e| DbError::Serialization(e.to_string()))?;
-        
+        let string_index: HashMap<String, (u64, u32)> = index.iter().map(|(k, v)| (hex::encode(k), *v)).collect();
+
+        let serialized = serde_json::to_string(&string_index).map_err(|e| DbError::Serialization(e.to_string()))?;
+
         file.write_all(serialized.as_bytes()).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
         file.flush().map_err(|e| DbError::Storage(StorageError::Io(e)))?;
-        
+
         Ok(())
     }
 }
@@ -248,14 +244,14 @@ impl StorageBackend for FileStorage {
         let index = self.index.read();
         if let Some(&(offset, length)) = index.get(key) {
             drop(index);
-            
+
             let data_file = self.data_file.read();
             let mut file = File::open(&*data_file).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
             file.seek(SeekFrom::Start(offset)).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
-            
+
             let mut buffer = vec![0u8; length as usize];
             file.read_exact(&mut buffer).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
-            
+
             Ok(Some(buffer))
         } else {
             Ok(None)
@@ -265,27 +261,23 @@ impl StorageBackend for FileStorage {
     fn put(&self, key: Vec<u8>, value: Vec<u8>) -> DbResult<()> {
         let data_file = self.data_file.read().clone();
         drop(self.data_file.read());
-        
+
         // Append to data file
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&data_file)
-            .map_err(|e| DbError::Storage(StorageError::Io(e)))?;
-        
+        let mut file = OpenOptions::new().create(true).append(true).open(&data_file).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+
         let offset = file.seek(SeekFrom::End(0)).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
         file.write_all(&value).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
         file.flush().map_err(|e| DbError::Storage(StorageError::Io(e)))?;
-        
+
         // Update index
         {
             let mut index = self.index.write();
             index.insert(key, (offset, value.len() as u32));
         }
-        
+
         // Save index to disk immediately
         self.save_index()?;
-        
+
         Ok(())
     }
 
@@ -294,12 +286,12 @@ impl StorageBackend for FileStorage {
             let mut index = self.index.write();
             index.remove(key).is_some()
         };
-        
+
         if existed {
             // Save index to disk immediately
             self.save_index()?;
         }
-        
+
         Ok(existed)
     }
 
@@ -517,7 +509,7 @@ impl DatabaseInterface for Database {
 
         // Write to storage
         self.storage.put(key, compressed_value)?;
-        
+
         // Flush immediately to ensure persistence
         self.storage.flush()?;
 
@@ -534,7 +526,7 @@ impl DatabaseInterface for Database {
 
         // Delete from storage
         let existed = self.storage.delete(key)?;
-        
+
         // Flush immediately to ensure persistence
         self.storage.flush()?;
 
