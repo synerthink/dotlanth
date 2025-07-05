@@ -17,7 +17,7 @@
 //! Function table section generator
 
 use crate::{
-    codegen::{error::BytecodeResult, writer::BytecodeWriter},
+    codegen::{error::BytecodeResult, writers::BytecodeWriter},
     transpiler::engine::TranspiledFunction,
 };
 

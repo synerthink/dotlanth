@@ -30,6 +30,7 @@ pub mod debug;
 pub mod export_import;
 pub mod function_table;
 pub mod header;
+pub mod traits;
 
 pub use code::CodeGenerator;
 pub use data::DataGenerator;
@@ -37,3 +38,4 @@ pub use debug::{DebugInfo, DebugInfoGenerator};
 pub use export_import::{ExportTable, ExportTableGenerator, ImportTable, ImportTableGenerator};
 pub use function_table::{FunctionTable, FunctionTableGenerator};
 pub use header::HeaderGenerator;
+pub use traits::{SectionGenerator, SectionType, SectionValidator};

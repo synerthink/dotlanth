@@ -16,13 +16,11 @@
 
 //! Code section generator
 
-use crate::{
-    codegen::{
-        error::{BytecodeGenerationError, BytecodeResult},
-        writer::BytecodeWriter,
-    },
-    transpiler::engine::{Operand, TranspiledFunction, TranspiledInstruction},
-};
+use crate::codegen::core::context::GenerationContext;
+use crate::codegen::error::{BytecodeGenerationError, BytecodeResult};
+use crate::codegen::sections::traits::{SectionGenerator, SectionType};
+use crate::codegen::writers::BytecodeWriter;
+use crate::transpiler::engine::{Operand, TranspiledFunction, TranspiledInstruction};
 use std::collections::HashMap;
 
 /// Label information for jump resolution
@@ -46,6 +44,28 @@ pub struct CodeGenerator {
     label_table: HashMap<String, LabelInfo>,
     pending_labels: Vec<PendingLabel>,
 }
+
+// TODO: Implement SectionGenerator trait when the framework is ready
+// impl SectionGenerator for CodeGenerator {
+//     fn generate(&self, context: &GenerationContext) -> BytecodeResult<Vec<u8>> {
+//         // TODO: integrate with writer-based API
+//         Err(BytecodeGenerationError::SerializationError(
+//             "Code section generator not yet hooked into SectionGenerator trait".into(),
+//         ))
+//     }
+//
+//     fn size_estimate(&self, _context: &GenerationContext) -> usize {
+//         0 // TODO: implement size estimation
+//     }
+//
+//     fn section_type(&self) -> SectionType {
+//         SectionType::Code
+//     }
+//
+//     fn dependencies(&self) -> &'static [SectionType] {
+//         &[SectionType::FunctionTable]
+//     }
+// }
 
 impl CodeGenerator {
     /// Create a new code generator

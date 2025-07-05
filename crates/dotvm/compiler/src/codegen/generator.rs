@@ -16,18 +16,16 @@
 
 //! Main bytecode generator orchestrating all generation phases
 
-use crate::{
-    codegen::{
-        config::BytecodeGenerationConfig,
-        error::{BytecodeGenerationError, BytecodeResult},
-        optimizer::BytecodeOptimizer,
-        sections::{
-            CodeGenerator, DataGenerator, DebugInfo, DebugInfoGenerator, ExportTable, ExportTableGenerator, FunctionTable, FunctionTableGenerator, HeaderGenerator, ImportTable, ImportTableGenerator,
-        },
-        writer::BytecodeWriter,
+use crate::codegen::core::{context::GenerationContext, generator::BytecodeGenerator as BytecodeGeneratorTrait};
+use crate::codegen::{
+    config::BytecodeGenerationConfig,
+    error::{BytecodeGenerationError, BytecodeResult},
+    sections::{
+        CodeGenerator, DataGenerator, DebugInfo, DebugInfoGenerator, ExportTable, ExportTableGenerator, FunctionTable, FunctionTableGenerator, HeaderGenerator, ImportTable, ImportTableGenerator,
     },
-    transpiler::engine::TranspiledModule,
+    writers::BytecodeWriter,
 };
+use crate::transpiler::engine::TranspiledModule;
 use std::time::Instant;
 
 /// Statistics about the generation process
@@ -55,11 +53,12 @@ pub struct GeneratedBytecode {
 }
 
 /// Main bytecode generator that orchestrates the entire generation process
+/// Top-level DotVM bytecode generator orchestrating phases
 pub struct BytecodeGenerator {
     config: BytecodeGenerationConfig,
+    context: GenerationContext,
     writer: BytecodeWriter,
     code_generator: CodeGenerator,
-    optimizer: BytecodeOptimizer,
 }
 
 impl BytecodeGenerator {
@@ -76,9 +75,9 @@ impl BytecodeGenerator {
 
         Ok(Self {
             config,
+            context: GenerationContext::new(),
             writer,
             code_generator: CodeGenerator::new(),
-            optimizer: BytecodeOptimizer::new(),
         })
     }
 
@@ -193,7 +192,8 @@ impl BytecodeGenerator {
             return Ok(());
         }
 
-        let optimizations_applied = self.optimizer.optimize(self.writer.buffer(), &self.config)?;
+        // Note: Optimization is now handled by the separate optimizer module at the compiler level
+        let optimizations_applied = 0; // No optimizations applied in codegen
 
         stats.optimizations_applied = optimizations_applied;
         Ok(())

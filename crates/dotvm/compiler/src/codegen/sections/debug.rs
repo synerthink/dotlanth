@@ -17,7 +17,7 @@
 //! Debug information generator
 
 use crate::{
-    codegen::{error::BytecodeResult, writer::BytecodeWriter},
+    codegen::{error::BytecodeResult, writers::BytecodeWriter},
     transpiler::engine::TranspiledFunction,
 };
 
@@ -174,6 +174,27 @@ impl DebugInfoGenerator {
         4 + 4 + 4 // function_count + line_number_count + local_variable_count
     }
 }
+
+// TODO: Implement SectionGenerator trait when the framework is ready
+// impl SectionGenerator for DebugInfoGenerator {
+//     fn generate(&self, _context: &GenerationContext) -> BytecodeResult<Vec<u8>> {
+//         Err(BytecodeGenerationError::SerializationError(
+//             "Debug info generator not yet hooked into SectionGenerator trait".into(),
+//         ))
+//     }
+//
+//     fn size_estimate(&self, _context: &GenerationContext) -> usize {
+//         DebugInfoGenerator::calculate_min_size()
+//     }
+//
+//     fn section_type(&self) -> SectionType {
+//         SectionType::DebugInfo
+//     }
+//
+//     fn dependencies(&self) -> &'static [SectionType] {
+//         &[]
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

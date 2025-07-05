@@ -20,7 +20,7 @@ use crate::{
     codegen::{
         error::{BytecodeGenerationError, BytecodeResult},
         sections::function_table::FunctionTable,
-        writer::BytecodeWriter,
+        writers::BytecodeWriter,
     },
     transpiler::engine::{ExportInfo, ExportKind, ImportInfo, ImportKind},
 };
@@ -165,6 +165,50 @@ impl ImportTableGenerator {
         4 + 4 + 1 + 4 // name_offset + module_name_offset + kind + index
     }
 }
+
+// TODO: Implement SectionGenerator trait when the framework is ready
+// impl SectionGenerator for ExportTableGenerator {
+//     fn generate(&self, context: &GenerationContext) -> BytecodeResult<Vec<u8>> {
+//         // TODO: hook into writer-based API
+//         Err(BytecodeGenerationError::SerializationError(
+//             "Export table generator not yet hooked into SectionGenerator trait".into(),
+//         ))
+//     }
+//
+//     fn size_estimate(&self, context: &GenerationContext) -> usize {
+//         // We cannot estimate without export count, so return 0
+//         0
+//     }
+//
+//     fn section_type(&self) -> SectionType {
+//         SectionType::ExportTable
+//     }
+//
+//     fn dependencies(&self) -> &'static [SectionType] {
+//         &[SectionType::FunctionTable]
+//     }
+// }
+
+// TODO: Implement SectionGenerator trait when the framework is ready
+// impl SectionGenerator for ImportTableGenerator {
+//     fn generate(&self, _context: &GenerationContext) -> BytecodeResult<Vec<u8>> {
+//         Err(BytecodeGenerationError::SerializationError(
+//             "Import table generator not yet hooked into SectionGenerator trait".into(),
+//         ))
+//     }
+//
+//     fn size_estimate(&self, _context: &GenerationContext) -> usize {
+//         0
+//     }
+//
+//     fn section_type(&self) -> SectionType {
+//         SectionType::ImportTable
+//     }
+//
+//     fn dependencies(&self) -> &'static [SectionType] {
+//         &[]
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

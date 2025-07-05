@@ -37,12 +37,15 @@ pub mod processors;
 pub mod test_basic;
 
 // Re-export commonly used types and functions
-pub use config::*;
-pub use error::*;
-pub use types::*;
+pub use config::TranspilationConfig;
+pub use error::{TranspilationError, TranspilationResult};
+pub use types::{
+    ExportInfo, ExportKind, FunctionMetadata, GlobalVariable, ImportInfo, ImportKind, LocalVariable, MemoryAccessPattern, MemoryLayout, Operand, TranspiledFunction, TranspiledInstruction,
+    TranspiledModule, VariableType,
+};
 
 // Re-export both engines for migration period
-pub use engine::*; // Legacy engine
+pub use engine::TranspilationEngine as LegacyTranspilationEngine; // Legacy engine
 pub use engine_new::NewTranspilationEngine; // New engine
 
 // Convenience type alias for the new engine

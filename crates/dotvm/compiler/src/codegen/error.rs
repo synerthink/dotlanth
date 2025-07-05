@@ -23,6 +23,8 @@ use thiserror::Error;
 pub enum BytecodeGenerationError {
     #[error("Serialization error: {0}")]
     SerializationError(String),
+    #[error("Write error: {0}")]
+    WriteError(String),
 
     #[error("Invalid instruction at offset {offset}: {reason}")]
     InvalidInstruction { offset: u32, reason: String },

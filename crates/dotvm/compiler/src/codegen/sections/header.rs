@@ -16,7 +16,7 @@
 
 //! Header section generator
 
-use crate::codegen::{error::BytecodeResult, writer::BytecodeWriter};
+use crate::codegen::{error::BytecodeResult, writers::BytecodeWriter};
 use dotvm_core::bytecode::BytecodeHeader;
 
 /// Generator for the bytecode header section

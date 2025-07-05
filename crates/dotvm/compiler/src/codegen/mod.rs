@@ -21,24 +21,24 @@
 //!
 //! - `config`: Configuration management
 //! - `error`: Error types and handling
-//! - `writer`: Safe bytecode writing utilities
+//! - `writers`: Safe bytecode writing utilities
 //! - `sections`: Specialized generators for different bytecode sections
-//! - `optimizer`: Post-generation optimization passes
 //! - `generator`: Main orchestrator that coordinates all generation phases
+//!
+//! Note: Optimization is handled by the separate `optimizer` module at the compiler level.
 
 pub mod config;
+pub mod core;
 pub mod error;
 pub mod generator;
-pub mod optimizer;
 pub mod sections;
-pub mod writer;
+pub mod writers;
 
 // Re-export main types
 pub use config::BytecodeGenerationConfig;
 pub use error::{BytecodeGenerationError, BytecodeResult};
 pub use generator::{BytecodeGenerator, DotVMGenerator, GeneratedBytecode, GenerationStats};
-pub use optimizer::BytecodeOptimizer;
-pub use writer::{BytecodeWriter, PatchPoint};
+pub use writers::{BytecodeWriter, PatchPoint};
 
 // Re-export section types
 pub use sections::{

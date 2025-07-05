@@ -17,7 +17,7 @@
 //! Data section generator
 
 use crate::{
-    codegen::{error::BytecodeResult, writer::BytecodeWriter},
+    codegen::{error::BytecodeResult, writers::BytecodeWriter},
     transpiler::engine::TranspiledModule,
 };
 
@@ -96,6 +96,28 @@ impl DataGenerator {
         4 + 4 + 4 // string_count + constant_count + global_count
     }
 }
+
+// TODO: Implement SectionGenerator trait when the framework is ready
+// impl SectionGenerator for DataGenerator {
+//     fn generate(&self, context: &GenerationContext) -> BytecodeResult<Vec<u8>> {
+//         // TODO: hook into writer-based API
+//         Err(BytecodeGenerationError::SerializationError(
+//             "Data section generator not yet hooked into SectionGenerator trait".into(),
+//         ))
+//     }
+//
+//     fn size_estimate(&self, _context: &GenerationContext) -> usize {
+//         Self::calculate_min_size()
+//     }
+//
+//     fn section_type(&self) -> SectionType {
+//         SectionType::Data
+//     }
+//
+//     fn dependencies(&self) -> &'static [SectionType] {
+//         &[]
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
