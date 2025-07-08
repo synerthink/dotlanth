@@ -19,7 +19,7 @@
 //! This module implements peephole optimizations that look at small sequences
 //! of instructions and replace them with more efficient equivalents.
 
-use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
+use crate::transpiler::types::{TranspiledFunction, TranspiledInstruction};
 use dotvm_core::bytecode::VmArchitecture;
 
 /// Peephole optimizer for DotVM bytecode
@@ -348,6 +348,7 @@ mod tests {
             param_count: 0,
             is_exported: false,
             debug_info: None,
+            metadata: crate::transpiler::types::function::FunctionMetadata::default(),
         };
 
         let optimized = optimizer.optimize_function(empty_function);

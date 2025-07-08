@@ -96,6 +96,9 @@ impl OpcodeMapper {
             // Simple stack operations
             WasmInstruction::Drop | WasmInstruction::Select => vec![],
 
+            // Control flow instructions
+            WasmInstruction::Nop | WasmInstruction::End => vec![],
+
             // Unsupported or complex features
             _ => return Err(WasmError::unsupported_feature(format!("Instruction: {:?}", instruction))),
         };

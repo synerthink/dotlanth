@@ -19,7 +19,7 @@
 //! This module implements dead code elimination that removes unreachable
 //! code and unused variables/functions.
 
-use crate::transpiler::engine::{TranspiledFunction, TranspiledInstruction};
+use crate::transpiler::types::{TranspiledFunction, TranspiledInstruction};
 use std::collections::{HashMap, HashSet};
 
 /// Dead code eliminator for DotVM bytecode

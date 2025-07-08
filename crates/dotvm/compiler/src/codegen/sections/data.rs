@@ -18,7 +18,7 @@
 
 use crate::{
     codegen::{error::BytecodeResult, writers::BytecodeWriter},
-    transpiler::engine::TranspiledModule,
+    transpiler::types::TranspiledModule,
 };
 
 /// Generator for the data section
@@ -122,7 +122,7 @@ impl DataGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transpiler::engine::{ExportInfo, ExportKind, ImportInfo, ImportKind, TranspiledFunction};
+    use crate::transpiler::types::{ExportInfo, ExportKind, ImportInfo, ImportKind, TranspiledFunction};
     use dotvm_core::bytecode::{BytecodeHeader, VmArchitecture};
 
     #[test]
@@ -138,23 +138,31 @@ mod tests {
                 local_count: 0,
                 is_exported: true,
                 debug_info: None,
+                metadata: crate::transpiler::types::function::FunctionMetadata::default(),
             }],
             globals: vec![],
-            memory_layout: crate::transpiler::engine::MemoryLayout {
+            memory_layout: crate::transpiler::types::variables::MemoryLayout {
                 initial_pages: 1,
                 maximum_pages: None,
                 page_size: 65536,
+                segments: Vec::new(),
+                protection: crate::transpiler::types::variables::MemoryProtection::default(),
             },
             exports: vec![ExportInfo {
                 name: "main".to_string(),
                 kind: ExportKind::Function,
                 index: 0,
+                description: None,
+                is_public: true,
             }],
             imports: vec![ImportInfo {
                 name: "print".to_string(),
                 module_name: "env".to_string(),
                 kind: ImportKind::Function { type_index: 0 },
+                description: None,
+                is_required: true,
             }],
+            metadata: crate::transpiler::types::module::ModuleMetadata::default(),
         };
 
         DataGenerator::generate(&mut writer, &module).unwrap();

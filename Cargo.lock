@@ -675,8 +675,10 @@ version = "0.1.0"
 dependencies = [
  "dotvm-common",
  "dotvm-core",
+ "petgraph 0.7.1",
  "regex",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tracing",

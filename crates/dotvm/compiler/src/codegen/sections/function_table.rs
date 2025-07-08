@@ -18,7 +18,7 @@
 
 use crate::{
     codegen::{error::BytecodeResult, writers::BytecodeWriter},
-    transpiler::engine::TranspiledFunction,
+    transpiler::types::TranspiledFunction,
 };
 
 /// Compilation metadata flags for functions
@@ -142,7 +142,7 @@ impl FunctionTableGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transpiler::engine::TranspiledInstruction;
+    use crate::transpiler::types::TranspiledInstruction;
 
     #[test]
     fn test_function_flags() {
@@ -174,6 +174,7 @@ mod tests {
             local_count: 3,
             is_exported: true,
             debug_info: None,
+            metadata: crate::transpiler::types::function::FunctionMetadata::default(),
         }];
 
         let table = FunctionTableGenerator::generate(&mut writer, &functions).unwrap();

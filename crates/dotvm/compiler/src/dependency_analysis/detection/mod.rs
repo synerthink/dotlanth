@@ -15,12 +15,114 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Dependency detection algorithms and pattern matching
+//!
+//! This module provides sophisticated algorithms for detecting dependencies in
+//! WebAssembly modules and DotVM bytecode. It uses pattern matching, heuristic
+//! analysis, and configurable detection strategies to identify various types
+//! of dependencies including module imports, function calls, and state access.
+//!
+//! ## Core Detection Capabilities
+//!
+//! ### Dependency Detection (`dependency_detector`)
+//! - **Purpose**: Main interface for dependency detection operations
+//! - **Scope**: Detects module dependencies, function calls, external references
+//! - **Algorithms**: Pattern-based detection, AST traversal, bytecode analysis
+//! - **Output**: Structured dependency information with metadata and locations
+//!
+//! ### Pattern Matching (`pattern_matcher`)
+//! - **Purpose**: Flexible pattern matching engine for dependency identification
+//! - **Patterns**: Regular expressions, syntax patterns, semantic patterns
+//! - **Extensibility**: Supports custom pattern definitions and matching rules
+//! - **Performance**: Optimized matching algorithms for large codebases
+//!
+//! ### Detection Strategies (`strategies`)
+//! - **Static Analysis**: Compile-time dependency detection without execution
+//! - **Dynamic Hints**: Runtime information to improve detection accuracy
+//! - **Hybrid Approach**: Combines static and dynamic information for best results
+//! - **Configurable**: Adjustable strategies based on analysis requirements
+//!
+//! ### Pattern Matchers (`matchers`)
+//! - **Graph Matchers**: Detect dependencies through graph structure analysis
+//! - **Heuristic Matchers**: Use heuristics for probabilistic dependency detection
+//! - **Instruction Matchers**: Analyze individual instructions for dependencies
+//! - **Sequence Matchers**: Detect patterns in instruction sequences
+//!
+//! ### Pattern Definitions (`patterns`)
+//! - **Control Patterns**: Control flow related dependencies
+//! - **Data Patterns**: Data flow and variable dependencies
+//! - **Dependency Patterns**: Module and external dependencies
+//! - **State Patterns**: Blockchain state access patterns
+//!
+//! ## Dependency Types
+//!
+//! ### Module Dependencies
+//! - **Import Statements**: Direct module imports and requires
+//! - **Dynamic Imports**: Runtime module loading and dependency injection
+//! - **Transitive Dependencies**: Dependencies of imported modules
+//! - **Circular Dependencies**: Detection and reporting of circular references
+//!
+//! ### Function Dependencies
+//! - **Direct Calls**: Explicit function calls and invocations
+//! - **Indirect Calls**: Function pointer calls and dynamic dispatch
+//! - **Callback Dependencies**: Functions passed as callbacks or handlers
+//! - **Virtual Calls**: Interface and virtual method calls
+//!
+//! ### Data Dependencies
+//! - **Variable References**: Dependencies through shared variables
+//! - **Memory Dependencies**: Shared memory access patterns
+//! - **State Dependencies**: Blockchain state variable dependencies
+//! - **Resource Dependencies**: File, network, and system resource access
+//!
+//! ## Detection Algorithms
+//!
+//! ### Static Analysis
+//! - **AST Traversal**: Systematic traversal of abstract syntax trees
+//! - **Control Flow Analysis**: Dependencies through control flow paths
+//! - **Data Flow Analysis**: Dependencies through data flow chains
+//! - **Symbol Resolution**: Resolving symbols to their definitions
+//!
+//! ### Pattern Recognition
+//! - **Syntax Patterns**: Recognizing dependency patterns in source code
+//! - **Semantic Patterns**: Understanding meaning behind code constructs
+//! - **Behavioral Patterns**: Identifying patterns in program behavior
+//! - **Anti-Patterns**: Detecting problematic dependency patterns
+//!
+//! ### Heuristic Methods
+//! - **Probabilistic Detection**: Using probability for uncertain dependencies
+//! - **Machine Learning**: Learning patterns from training data
+//! - **Fuzzy Matching**: Approximate matching for similar patterns
+//! - **Confidence Scoring**: Assigning confidence levels to detected dependencies
+//!
+//! ## Registry System
+//!
+//! The `DetectorRegistry` provides a flexible system for managing multiple detectors:
+//! - **Registration**: Easy registration of new detector implementations
+//! - **Discovery**: Automatic discovery and loading of available detectors
+//! - **Coordination**: Coordinated execution of multiple detectors
+//! - **Result Aggregation**: Combining results from different detectors
+//!
+//! ## Performance Optimization
+//!
+//! - **Parallel Detection**: Running multiple detectors concurrently
+//! - **Incremental Analysis**: Only analyzing changed parts of code
+//! - **Caching**: Caching detection results for repeated analysis
+//! - **Early Termination**: Stopping analysis when sufficient information is found
+//!
+//! ## Integration with Security Analysis
+//!
+//! - **Vulnerability Detection**: Identifying potentially dangerous dependencies
+//! - **Supply Chain Analysis**: Analyzing dependency chains for security risks
+//! - **Malware Detection**: Detecting suspicious dependency patterns
+//! - **Compliance Checking**: Ensuring dependencies meet security requirements
 
 pub mod dependency_detector;
+pub mod matchers;
 pub mod pattern_matcher;
+pub mod patterns;
+pub mod strategies;
 
 pub use dependency_detector::{DependencyDetector, DependencyInfo, DependencyType};
-pub use pattern_matcher::{MatchResult, Pattern, PatternMatcher};
+pub use pattern_matcher::{MatchResult, Pattern};
 
 use std::collections::HashMap;
 

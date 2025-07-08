@@ -21,7 +21,7 @@
 
 use dotvm_compiler::{
     codegen::DotVMGenerator,
-    transpiler::engine::TranspilationEngine,
+    transpiler::engine_new::NewTranspilationEngine,
     wasm::{ast::WasmModule, parser::WasmParser},
 };
 use dotvm_core::bytecode::VmArchitecture;
@@ -43,21 +43,21 @@ pub struct JitTranspiler {
     /// Wasm parser
     wasm_parser: Arc<Mutex<WasmParser>>,
     /// Transpiler engine
-    transpiler: Arc<Mutex<TranspilationEngine>>,
+    transpiler: Arc<Mutex<NewTranspilationEngine>>,
     /// Bytecode generator
     generator: Arc<Mutex<DotVMGenerator>>,
 }
 
 impl JitTranspiler {
     /// Create a new JIT transpiler
-    pub fn new(target_arch: VmArchitecture) -> Self {
-        Self {
+    pub fn new(target_arch: VmArchitecture) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self {
             target_arch,
             cache: Arc::new(RwLock::new(BytecodeCache::new())),
             wasm_parser: Arc::new(Mutex::new(WasmParser::new())),
-            transpiler: Arc::new(Mutex::new(TranspilationEngine::with_architecture(target_arch))),
-            generator: Arc::new(Mutex::new(DotVMGenerator::with_architecture(target_arch).expect("Failed to create DotVM generator"))),
-        }
+            transpiler: Arc::new(Mutex::new(NewTranspilationEngine::with_architecture(target_arch)?)),
+            generator: Arc::new(Mutex::new(DotVMGenerator::with_architecture(target_arch)?)),
+        })
     }
 
     /// Transpile Wasm bytecode to DotVM bytecode with caching
@@ -303,11 +303,11 @@ pub struct HotReloader {
 
 impl HotReloader {
     /// Create a new hot reloader
-    pub fn new(target_arch: VmArchitecture) -> Self {
-        Self {
-            jit_transpiler: Arc::new(JitTranspiler::new(target_arch)),
+    pub fn new(target_arch: VmArchitecture) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self {
+            jit_transpiler: Arc::new(JitTranspiler::new(target_arch)?),
             watched_files: Arc::new(RwLock::new(HashMap::new())),
-        }
+        })
     }
 
     /// Add a file to watch for changes
@@ -386,13 +386,13 @@ mod tests {
     #[tokio::test]
     async fn test_jit_transpiler_creation() {
         let transpiler = JitTranspiler::new(VmArchitecture::Arch64);
-        assert!(matches!(transpiler.target_arch, VmArchitecture::Arch64));
+        assert!(matches!(transpiler.unwrap().target_arch, VmArchitecture::Arch64));
     }
 
     #[tokio::test]
     async fn test_cache_stats() {
         let transpiler = JitTranspiler::new(VmArchitecture::Arch64);
-        let stats = transpiler.cache_stats();
+        let stats = transpiler.expect("Transpiler creation should succeed").cache_stats();
         assert_eq!(stats.hits, 0);
         assert_eq!(stats.misses, 0);
         assert_eq!(stats.hit_rate(), 0.0);
@@ -401,7 +401,7 @@ mod tests {
     #[tokio::test]
     async fn test_hot_reloader_creation() {
         let reloader = HotReloader::new(VmArchitecture::Arch128);
-        assert!(matches!(reloader.jit_transpiler.target_arch, VmArchitecture::Arch128));
+        assert!(matches!(reloader.unwrap().jit_transpiler.target_arch, VmArchitecture::Arch128));
     }
 
     #[tokio::test]
@@ -411,7 +411,7 @@ mod tests {
         fs::write(&test_file, b"test content").await.unwrap();
 
         let reloader = HotReloader::new(VmArchitecture::Arch64);
-        let result = reloader.watch_file(&test_file);
+        let result = reloader.expect("Reloader creation should succeed").watch_file(&test_file);
         assert!(result.is_ok());
     }
 

@@ -25,7 +25,7 @@ use crate::codegen::{
     },
     writers::BytecodeWriter,
 };
-use crate::transpiler::engine::TranspiledModule;
+use crate::transpiler::types::TranspiledModule;
 use std::time::Instant;
 
 /// Statistics about the generation process
@@ -251,7 +251,7 @@ impl DotVMGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transpiler::engine::TranspiledFunction;
+    use crate::transpiler::types::TranspiledFunction;
     use dotvm_core::bytecode::{BytecodeHeader, VmArchitecture};
 
     #[test]
@@ -284,15 +284,19 @@ mod tests {
                 local_count: 0,
                 is_exported: true,
                 debug_info: None,
+                metadata: crate::transpiler::types::function::FunctionMetadata::default(),
             }],
             globals: vec![],
-            memory_layout: crate::transpiler::engine::MemoryLayout {
+            memory_layout: crate::transpiler::types::variables::MemoryLayout {
                 initial_pages: 1,
                 maximum_pages: None,
                 page_size: 65536,
+                segments: Vec::new(),
+                protection: crate::transpiler::types::variables::MemoryProtection::default(),
             },
             exports: vec![],
             imports: vec![],
+            metadata: crate::transpiler::types::module::ModuleMetadata::default(),
         };
 
         let result = generator.generate(&module);

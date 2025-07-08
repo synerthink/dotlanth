@@ -22,7 +22,7 @@
 use clap::{Parser, ValueEnum};
 use dotvm_compiler::{
     codegen::DotVMGenerator,
-    transpiler::engine::TranspilationEngine,
+    transpiler::engine_new::NewTranspilationEngine,
     wasm::{ast::WasmModule, parser::WasmParser},
 };
 use dotvm_core::bytecode::VmArchitecture;
@@ -114,11 +114,8 @@ impl TranspilationPipeline {
         // Step 1: Compile Rust to Wasm
         let wasm_path = self.compile_rust_to_wasm()?;
 
-        // Step 2: Parse Wasm to AST
-        let wasm_module = self.parse_wasm(&wasm_path)?;
-
-        // Step 3: Transpile Wasm to DotVM bytecode
-        let bytecode = self.transpile_to_dotvm(wasm_module)?;
+        // Step 2: Transpile Wasm to DotVM bytecode (parsing happens inside transpiler)
+        let bytecode = self.transpile_to_dotvm(&wasm_path)?;
 
         // Step 4: Write output
         self.write_bytecode(&bytecode)?;
@@ -265,17 +262,20 @@ impl TranspilationPipeline {
         Ok(module)
     }
 
-    /// Transpile Wasm AST to DotVM bytecode
-    fn transpile_to_dotvm(&self, wasm_module: WasmModule) -> Result<Vec<u8>, TranspilationError> {
+    /// Transpile Wasm bytes to DotVM bytecode
+    fn transpile_to_dotvm(&self, wasm_path: &Path) -> Result<Vec<u8>, TranspilationError> {
         if self.args.verbose {
             println!("Step 3: Transpiling Wasm to DotVM bytecode...");
         }
 
         let target_arch = VmArchitecture::from(self.args.architecture.clone());
 
-        let mut transpiler = TranspilationEngine::with_architecture(target_arch);
+        // Read the Wasm bytes directly for the transpiler
+        let wasm_bytes = fs::read(wasm_path).map_err(|e| TranspilationError::FileSystem(format!("Cannot read Wasm file: {e}")))?;
+
+        let mut transpiler = NewTranspilationEngine::with_architecture(target_arch).map_err(|e| TranspilationError::Transpilation(format!("Engine creation failed: {e:?}")))?;
         let transpiled_module = transpiler
-            .transpile_module(wasm_module)
+            .transpile(&wasm_bytes)
             .map_err(|e| TranspilationError::Transpilation(format!("Transpilation failed: {e:?}")))?;
 
         let mut generator = DotVMGenerator::with_architecture(target_arch).map_err(|e| TranspilationError::BytecodeGeneration(format!("Generator creation failed: {e:?}")))?;

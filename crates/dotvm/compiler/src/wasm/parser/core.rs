@@ -468,6 +468,9 @@ impl WasmParser {
             wasmparser::Operator::Return => Ok(WasmInstruction::Return),
             wasmparser::Operator::Call { function_index } => Ok(WasmInstruction::Call { function_index: *function_index }),
 
+            // Stack operations
+            wasmparser::Operator::Drop => Ok(WasmInstruction::Drop),
+
             // Constants
             wasmparser::Operator::I32Const { value } => Ok(WasmInstruction::I32Const { value: *value }),
             wasmparser::Operator::I64Const { value } => Ok(WasmInstruction::I64Const { value: *value }),

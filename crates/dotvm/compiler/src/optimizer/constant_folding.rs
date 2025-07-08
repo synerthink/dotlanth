@@ -19,7 +19,7 @@
 //! This module implements constant folding and constant propagation
 //! optimizations that evaluate constant expressions at compile time.
 
-use crate::transpiler::engine::{Operand, TranspiledFunction, TranspiledInstruction};
+use crate::transpiler::types::{Operand, TranspiledFunction, TranspiledInstruction};
 use std::collections::HashMap;
 
 /// Constant folder for DotVM bytecode
@@ -215,6 +215,8 @@ impl ConstantFolder {
             opcode: "DUP".to_string(),
             operands: vec![],
             label: None,
+            source_location: None,
+            metadata: crate::transpiler::types::InstructionMetadata::default(),
         }
     }
 
@@ -231,16 +233,22 @@ impl ConstantFolder {
                 opcode: "CONST_I32".to_string(),
                 operands: vec![Operand::Immediate(i as u32)],
                 label: None,
+                source_location: None,
+                metadata: crate::transpiler::types::InstructionMetadata::default(),
             },
             ConstantValue::Float(f) => TranspiledInstruction {
                 opcode: "CONST_F32".to_string(),
                 operands: vec![Operand::Immediate(f.to_bits() as u32)],
                 label: None,
+                source_location: None,
+                metadata: crate::transpiler::types::InstructionMetadata::default(),
             },
             ConstantValue::Boolean(b) => TranspiledInstruction {
                 opcode: "CONST_I32".to_string(),
                 operands: vec![Operand::Immediate(if b { 1 } else { 0 })],
                 label: None,
+                source_location: None,
+                metadata: crate::transpiler::types::InstructionMetadata::default(),
             },
         }
     }

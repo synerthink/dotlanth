@@ -20,7 +20,7 @@ use crate::codegen::core::context::GenerationContext;
 use crate::codegen::error::{BytecodeGenerationError, BytecodeResult};
 use crate::codegen::sections::traits::{SectionGenerator, SectionType};
 use crate::codegen::writers::BytecodeWriter;
-use crate::transpiler::engine::{Operand, TranspiledFunction, TranspiledInstruction};
+use crate::transpiler::types::{Operand, TranspiledFunction, TranspiledInstruction};
 use std::collections::HashMap;
 
 /// Label information for jump resolution
@@ -140,6 +140,11 @@ impl CodeGenerator {
                 Operand::Immediate(value) => {
                     writer.write_u32(*value)?;
                 }
+                Operand::LargeImmediate(value) => {
+                    // Write as two u32s for compatibility
+                    writer.write_u32((*value & 0xFFFFFFFF) as u32)?;
+                    writer.write_u32((*value >> 32) as u32)?;
+                }
                 Operand::Register(reg) => {
                     writer.write_u16(*reg)?;
                 }
@@ -156,6 +161,12 @@ impl CodeGenerator {
                 Operand::Memory { base, offset } => {
                     writer.write_u16(*base)?;
                     writer.write_u32(*offset)?;
+                }
+                Operand::Stack { offset } => {
+                    writer.write_u32(*offset as u32)?;
+                }
+                Operand::Global { index } => {
+                    writer.write_u32(*index)?;
                 }
             }
         }
@@ -233,7 +244,7 @@ impl Default for CodeGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transpiler::engine::Operand;
+    use crate::transpiler::types::Operand;
 
     #[test]
     fn test_opcode_hashing() {
@@ -267,6 +278,8 @@ mod tests {
             opcode: "ADD".to_string(),
             operands: vec![Operand::Register(1), Operand::Register(2), Operand::Immediate(42)],
             label: None,
+            source_location: None,
+            metadata: Default::default(),
         };
 
         generator.generate_instruction(&mut writer, &instruction).unwrap();

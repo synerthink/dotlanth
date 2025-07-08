@@ -22,7 +22,7 @@ use crate::{
         sections::function_table::FunctionTable,
         writers::BytecodeWriter,
     },
-    transpiler::engine::{ExportInfo, ExportKind, ImportInfo, ImportKind},
+    transpiler::types::{ExportInfo, ExportKind, ImportInfo, ImportKind},
 };
 
 /// Export table entry
@@ -223,6 +223,8 @@ mod tests {
             name: "main".to_string(),
             kind: ExportKind::Function,
             index: 0,
+            description: None,
+            is_public: true,
         }];
 
         let function_table = FunctionTable {
@@ -254,6 +256,8 @@ mod tests {
             name: "print".to_string(),
             module_name: "env".to_string(),
             kind: ImportKind::Function { type_index: 0 },
+            description: None,
+            is_required: true,
         }];
 
         let table = ImportTableGenerator::generate(&mut writer, &imports).unwrap();
@@ -271,6 +275,8 @@ mod tests {
             name: "invalid".to_string(),
             kind: ExportKind::Function,
             index: 999, // Out of bounds
+            description: None,
+            is_public: true,
         }];
 
         let function_table = FunctionTable {

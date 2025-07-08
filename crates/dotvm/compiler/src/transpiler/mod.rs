@@ -21,7 +21,6 @@
 
 // Core modules
 pub mod config;
-pub mod engine; // Legacy engine (will be deprecated)
 pub mod engine_new; // New pipeline-based engine
 pub mod error;
 pub mod types;
@@ -45,7 +44,6 @@ pub use types::{
 };
 
 // Re-export both engines for migration period
-pub use engine::TranspilationEngine as LegacyTranspilationEngine; // Legacy engine
 pub use engine_new::NewTranspilationEngine; // New engine
 
 // Convenience type alias for the new engine

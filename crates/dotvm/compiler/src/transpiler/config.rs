@@ -529,27 +529,31 @@ trait VmArchitectureExt {
 impl VmArchitectureExt for VmArchitecture {
     fn supports_simd(&self) -> bool {
         match self {
+            VmArchitecture::Arch32 => false,
             VmArchitecture::Arch64 => true,
             VmArchitecture::Arch128 => true,
             VmArchitecture::Arch256 => true,
-            _ => false,
+            VmArchitecture::Arch512 => true,
         }
     }
 
     fn supports_threads(&self) -> bool {
         match self {
+            VmArchitecture::Arch32 => false,
             VmArchitecture::Arch64 => true,
             VmArchitecture::Arch128 => true,
             VmArchitecture::Arch256 => true,
-            _ => false,
+            VmArchitecture::Arch512 => true,
         }
     }
 
     fn supports_memory64(&self) -> bool {
         match self {
+            VmArchitecture::Arch32 => false,
+            VmArchitecture::Arch64 => false,
             VmArchitecture::Arch128 => true,
             VmArchitecture::Arch256 => true,
-            _ => false,
+            VmArchitecture::Arch512 => true,
         }
     }
 }

@@ -14,32 +14,85 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Analyzer framework and common types
+//! Analyzer framework and common types for dependency analysis
+//!
+//! This module provides the core analyzer implementations that perform different types
+//! of analysis on WebAssembly modules and DotVM bytecode. Each analyzer specializes in
+//! a specific aspect of program analysis and contributes to the overall understanding
+//! of the code's behavior, dependencies, and structure.
+//!
+//! ## Available Analyzers
+//!
+//! ### Control Flow Analysis (`control_flow`)
+//! - **Purpose**: Constructs and analyzes control flow graphs (CFGs)
+//! - **Capabilities**: Loop detection, dominance analysis, reachability analysis
+//! - **Use Cases**: Optimization, dead code elimination, complexity analysis
+//! - **Output**: Control flow graphs, loop structures, dominance trees
+//!
+//! ### Data Flow Analysis (`data_flow`)
+//! - **Purpose**: Tracks how data flows through the program
+//! - **Capabilities**: Definition-use chains, liveness analysis, reaching definitions
+//! - **Use Cases**: Variable optimization, constant propagation, dead code elimination
+//! - **Output**: Data flow information, variable lifetime data
+//!
+//! ### State Access Analysis (`state_access`)
+//! - **Purpose**: Analyzes blockchain state access patterns
+//! - **Capabilities**: Read/write tracking, conflict detection, optimization hints
+//! - **Use Cases**: Gas optimization, security analysis, reentrancy detection
+//! - **Output**: State access patterns, conflict reports, optimization suggestions
+//!
+//! ## Common Analysis Framework
+//!
+//! All analyzers share common interfaces and data structures:
+//! - **AnalysisResult**: Standardized result type for all analyses
+//! - **AnalysisStats**: Performance and statistical information
+//! - **Error Handling**: Consistent error reporting across analyzers
+//! - **Configuration**: Unified configuration system for analysis parameters
+//!
+//! ## Integration with Compiler Pipeline
+//!
+//! These analyzers integrate seamlessly with the DotVM compiler pipeline:
+//! 1. **Input**: Receive parsed WebAssembly AST or DotVM bytecode
+//! 2. **Analysis**: Perform specialized analysis using domain-specific algorithms
+//! 3. **Output**: Provide structured results for optimization and code generation
+//! 4. **Caching**: Support result caching for improved performance
+//!
+//! ## Performance Considerations
+//!
+//! - **Incremental Analysis**: Support for analyzing only changed parts of code
+//! - **Parallel Execution**: Some analyzers can run concurrently
+//! - **Memory Efficiency**: Optimized data structures for large programs
+//! - **Configurable Depth**: Adjustable analysis depth for performance tuning
 
 pub mod control_flow;
 pub mod data_flow;
 pub mod state_access;
 
-use std::collections::HashMap;
+// Re-export common types
+pub use crate::dependency_analysis::core::traits::{AnalysisType, DependencyAnalyzer};
+
+// Common error and result types
 use thiserror::Error;
 
-/// Errors that can occur during analysis
 #[derive(Error, Debug)]
 pub enum AnalysisError {
+    #[error("Analysis failed: {0}")]
+    AnalysisFailed(String),
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
     #[error("Empty input provided to analyzer")]
     EmptyInput,
-    #[error("Invalid syntax in input: {0}")]
-    InvalidSyntax(String),
     #[error("Analysis depth limit exceeded: {0}")]
     DepthLimitExceeded(usize),
     #[error("Circular dependency detected: {0}")]
     CircularDependency(String),
-    #[error("Analysis failed: {0}")]
-    AnalysisFailed(String),
 }
 
-/// Result type for analysis operations
 pub type AnalysisResult<T> = Result<T, AnalysisError>;
+
+use std::collections::HashMap;
 
 /// Common trait for all analyzers
 pub trait Analyzer {

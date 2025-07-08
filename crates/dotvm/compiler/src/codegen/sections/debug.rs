@@ -18,7 +18,7 @@
 
 use crate::{
     codegen::{error::BytecodeResult, writers::BytecodeWriter},
-    transpiler::engine::TranspiledFunction,
+    transpiler::types::TranspiledFunction,
 };
 
 /// Debug information for a single function
@@ -199,7 +199,7 @@ impl DebugInfoGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transpiler::engine::TranspiledFunction;
+    use crate::transpiler::types::TranspiledFunction;
 
     #[test]
     fn test_empty_debug_info() {
@@ -226,6 +226,7 @@ mod tests {
             local_count: 0,
             is_exported: false,
             debug_info: Some("test.rs:1".to_string()),
+            metadata: crate::transpiler::types::function::FunctionMetadata::default(),
         }];
 
         let debug_info = DebugInfoGenerator::generate(&mut writer, &functions, true).unwrap();

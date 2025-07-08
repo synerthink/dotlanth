@@ -20,7 +20,7 @@ pub mod constant_folding;
 pub mod dead_code;
 pub mod peephole;
 
-use crate::transpiler::engine::TranspiledFunction;
+use crate::transpiler::types::TranspiledFunction;
 use dotvm_core::bytecode::VmArchitecture;
 
 /// Main optimizer that coordinates all optimization passes
