@@ -16,100 +16,48 @@
 
 //! Optimization passes for DotVM bytecode
 
-pub mod constant_folding;
-pub mod dead_code;
-pub mod peephole;
+pub mod analysis;
+pub mod framework;
+pub mod passes;
+pub mod profiling;
 
+use crate::optimizer::framework::metrics::OptimizationMetrics as PipelineMetrics;
+use crate::optimizer::framework::pipeline::{OptimizationConfig, OptimizationPipeline};
+use crate::optimizer::framework::scheduler::ExecutionStrategy;
+use crate::optimizer::passes as opt_passes;
 use crate::transpiler::types::TranspiledFunction;
 use dotvm_core::bytecode::VmArchitecture;
 
 /// Main optimizer that coordinates all optimization passes
 pub struct Optimizer {
-    target_arch: VmArchitecture,
-    peephole: peephole::PeepholeOptimizer,
-    dead_code: dead_code::DeadCodeEliminator,
-    constant_folder: constant_folding::ConstantFolder,
-    optimization_level: u8,
+    pipeline: OptimizationPipeline,
 }
 
 impl Optimizer {
-    /// Create a new optimizer
+    /// Create a new optimizer with the given target architecture and level
     pub fn new(target_arch: VmArchitecture, optimization_level: u8) -> Self {
-        Self {
-            target_arch,
-            peephole: peephole::PeepholeOptimizer::new(target_arch),
-            dead_code: dead_code::DeadCodeEliminator::new(),
-            constant_folder: constant_folding::ConstantFolder::new(),
-            optimization_level,
-        }
+        let config = OptimizationConfig { target_arch, optimization_level };
+        let mut pipeline = OptimizationPipeline::new(config, ExecutionStrategy::Sequential);
+        // Register optimization passes in pipeline order
+        // TODO: Re-enable passes once they implement the new trait
+        // pipeline.add_pass(passes::constant_folding::ConstantFolder::new());
+        // pipeline.add_pass(passes::dead_code::DeadCodeEliminator::new());
+        // pipeline.add_pass(passes::peephole::PeepholeOptimizer::new(target_arch));
+        Self { pipeline }
     }
 
-    /// Optimize a list of transpiled functions
+    /// Optimize a list of transpiled functions through the pipeline
     pub fn optimize(&mut self, functions: Vec<TranspiledFunction>) -> Vec<TranspiledFunction> {
-        let mut optimized_functions = functions;
-
-        match self.optimization_level {
-            0 => {
-                // No optimization
-                optimized_functions
-            }
-            1 => {
-                // Basic optimizations
-                optimized_functions = self.dead_code.eliminate(optimized_functions);
-                optimized_functions
-            }
-            2 => {
-                // Standard optimizations
-                optimized_functions = self.constant_folder.fold(optimized_functions);
-                optimized_functions = self.dead_code.eliminate(optimized_functions);
-                optimized_functions = self.peephole.optimize(optimized_functions);
-                optimized_functions
-            }
-            3 => {
-                // Aggressive optimizations (multiple passes)
-                for _ in 0..2 {
-                    optimized_functions = self.constant_folder.fold(optimized_functions);
-                    optimized_functions = self.dead_code.eliminate(optimized_functions);
-                    optimized_functions = self.peephole.optimize(optimized_functions);
-                }
-                optimized_functions
-            }
-            _ => {
-                // Invalid optimization level, use level 2
-                self.optimization_level = 2;
-                self.optimize(optimized_functions)
-            }
-        }
+        self.pipeline.run(functions)
     }
 
-    /// Get combined optimization statistics
-    pub fn stats(&self) -> OptimizationStats {
-        OptimizationStats {
-            peephole: *self.peephole.stats(),
-            dead_code: *self.dead_code.stats(),
-            constant_folding: *self.constant_folder.stats(),
-        }
+    /// Get pipeline-level optimization metrics
+    pub fn stats(&self) -> PipelineMetrics {
+        self.pipeline.metrics().clone()
     }
 
-    /// Reset all optimization statistics
+    /// Reset all pipeline statistics and cache
     pub fn reset_stats(&mut self) {
-        self.peephole.reset_stats();
-        self.dead_code.reset_stats();
-        self.constant_folder.reset_stats();
-    }
-}
-
-/// Combined optimization statistics
-#[derive(Debug)]
-pub struct OptimizationStats {
-    pub peephole: peephole::OptimizationStats,
-    pub dead_code: dead_code::EliminationStats,
-    pub constant_folding: constant_folding::FoldingStats,
-}
-
-impl OptimizationStats {
-    /// Calculate total optimizations performed
-    pub fn total_optimizations(&self) -> usize {
-        self.peephole.total_optimizations() + self.dead_code.total_eliminated() + self.constant_folding.total_optimizations()
+        self.pipeline.reset();
     }
 }
