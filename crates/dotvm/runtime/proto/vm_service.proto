@@ -1,0 +1,574 @@
+syntax = "proto3";
+
+package vm_service;
+
+// VM Service for Dot execution and management
+service VmService {
+  // Dot execution operations
+  rpc ExecuteDot(ExecuteDotRequest) returns (ExecuteDotResponse);
+  rpc DeployDot(DeployDotRequest) returns (DeployDotResponse);
+  rpc GetDotState(GetDotStateRequest) returns (GetDotStateResponse);
+  rpc ListDots(ListDotsRequest) returns (ListDotsResponse);
+  rpc DeleteDot(DeleteDotRequest) returns (DeleteDotResponse);
+  
+  // Bytecode operations
+  rpc GetBytecode(GetBytecodeRequest) returns (GetBytecodeResponse);
+  rpc ValidateBytecode(ValidateBytecodeRequest) returns (ValidateBytecodeResponse);
+  
+  // ABI operations
+  rpc GetDotABI(GetDotABIRequest) returns (GetDotABIResponse);
+  rpc ValidateABI(ValidateABIRequest) returns (ValidateABIResponse);
+  rpc GenerateABI(GenerateABIRequest) returns (GenerateABIResponse);
+  rpc RegisterABI(RegisterABIRequest) returns (RegisterABIResponse);
+  
+  // ParaDot operations (internal - no direct user access needed)
+  // ParaDots are automatically managed during dot execution
+  
+  // VM management
+  rpc GetVMStatus(GetVMStatusRequest) returns (GetVMStatusResponse);
+  rpc GetVMMetrics(GetVMMetricsRequest) returns (GetVMMetricsResponse);
+  rpc GetArchitectures(GetArchitecturesRequest) returns (GetArchitecturesResponse);
+  
+  // Streaming operations
+  rpc StreamDotEvents(StreamDotEventsRequest) returns (stream DotEvent);
+  rpc StreamVMMetrics(StreamVMMetricsRequest) returns (stream VMMetric);
+}
+
+// Dot execution request
+message ExecuteDotRequest {
+  string dot_id = 1;
+  map<string, bytes> inputs = 2;
+  bool paradots_enabled = 3;
+  string caller_id = 4;
+  ExecutionOptions options = 5;
+}
+
+message ExecutionOptions {
+  bool debug_mode = 1;
+  bool trace_execution = 2;
+  uint32 timeout_seconds = 3;
+  repeated string required_paradots = 4;
+}
+
+// Dot execution response
+message ExecuteDotResponse {
+  bool success = 1;
+  map<string, bytes> outputs = 2;
+  uint64 execution_time_ms = 3;
+  repeated string paradots_used = 4;
+  repeated LogEntry logs = 5;
+  repeated DotEvent events = 6;
+  string error_message = 7;
+  ExecutionMetrics metrics = 8;
+}
+
+message ExecutionMetrics {
+  uint64 instructions_executed = 1;
+  uint64 memory_used_bytes = 2;
+  uint64 storage_reads = 3;
+  uint64 storage_writes = 4;
+  uint32 paradots_spawned = 5;
+  uint64 cpu_time_ms = 6;
+}
+
+// Dot deployment request
+message DeployDotRequest {
+  string dot_name = 1;
+  string dot_source = 2;
+  DotMetadata metadata = 3;
+  string deployer_id = 4;
+  DeploymentOptions options = 5;
+}
+
+message DotMetadata {
+  string version = 1;
+  string description = 2;
+  string author = 3;
+  repeated string tags = 4;
+  string license = 5;
+  map<string, string> custom_fields = 6;
+}
+
+message DeploymentOptions {
+  bool validate_abi = 1;
+  bool generate_ui = 2;
+  string target_architecture = 3;
+  bool enable_optimizations = 4;
+}
+
+// Dot deployment response
+message DeployDotResponse {
+  bool success = 1;
+  string dot_id = 2;
+  bytes bytecode = 3;
+  DotABI abi = 4;
+  string error_message = 5;
+  DeploymentMetrics metrics = 6;
+}
+
+message DeploymentMetrics {
+  uint64 compilation_time_ms = 1;
+  uint64 bytecode_size_bytes = 2;
+  uint32 optimization_passes = 3;
+  bool ui_generated = 4;
+}
+
+// Dot state request/response
+message GetDotStateRequest {
+  string dot_id = 1;
+  repeated string keys = 2;
+  string version = 3;
+}
+
+message GetDotStateResponse {
+  bool success = 1;
+  map<string, bytes> state_data = 2;
+  string state_root_hash = 3;
+  uint64 version = 4;
+  string error_message = 5;
+}
+
+// List dots request/response
+message ListDotsRequest {
+  DotFilter filter = 1;
+  Pagination pagination = 2;
+  string sort_by = 3;
+  bool include_abi = 4;
+}
+
+message DotFilter {
+  repeated string tags = 1;
+  string author = 2;
+  string name_pattern = 3;
+  DotStatus status = 4;
+  string architecture = 5;
+}
+
+enum DotStatus {
+  DOT_STATUS_UNKNOWN = 0;
+  DOT_STATUS_ACTIVE = 1;
+  DOT_STATUS_INACTIVE = 2;
+  DOT_STATUS_DEPRECATED = 3;
+  DOT_STATUS_ERROR = 4;
+}
+
+message Pagination {
+  uint32 page = 1;
+  uint32 page_size = 2;
+  string cursor = 3;
+}
+
+message ListDotsResponse {
+  repeated DotInfo dots = 1;
+  uint32 total_count = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
+}
+
+message DotInfo {
+  string dot_id = 1;
+  string name = 2;
+  DotMetadata metadata = 3;
+  DotStatus status = 4;
+  uint64 created_at = 5;
+  uint64 updated_at = 6;
+  DotABI abi = 7;
+  DotStats stats = 8;
+}
+
+message DotStats {
+  uint64 execution_count = 1;
+  uint64 total_cpu_time_ms = 2;
+  double average_execution_time_ms = 3;
+  uint32 error_count = 4;
+  uint64 last_executed_at = 5;
+}
+
+// Delete dot request/response
+message DeleteDotRequest {
+  string dot_id = 1;
+  string requester_id = 2;
+  bool force = 3;
+}
+
+message DeleteDotResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// ABI related messages
+message DotABI {
+  string dot_name = 1;
+  string version = 2;
+  string description = 3;
+  repeated ABIField inputs = 4;
+  repeated ABIField outputs = 5;
+  repeated ParaDotDependency paradots = 6;
+  UIHints ui_hints = 7;
+  PermissionConfig permissions = 8;
+}
+
+message ABIField {
+  string name = 1;
+  ABIType field_type = 2;
+  string description = 3;
+  FieldConstraints constraints = 4;
+  bool required = 5;
+  bytes default_value = 6;
+}
+
+message ABIType {
+  string type_name = 1;
+  repeated ABIType generic_params = 2;
+  map<string, string> attributes = 3;
+}
+
+message FieldConstraints {
+  bytes min_value = 1;
+  bytes max_value = 2;
+  string pattern = 3;
+  repeated string enum_values = 4;
+  repeated string custom_validators = 5;
+}
+
+message ParaDotDependency {
+  string name = 1;
+  string paradot_type = 2;
+  bool required = 3;
+  string description = 4;
+  map<string, string> config = 5;
+}
+
+message UIHints {
+  string layout = 1;
+  string theme = 2;
+  bool responsive = 3;
+  repeated InputGroup input_groups = 4;
+  repeated OutputSection output_sections = 5;
+}
+
+message InputGroup {
+  string title = 1;
+  repeated string fields = 2;
+  string description = 3;
+}
+
+message OutputSection {
+  string title = 1;
+  repeated string fields = 2;
+  string visualization_type = 3;
+}
+
+message PermissionConfig {
+  repeated string public_operations = 1;
+  map<string, OperationPermission> protected_operations = 2;
+  map<string, RoleDefinition> roles = 3;
+}
+
+message OperationPermission {
+  repeated string required_roles = 1;
+  string description = 2;
+}
+
+message RoleDefinition {
+  string description = 1;
+  repeated string inherits = 2;
+  repeated string permissions = 3;
+}
+
+// ABI operation messages
+message GetDotABIRequest {
+  string dot_id = 1;
+  string version = 2;
+}
+
+message GetDotABIResponse {
+  bool success = 1;
+  DotABI abi = 2;
+  string error_message = 3;
+}
+
+message ValidateABIRequest {
+  DotABI abi = 1;
+  bool strict_mode = 2;
+}
+
+message ValidateABIResponse {
+  bool valid = 1;
+  repeated ValidationError errors = 2;
+  repeated ValidationWarning warnings = 3;
+}
+
+message ValidationError {
+  string field = 1;
+  string message = 2;
+  string error_code = 3;
+}
+
+message ValidationWarning {
+  string field = 1;
+  string message = 2;
+  string warning_code = 3;
+}
+
+message GenerateABIRequest {
+  string dot_source = 1;
+  ABIGenerationOptions options = 2;
+}
+
+message ABIGenerationOptions {
+  bool include_ui_hints = 1;
+  bool strict_types = 2;
+  string ui_theme = 3;
+  bool generate_examples = 4;
+}
+
+message GenerateABIResponse {
+  bool success = 1;
+  DotABI abi = 2;
+  string error_message = 3;
+  repeated string warnings = 4;
+}
+
+message RegisterABIRequest {
+  string dot_id = 1;
+  DotABI abi = 2;
+  string registrar_id = 3;
+}
+
+message RegisterABIResponse {
+  bool success = 1;
+  string abi_version = 2;
+  string error_message = 3;
+}
+
+// ParaDot messages
+message DeployParaDotRequest {
+  string paradot_name = 1;
+  string paradot_type = 2;
+  bytes paradot_code = 3;
+  ParaDotMetadata metadata = 4;
+  string deployer_id = 5;
+}
+
+message ParaDotMetadata {
+  string version = 1;
+  string description = 2;
+  repeated string capabilities = 3;
+  ResourceRequirements resource_requirements = 4;
+}
+
+message ResourceRequirements {
+  uint64 max_memory_bytes = 1;
+  uint32 max_cpu_percent = 2;
+  uint32 max_execution_time_ms = 3;
+  bool requires_network = 4;
+}
+
+message DeployParaDotResponse {
+  bool success = 1;
+  string paradot_id = 2;
+  string error_message = 3;
+}
+
+message ListParaDotsRequest {
+  ParaDotFilter filter = 1;
+  Pagination pagination = 2;
+}
+
+message ParaDotFilter {
+  string paradot_type = 1;
+  repeated string capabilities = 2;
+  string name_pattern = 3;
+}
+
+message ListParaDotsResponse {
+  repeated ParaDotInfo paradots = 1;
+  uint32 total_count = 2;
+  string next_cursor = 3;
+}
+
+message ParaDotInfo {
+  string paradot_id = 1;
+  string name = 2;
+  string paradot_type = 3;
+  ParaDotMetadata metadata = 4;
+  ParaDotStats stats = 5;
+}
+
+message ParaDotStats {
+  uint64 execution_count = 1;
+  double average_execution_time_ms = 2;
+  uint32 error_count = 3;
+  uint64 last_used_at = 4;
+}
+
+message ExecuteParaDotRequest {
+  string paradot_id = 1;
+  bytes input_data = 2;
+  string caller_id = 3;
+  uint32 timeout_ms = 4;
+}
+
+message ExecuteParaDotResponse {
+  bool success = 1;
+  bytes output_data = 2;
+  uint64 execution_time_ms = 3;
+  string error_message = 4;
+}
+
+// VM status and metrics
+message GetVMStatusRequest {
+  bool include_details = 1;
+}
+
+message GetVMStatusResponse {
+  VMStatus status = 1;
+  VMInfo info = 2;
+  repeated string active_dots = 3;
+  repeated string active_paradots = 4;
+}
+
+enum VMStatus {
+  VM_STATUS_UNKNOWN = 0;
+  VM_STATUS_STARTING = 1;
+  VM_STATUS_RUNNING = 2;
+  VM_STATUS_STOPPING = 3;
+  VM_STATUS_STOPPED = 4;
+  VM_STATUS_ERROR = 5;
+}
+
+message VMInfo {
+  string version = 1;
+  string architecture = 2;
+  uint64 uptime_seconds = 3;
+  uint32 dots_count = 4;
+  uint32 paradots_count = 5;
+  ResourceUsage resource_usage = 6;
+}
+
+message ResourceUsage {
+  uint64 memory_used_bytes = 1;
+  uint64 memory_total_bytes = 2;
+  double cpu_usage_percent = 3;
+  uint64 storage_used_bytes = 4;
+  uint32 active_connections = 5;
+}
+
+message GetVMMetricsRequest {
+  uint64 start_time = 1;
+  uint64 end_time = 2;
+  repeated string metric_names = 3;
+}
+
+message GetVMMetricsResponse {
+  repeated VMMetric metrics = 1;
+}
+
+message VMMetric {
+  string name = 1;
+  string type = 2;
+  repeated MetricDataPoint data_points = 3;
+  map<string, string> labels = 4;
+}
+
+message MetricDataPoint {
+  uint64 timestamp = 1;
+  double value = 2;
+}
+
+message GetArchitecturesRequest {}
+
+message GetArchitecturesResponse {
+  repeated ArchitectureInfo architectures = 1;
+}
+
+message ArchitectureInfo {
+  string name = 1;
+  string description = 2;
+  repeated string features = 3;
+  bool is_default = 4;
+  PerformanceProfile performance = 5;
+}
+
+message PerformanceProfile {
+  string optimization_level = 1;
+  bool supports_simd = 2;
+  bool supports_parallel = 3;
+  uint32 max_memory_gb = 4;
+}
+
+// Streaming messages
+message StreamDotEventsRequest {
+  repeated string dot_ids = 1;
+  repeated string event_types = 2;
+}
+
+message DotEvent {
+  string event_id = 1;
+  string dot_id = 2;
+  string event_type = 3;
+  uint64 timestamp = 4;
+  bytes event_data = 5;
+  map<string, string> metadata = 6;
+}
+
+message StreamVMMetricsRequest {
+  repeated string metric_names = 1;
+  uint32 interval_seconds = 2;
+}
+
+// Bytecode operations
+message GetBytecodeRequest {
+  string dot_id = 1;
+  string version = 2;
+  bool include_debug_info = 3;
+}
+
+message GetBytecodeResponse {
+  bool success = 1;
+  bytes bytecode = 2;
+  BytecodeInfo info = 3;
+  string error_message = 4;
+}
+
+message BytecodeInfo {
+  uint64 size_bytes = 1;
+  string architecture = 2;
+  string compilation_target = 3;
+  bool has_debug_info = 4;
+  repeated string dependencies = 5;
+}
+
+message ValidateBytecodeRequest {
+  bytes bytecode = 1;
+  string target_architecture = 2;
+  bool strict_validation = 3;
+}
+
+message ValidateBytecodeResponse {
+  bool valid = 1;
+  repeated ValidationError errors = 2;
+  BytecodeAnalysis analysis = 3;
+}
+
+message BytecodeAnalysis {
+  uint32 instruction_count = 1;
+  repeated string used_opcodes = 2;
+  uint64 estimated_cpu_cycles = 3;
+  SecurityAnalysis security = 4;
+}
+
+message SecurityAnalysis {
+  bool has_unsafe_operations = 1;
+  repeated string security_warnings = 2;
+  uint32 complexity_score = 3;
+}
+
+message LogEntry {
+  string level = 1;
+  string message = 2;
+  uint64 timestamp = 3;
+  string source = 4;
+  map<string, string> context = 5;
+}

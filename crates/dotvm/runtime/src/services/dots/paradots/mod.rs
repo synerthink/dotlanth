@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Optimization profiling and performance analysis
+//! ParaDot management - internal components for automatic ParaDot coordination
 
-pub mod hotspots;
-pub mod profiler;
-pub mod suggestions;
+pub mod manager;
+pub mod registry;
 
-pub use hotspots::{Hotspot, HotspotDetector, HotspotType};
-pub use profiler::{OptimizationProfiler, ProfilerConfig};
-pub use suggestions::{OptimizationSuggester, OptimizationSuggestion};
+pub(super) use manager::ParaDotManager;
+pub(super) use registry::ParaDotRegistry;

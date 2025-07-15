@@ -14,12 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Optimization profiling and performance analysis
+//! gRPC service implementations - modular architecture
 
-pub mod hotspots;
-pub mod profiler;
-pub mod suggestions;
+// Modular services
+pub mod abi;
+pub mod dots;
+pub mod metrics;
+pub mod vm_management;
 
-pub use hotspots::{Hotspot, HotspotDetector, HotspotType};
-pub use profiler::{OptimizationProfiler, ProfilerConfig};
-pub use suggestions::{OptimizationSuggester, OptimizationSuggestion};
+// Unified VM service that coordinates all sub-services
+pub mod vm_service;
+
+// Re-export main services
+pub use abi::AbiService;
+pub use dots::DotsService;
+pub use metrics::MetricsService;
+pub use vm_management::VmManagementService;
+pub use vm_service::VmServiceImpl;

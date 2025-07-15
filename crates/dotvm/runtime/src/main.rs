@@ -15,10 +15,24 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use proto::runtime_server::{Runtime, RuntimeServer};
+use std::sync::Arc;
 use tonic::transport::Server;
+
+// Import our services
+mod services;
+use services::VmServiceImpl;
 
 mod proto {
     tonic::include_proto!("runtime");
+
+    pub mod vm_service {
+        tonic::include_proto!("vm_service");
+    }
+
+    // TODO: Add database_service when ready
+    // pub mod database_service {
+    //     tonic::include_proto!("database_service");
+    // }
 
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("runtime_descriptor");
 }
@@ -39,15 +53,33 @@ impl Runtime for RuntimeService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing
+    tracing_subscriber::fmt::init();
+
     let addr = "[::1]:50051".parse()?;
 
+    // Create the original runtime service
     let runtime = RuntimeService::default();
 
-    let service = tonic_reflection::server::Builder::configure()
+    // Create the new VM service
+    let vm_service = VmServiceImpl::new();
+
+    // Set up reflection service
+    let reflection_service = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(proto::FILE_DESCRIPTOR_SET)
         .build()?;
 
-    Server::builder().add_service(service).add_service(RuntimeServer::new(runtime)).serve(addr).await?;
+    println!("Starting Dotlanth Runtime Server on {}", addr);
+
+    // Start the server with both services
+    Server::builder()
+        .add_service(reflection_service)
+        .add_service(RuntimeServer::new(runtime))
+        .add_service(proto::vm_service::vm_service_server::VmServiceServer::new(vm_service))
+        .serve(addr)
+        .await?;
 
     Ok(())
 }
+
+// TODO: Add mock implementations when needed

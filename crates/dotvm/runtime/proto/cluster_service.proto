@@ -1,0 +1,904 @@
+syntax = "proto3";
+
+package cluster_service;
+
+// Cluster Service for node and deployment management
+service ClusterService {
+  // Node management
+  rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse);
+  rpc UnregisterNode(UnregisterNodeRequest) returns (UnregisterNodeResponse);
+  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
+  rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
+  rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse);
+  rpc GetNodeHealth(GetNodeHealthRequest) returns (GetNodeHealthResponse);
+  
+  // Deployment management
+  rpc CreateDeployment(CreateDeploymentRequest) returns (CreateDeploymentResponse);
+  rpc ListDeployments(ListDeploymentsRequest) returns (ListDeploymentsResponse);
+  rpc GetDeployment(GetDeploymentRequest) returns (GetDeploymentResponse);
+  rpc UpdateDeployment(UpdateDeploymentRequest) returns (UpdateDeploymentResponse);
+  rpc DeleteDeployment(DeleteDeploymentRequest) returns (DeleteDeploymentResponse);
+  rpc ScaleDeployment(ScaleDeploymentRequest) returns (ScaleDeploymentResponse);
+  
+  // Load balancing
+  rpc GetLoadBalancerStatus(GetLoadBalancerStatusRequest) returns (GetLoadBalancerStatusResponse);
+  rpc UpdateLoadBalancerConfig(UpdateLoadBalancerConfigRequest) returns (UpdateLoadBalancerConfigResponse);
+  rpc GetNodeLoad(GetNodeLoadRequest) returns (GetNodeLoadResponse);
+  
+  // Cluster operations
+  rpc GetClusterStatus(GetClusterStatusRequest) returns (GetClusterStatusResponse);
+  rpc GetClusterMetrics(GetClusterMetricsRequest) returns (GetClusterMetricsResponse);
+  rpc DrainNode(DrainNodeRequest) returns (DrainNodeResponse);
+  rpc CordonNode(CordonNodeRequest) returns (CordonNodeResponse);
+  rpc UncordonNode(UncordonNodeRequest) returns (UncordonNodeResponse);
+  
+  // Configuration management
+  rpc GetClusterConfig(GetClusterConfigRequest) returns (GetClusterConfigResponse);
+  rpc UpdateClusterConfig(UpdateClusterConfigRequest) returns (UpdateClusterConfigResponse);
+  
+  // Streaming operations
+  rpc StreamNodeEvents(StreamNodeEventsRequest) returns (stream NodeEvent);
+  rpc StreamDeploymentEvents(StreamDeploymentEventsRequest) returns (stream DeploymentEvent);
+  rpc StreamClusterMetrics(StreamClusterMetricsRequest) returns (stream ClusterMetric);
+}
+
+// Node management
+message RegisterNodeRequest {
+  NodeInfo node_info = 1;
+  NodeCapabilities capabilities = 2;
+  string registrar_id = 3;
+}
+
+message NodeInfo {
+  string node_id = 1;
+  string name = 2;
+  string address = 3;
+  uint32 port = 4;
+  NodeType type = 5;
+  string version = 6;
+  map<string, string> labels = 7;
+  map<string, string> annotations = 8;
+}
+
+enum NodeType {
+  NODE_TYPE_UNKNOWN = 0;
+  NODE_TYPE_WORKER = 1;
+  NODE_TYPE_MASTER = 2;
+  NODE_TYPE_EDGE = 3;
+  NODE_TYPE_STORAGE = 4;
+}
+
+message NodeCapabilities {
+  ResourceCapacity resources = 1;
+  repeated string supported_architectures = 2;
+  repeated string supported_protocols = 3;
+  repeated string features = 4;
+  SecurityCapabilities security = 5;
+}
+
+message ResourceCapacity {
+  uint64 cpu_cores = 1;
+  uint64 memory_bytes = 2;
+  uint64 storage_bytes = 3;
+  uint64 network_bandwidth_bps = 4;
+  uint32 max_dots = 5;
+  uint32 max_paradots = 6;
+}
+
+message SecurityCapabilities {
+  bool tls_enabled = 1;
+  bool mtls_enabled = 2;
+  repeated string auth_methods = 3;
+  bool encryption_at_rest = 4;
+  string security_level = 5;
+}
+
+message RegisterNodeResponse {
+  bool success = 1;
+  string node_id = 2;
+  NodeRegistration registration = 3;
+  string error_message = 4;
+}
+
+message NodeRegistration {
+  string registration_token = 1;
+  uint64 expires_at = 2;
+  ClusterConfig cluster_config = 3;
+  repeated string assigned_roles = 4;
+}
+
+message UnregisterNodeRequest {
+  string node_id = 1;
+  string requester_id = 2;
+  bool force = 3;
+  string reason = 4;
+}
+
+message UnregisterNodeResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message ListNodesRequest {
+  NodeFilter filter = 1;
+  Pagination pagination = 2;
+  bool include_metrics = 3;
+}
+
+message NodeFilter {
+  repeated NodeType types = 1;
+  repeated NodeStatus statuses = 2;
+  map<string, string> labels = 3;
+  string name_pattern = 4;
+  repeated string capabilities = 5;
+}
+
+enum NodeStatus {
+  NODE_STATUS_UNKNOWN = 0;
+  NODE_STATUS_PENDING = 1;
+  NODE_STATUS_READY = 2;
+  NODE_STATUS_NOT_READY = 3;
+  NODE_STATUS_DRAINING = 4;
+  NODE_STATUS_CORDONED = 5;
+  NODE_STATUS_OFFLINE = 6;
+  NODE_STATUS_ERROR = 7;
+}
+
+message Pagination {
+  uint32 page = 1;
+  uint32 page_size = 2;
+  string cursor = 3;
+}
+
+message ListNodesResponse {
+  repeated NodeDetails nodes = 1;
+  uint32 total_count = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
+}
+
+message NodeDetails {
+  NodeInfo info = 1;
+  NodeStatus status = 2;
+  NodeCapabilities capabilities = 3;
+  NodeMetrics metrics = 4;
+  NodeHealth health = 5;
+  uint64 registered_at = 6;
+  uint64 last_heartbeat = 7;
+  repeated DeploymentInfo deployments = 8;
+}
+
+message NodeMetrics {
+  ResourceUsage resource_usage = 1;
+  PerformanceMetrics performance = 2;
+  uint64 uptime_seconds = 3;
+  uint32 active_dots = 4;
+  uint32 active_paradots = 5;
+}
+
+message ResourceUsage {
+  double cpu_usage_percent = 1;
+  uint64 memory_used_bytes = 2;
+  uint64 memory_available_bytes = 3;
+  uint64 storage_used_bytes = 4;
+  uint64 storage_available_bytes = 5;
+  uint64 network_in_bps = 6;
+  uint64 network_out_bps = 7;
+}
+
+message PerformanceMetrics {
+  double load_average_1m = 1;
+  double load_average_5m = 2;
+  double load_average_15m = 3;
+  uint64 requests_per_second = 4;
+  double average_response_time_ms = 5;
+  uint32 error_rate_percent = 6;
+}
+
+message NodeHealth {
+  HealthStatus overall_status = 1;
+  repeated HealthCheck checks = 2;
+  uint64 last_check_time = 3;
+}
+
+enum HealthStatus {
+  HEALTH_STATUS_UNKNOWN = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_WARNING = 2;
+  HEALTH_STATUS_CRITICAL = 3;
+  HEALTH_STATUS_UNHEALTHY = 4;
+}
+
+message HealthCheck {
+  string name = 1;
+  HealthStatus status = 2;
+  string message = 3;
+  uint64 last_success = 4;
+  uint64 last_failure = 5;
+  uint32 consecutive_failures = 6;
+}
+
+message GetNodeRequest {
+  string node_id = 1;
+  bool include_metrics = 2;
+  bool include_deployments = 3;
+}
+
+message GetNodeResponse {
+  bool success = 1;
+  NodeDetails node = 2;
+  string error_message = 3;
+}
+
+message UpdateNodeRequest {
+  string node_id = 1;
+  NodeInfo updated_info = 2;
+  string updater_id = 3;
+}
+
+message UpdateNodeResponse {
+  bool success = 1;
+  NodeDetails updated_node = 2;
+  string error_message = 3;
+}
+
+message GetNodeHealthRequest {
+  string node_id = 1;
+  bool run_checks = 2;
+}
+
+message GetNodeHealthResponse {
+  bool success = 1;
+  NodeHealth health = 2;
+  string error_message = 3;
+}
+
+// Deployment management
+message CreateDeploymentRequest {
+  DeploymentSpec spec = 1;
+  string creator_id = 2;
+  DeploymentOptions options = 3;
+}
+
+message DeploymentSpec {
+  string name = 1;
+  string dot_id = 2;
+  uint32 replicas = 3;
+  DeploymentStrategy strategy = 4;
+  ResourceRequirements resources = 5;
+  NodeSelector node_selector = 6;
+  map<string, string> labels = 7;
+  map<string, string> annotations = 8;
+}
+
+message DeploymentStrategy {
+  StrategyType type = 1;
+  RollingUpdateStrategy rolling_update = 2;
+  BlueGreenStrategy blue_green = 3;
+  CanaryStrategy canary = 4;
+}
+
+enum StrategyType {
+  STRATEGY_TYPE_RECREATE = 0;
+  STRATEGY_TYPE_ROLLING_UPDATE = 1;
+  STRATEGY_TYPE_BLUE_GREEN = 2;
+  STRATEGY_TYPE_CANARY = 3;
+}
+
+message RollingUpdateStrategy {
+  uint32 max_unavailable = 1;
+  uint32 max_surge = 2;
+  uint32 batch_size = 3;
+  uint32 batch_delay_seconds = 4;
+}
+
+message BlueGreenStrategy {
+  uint32 switch_delay_seconds = 1;
+  bool auto_switch = 2;
+  repeated HealthCheck switch_conditions = 3;
+}
+
+message CanaryStrategy {
+  uint32 canary_replicas = 1;
+  uint32 analysis_duration_seconds = 2;
+  repeated CanaryMetric success_conditions = 3;
+  bool auto_promote = 4;
+}
+
+message CanaryMetric {
+  string metric_name = 1;
+  double threshold = 2;
+  string comparison = 3; // "greater_than", "less_than", etc.
+}
+
+message ResourceRequirements {
+  ResourceRequest requests = 1;
+  ResourceLimit limits = 2;
+}
+
+message ResourceRequest {
+  uint64 cpu_millicores = 1;
+  uint64 memory_bytes = 2;
+  uint64 storage_bytes = 3;
+}
+
+message ResourceLimit {
+  uint64 cpu_millicores = 1;
+  uint64 memory_bytes = 2;
+  uint64 storage_bytes = 3;
+  uint32 max_execution_time_seconds = 4;
+}
+
+message NodeSelector {
+  map<string, string> match_labels = 1;
+  repeated NodeSelectorRequirement match_expressions = 2;
+  repeated string preferred_nodes = 3;
+  repeated string excluded_nodes = 4;
+}
+
+message NodeSelectorRequirement {
+  string key = 1;
+  SelectorOperator operator = 2;
+  repeated string values = 3;
+}
+
+enum SelectorOperator {
+  SELECTOR_OPERATOR_IN = 0;
+  SELECTOR_OPERATOR_NOT_IN = 1;
+  SELECTOR_OPERATOR_EXISTS = 2;
+  SELECTOR_OPERATOR_DOES_NOT_EXIST = 3;
+  SELECTOR_OPERATOR_GREATER_THAN = 4;
+  SELECTOR_OPERATOR_LESS_THAN = 5;
+}
+
+message DeploymentOptions {
+  bool dry_run = 1;
+  bool wait_for_ready = 2;
+  uint32 timeout_seconds = 3;
+  bool force = 4;
+}
+
+message CreateDeploymentResponse {
+  bool success = 1;
+  string deployment_id = 2;
+  DeploymentStatus status = 3;
+  string error_message = 4;
+}
+
+message ListDeploymentsRequest {
+  DeploymentFilter filter = 1;
+  Pagination pagination = 2;
+  bool include_status = 3;
+}
+
+message DeploymentFilter {
+  repeated string dot_ids = 1;
+  repeated DeploymentState states = 2;
+  map<string, string> labels = 3;
+  string name_pattern = 4;
+  string creator_id = 5;
+}
+
+enum DeploymentState {
+  DEPLOYMENT_STATE_UNKNOWN = 0;
+  DEPLOYMENT_STATE_PENDING = 1;
+  DEPLOYMENT_STATE_DEPLOYING = 2;
+  DEPLOYMENT_STATE_RUNNING = 3;
+  DEPLOYMENT_STATE_UPDATING = 4;
+  DEPLOYMENT_STATE_SCALING = 5;
+  DEPLOYMENT_STATE_FAILED = 6;
+  DEPLOYMENT_STATE_TERMINATED = 7;
+}
+
+message ListDeploymentsResponse {
+  repeated DeploymentInfo deployments = 1;
+  uint32 total_count = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
+}
+
+message DeploymentInfo {
+  string deployment_id = 1;
+  DeploymentSpec spec = 2;
+  DeploymentStatus status = 3;
+  uint64 created_at = 4;
+  uint64 updated_at = 5;
+  string creator_id = 6;
+}
+
+message DeploymentStatus {
+  DeploymentState state = 1;
+  uint32 ready_replicas = 2;
+  uint32 total_replicas = 3;
+  uint32 updated_replicas = 4;
+  uint32 available_replicas = 5;
+  repeated DeploymentCondition conditions = 6;
+  string message = 7;
+  repeated ReplicaStatus replicas = 8;
+}
+
+message DeploymentCondition {
+  string type = 1;
+  ConditionStatus status = 2;
+  uint64 last_transition_time = 3;
+  string reason = 4;
+  string message = 5;
+}
+
+enum ConditionStatus {
+  CONDITION_STATUS_TRUE = 0;
+  CONDITION_STATUS_FALSE = 1;
+  CONDITION_STATUS_UNKNOWN = 2;
+}
+
+message ReplicaStatus {
+  string replica_id = 1;
+  string node_id = 2;
+  ReplicaState state = 3;
+  uint64 started_at = 4;
+  string message = 5;
+  ResourceUsage resource_usage = 6;
+}
+
+enum ReplicaState {
+  REPLICA_STATE_PENDING = 0;
+  REPLICA_STATE_RUNNING = 1;
+  REPLICA_STATE_SUCCEEDED = 2;
+  REPLICA_STATE_FAILED = 3;
+  REPLICA_STATE_UNKNOWN = 4;
+}
+
+message GetDeploymentRequest {
+  string deployment_id = 1;
+  bool include_replicas = 2;
+}
+
+message GetDeploymentResponse {
+  bool success = 1;
+  DeploymentInfo deployment = 2;
+  string error_message = 3;
+}
+
+message UpdateDeploymentRequest {
+  string deployment_id = 1;
+  DeploymentSpec updated_spec = 2;
+  string updater_id = 3;
+  DeploymentOptions options = 4;
+}
+
+message UpdateDeploymentResponse {
+  bool success = 1;
+  DeploymentInfo updated_deployment = 2;
+  string error_message = 3;
+}
+
+message DeleteDeploymentRequest {
+  string deployment_id = 1;
+  string requester_id = 2;
+  bool force = 3;
+  uint32 grace_period_seconds = 4;
+}
+
+message DeleteDeploymentResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message ScaleDeploymentRequest {
+  string deployment_id = 1;
+  uint32 target_replicas = 2;
+  string requester_id = 3;
+  ScaleOptions options = 4;
+}
+
+message ScaleOptions {
+  uint32 timeout_seconds = 1;
+  bool wait_for_ready = 2;
+  ScaleStrategy strategy = 3;
+}
+
+message ScaleStrategy {
+  uint32 max_surge = 1;
+  uint32 max_unavailable = 2;
+  uint32 batch_size = 3;
+}
+
+message ScaleDeploymentResponse {
+  bool success = 1;
+  DeploymentStatus new_status = 2;
+  string error_message = 3;
+}
+
+// Load balancing
+message GetLoadBalancerStatusRequest {
+  string load_balancer_id = 1;
+}
+
+message GetLoadBalancerStatusResponse {
+  LoadBalancerStatus status = 1;
+}
+
+message LoadBalancerStatus {
+  string load_balancer_id = 1;
+  LoadBalancerState state = 2;
+  repeated BackendNode backends = 3;
+  LoadBalancerMetrics metrics = 4;
+  LoadBalancerConfig config = 5;
+}
+
+enum LoadBalancerState {
+  LOAD_BALANCER_STATE_UNKNOWN = 0;
+  LOAD_BALANCER_STATE_ACTIVE = 1;
+  LOAD_BALANCER_STATE_INACTIVE = 2;
+  LOAD_BALANCER_STATE_ERROR = 3;
+}
+
+message BackendNode {
+  string node_id = 1;
+  string address = 2;
+  uint32 port = 3;
+  BackendStatus status = 4;
+  uint32 weight = 5;
+  BackendMetrics metrics = 6;
+}
+
+enum BackendStatus {
+  BACKEND_STATUS_HEALTHY = 0;
+  BACKEND_STATUS_UNHEALTHY = 1;
+  BACKEND_STATUS_DRAINING = 2;
+  BACKEND_STATUS_DISABLED = 3;
+}
+
+message BackendMetrics {
+  uint64 active_connections = 1;
+  uint64 requests_per_second = 2;
+  double response_time_ms = 3;
+  uint32 error_rate_percent = 4;
+}
+
+message LoadBalancerMetrics {
+  uint64 total_requests = 1;
+  uint64 total_connections = 2;
+  double average_response_time_ms = 3;
+  uint32 error_rate_percent = 4;
+  uint64 bytes_in = 5;
+  uint64 bytes_out = 6;
+}
+
+message LoadBalancerConfig {
+  LoadBalancingAlgorithm algorithm = 1;
+  HealthCheckConfig health_check = 2;
+  SessionAffinityConfig session_affinity = 3;
+  uint32 connection_timeout_seconds = 4;
+  uint32 request_timeout_seconds = 5;
+}
+
+enum LoadBalancingAlgorithm {
+  LOAD_BALANCING_ROUND_ROBIN = 0;
+  LOAD_BALANCING_LEAST_CONNECTIONS = 1;
+  LOAD_BALANCING_WEIGHTED_ROUND_ROBIN = 2;
+  LOAD_BALANCING_IP_HASH = 3;
+  LOAD_BALANCING_LEAST_RESPONSE_TIME = 4;
+}
+
+message HealthCheckConfig {
+  string path = 1;
+  uint32 interval_seconds = 2;
+  uint32 timeout_seconds = 3;
+  uint32 healthy_threshold = 4;
+  uint32 unhealthy_threshold = 5;
+}
+
+message SessionAffinityConfig {
+  bool enabled = 1;
+  SessionAffinityType type = 2;
+  uint32 timeout_seconds = 3;
+}
+
+enum SessionAffinityType {
+  SESSION_AFFINITY_NONE = 0;
+  SESSION_AFFINITY_CLIENT_IP = 1;
+  SESSION_AFFINITY_COOKIE = 2;
+}
+
+message UpdateLoadBalancerConfigRequest {
+  string load_balancer_id = 1;
+  LoadBalancerConfig config = 2;
+  string updater_id = 3;
+}
+
+message UpdateLoadBalancerConfigResponse {
+  bool success = 1;
+  LoadBalancerConfig updated_config = 2;
+  string error_message = 3;
+}
+
+message GetNodeLoadRequest {
+  string node_id = 1;
+  uint64 time_window_seconds = 2;
+}
+
+message GetNodeLoadResponse {
+  NodeLoadInfo load_info = 1;
+}
+
+message NodeLoadInfo {
+  string node_id = 1;
+  double current_load_percent = 2;
+  double average_load_percent = 3;
+  double peak_load_percent = 4;
+  LoadTrend trend = 5;
+  repeated LoadDataPoint history = 6;
+}
+
+enum LoadTrend {
+  LOAD_TREND_STABLE = 0;
+  LOAD_TREND_INCREASING = 1;
+  LOAD_TREND_DECREASING = 2;
+  LOAD_TREND_VOLATILE = 3;
+}
+
+message LoadDataPoint {
+  uint64 timestamp = 1;
+  double load_percent = 2;
+}
+
+// Cluster operations
+message GetClusterStatusRequest {
+  bool include_nodes = 1;
+  bool include_deployments = 2;
+}
+
+message GetClusterStatusResponse {
+  ClusterStatus status = 1;
+}
+
+message ClusterStatus {
+  ClusterState state = 1;
+  ClusterInfo info = 2;
+  ClusterMetrics metrics = 3;
+  repeated NodeDetails nodes = 4;
+  repeated DeploymentInfo deployments = 5;
+}
+
+enum ClusterState {
+  CLUSTER_STATE_UNKNOWN = 0;
+  CLUSTER_STATE_INITIALIZING = 1;
+  CLUSTER_STATE_READY = 2;
+  CLUSTER_STATE_DEGRADED = 3;
+  CLUSTER_STATE_UNHEALTHY = 4;
+  CLUSTER_STATE_MAINTENANCE = 5;
+}
+
+message ClusterInfo {
+  string cluster_id = 1;
+  string name = 2;
+  string version = 3;
+  uint64 created_at = 4;
+  uint32 total_nodes = 5;
+  uint32 ready_nodes = 6;
+  uint32 total_deployments = 7;
+  uint32 running_deployments = 8;
+}
+
+message ClusterMetrics {
+  ResourceUsage total_resources = 1;
+  ResourceUsage used_resources = 2;
+  ResourceUsage available_resources = 3;
+  PerformanceMetrics performance = 4;
+  uint64 total_requests = 5;
+  uint64 successful_requests = 6;
+  uint64 failed_requests = 7;
+}
+
+message GetClusterMetricsRequest {
+  uint64 start_time = 1;
+  uint64 end_time = 2;
+  repeated string metric_names = 3;
+  string aggregation = 4; // "sum", "avg", "max", "min"
+}
+
+message GetClusterMetricsResponse {
+  repeated ClusterMetric metrics = 1;
+}
+
+message ClusterMetric {
+  string name = 1;
+  string type = 2;
+  repeated MetricDataPoint data_points = 3;
+  map<string, string> labels = 4;
+}
+
+message MetricDataPoint {
+  uint64 timestamp = 1;
+  double value = 2;
+}
+
+message DrainNodeRequest {
+  string node_id = 1;
+  string requester_id = 2;
+  DrainOptions options = 3;
+}
+
+message DrainOptions {
+  uint32 grace_period_seconds = 1;
+  bool force = 2;
+  bool delete_local_data = 3;
+  bool ignore_daemon_sets = 4;
+}
+
+message DrainNodeResponse {
+  bool success = 1;
+  DrainStatus status = 2;
+  string error_message = 3;
+}
+
+message DrainStatus {
+  DrainState state = 1;
+  uint32 total_deployments = 2;
+  uint32 drained_deployments = 3;
+  uint32 remaining_deployments = 4;
+  repeated string pending_deployments = 5;
+}
+
+enum DrainState {
+  DRAIN_STATE_PENDING = 0;
+  DRAIN_STATE_DRAINING = 1;
+  DRAIN_STATE_COMPLETED = 2;
+  DRAIN_STATE_FAILED = 3;
+}
+
+message CordonNodeRequest {
+  string node_id = 1;
+  string requester_id = 2;
+  string reason = 3;
+}
+
+message CordonNodeResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message UncordonNodeRequest {
+  string node_id = 1;
+  string requester_id = 2;
+}
+
+message UncordonNodeResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Configuration management
+message GetClusterConfigRequest {
+  bool include_sensitive = 1;
+}
+
+message GetClusterConfigResponse {
+  ClusterConfig config = 1;
+}
+
+message ClusterConfig {
+  string cluster_name = 1;
+  string cluster_version = 2;
+  NetworkConfig network = 3;
+  SecurityConfig security = 4;
+  ResourceConfig resources = 5;
+  SchedulingConfig scheduling = 6;
+  map<string, string> custom_config = 7;
+}
+
+message NetworkConfig {
+  string cluster_cidr = 1;
+  string service_cidr = 2;
+  string dns_domain = 3;
+  repeated string dns_servers = 4;
+  uint32 mtu = 5;
+}
+
+message SecurityConfig {
+  bool rbac_enabled = 1;
+  bool network_policies_enabled = 2;
+  bool pod_security_policies_enabled = 3;
+  string default_security_context = 4;
+  repeated string allowed_registries = 5;
+}
+
+message ResourceConfig {
+  ResourceQuota default_quota = 1;
+  ResourceLimits default_limits = 2;
+  bool resource_quotas_enabled = 3;
+  bool limit_ranges_enabled = 4;
+}
+
+message ResourceQuota {
+  uint64 max_cpu_cores = 1;
+  uint64 max_memory_bytes = 2;
+  uint64 max_storage_bytes = 3;
+  uint32 max_deployments = 4;
+  uint32 max_dots = 5;
+}
+
+message ResourceLimits {
+  uint64 default_cpu_request = 1;
+  uint64 default_memory_request = 2;
+  uint64 default_cpu_limit = 3;
+  uint64 default_memory_limit = 4;
+}
+
+message SchedulingConfig {
+  string default_scheduler = 1;
+  bool enable_preemption = 2;
+  uint32 scheduling_timeout_seconds = 3;
+  map<string, string> scheduler_config = 4;
+}
+
+message UpdateClusterConfigRequest {
+  ClusterConfig config = 1;
+  string updater_id = 2;
+  bool validate_only = 3;
+}
+
+message UpdateClusterConfigResponse {
+  bool success = 1;
+  ClusterConfig updated_config = 2;
+  repeated string validation_errors = 3;
+  string error_message = 4;
+}
+
+// Streaming operations
+message StreamNodeEventsRequest {
+  repeated string node_ids = 1;
+  repeated NodeEventType event_types = 2;
+}
+
+enum NodeEventType {
+  NODE_EVENT_REGISTERED = 0;
+  NODE_EVENT_UNREGISTERED = 1;
+  NODE_EVENT_STATUS_CHANGED = 2;
+  NODE_EVENT_HEALTH_CHANGED = 3;
+  NODE_EVENT_CORDONED = 4;
+  NODE_EVENT_UNCORDONED = 5;
+  NODE_EVENT_DRAINED = 6;
+}
+
+message NodeEvent {
+  string event_id = 1;
+  NodeEventType event_type = 2;
+  string node_id = 3;
+  uint64 timestamp = 4;
+  NodeDetails node_details = 5;
+  string message = 6;
+  map<string, string> metadata = 7;
+}
+
+message StreamDeploymentEventsRequest {
+  repeated string deployment_ids = 1;
+  repeated DeploymentEventType event_types = 2;
+}
+
+enum DeploymentEventType {
+  DEPLOYMENT_EVENT_CREATED = 0;
+  DEPLOYMENT_EVENT_UPDATED = 1;
+  DEPLOYMENT_EVENT_DELETED = 2;
+  DEPLOYMENT_EVENT_SCALED = 3;
+  DEPLOYMENT_EVENT_REPLICA_STARTED = 4;
+  DEPLOYMENT_EVENT_REPLICA_STOPPED = 5;
+  DEPLOYMENT_EVENT_REPLICA_FAILED = 6;
+}
+
+message DeploymentEvent {
+  string event_id = 1;
+  DeploymentEventType event_type = 2;
+  string deployment_id = 3;
+  uint64 timestamp = 4;
+  DeploymentInfo deployment_info = 5;
+  string message = 6;
+  map<string, string> metadata = 7;
+}
+
+message StreamClusterMetricsRequest {
+  repeated string metric_names = 1;
+  uint32 interval_seconds = 2;
+  repeated string node_ids = 3;
+}

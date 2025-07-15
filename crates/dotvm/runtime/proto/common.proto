@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package common;
+
+// Common types shared across services
+
+// Pagination for list operations
+message Pagination {
+  uint32 page = 1;
+  uint32 page_size = 2;
+  string cursor = 3;
+}
+
+// Field constraints for validation
+message FieldConstraints {
+  bytes min_value = 1;
+  bytes max_value = 2;
+  uint32 min_length = 3;
+  uint32 max_length = 4;
+  string pattern = 5;
+  repeated bytes enum_values = 6;
+  bool unique = 7;
+}
+
+// Metric data point for monitoring
+message MetricDataPoint {
+  uint64 timestamp = 1;
+  double value = 2;
+}
+
+// Log entry for debugging and monitoring
+message LogEntry {
+  string level = 1;
+  string message = 2;
+  uint64 timestamp = 3;
+  string source = 4;
+  map<string, string> context = 5;
+}

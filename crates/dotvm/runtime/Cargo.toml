@@ -8,21 +8,29 @@ dotdb-core = { path = "../../dotdb/core" }
 dotvm-common = { path = "../common" }
 dotvm-core = { path = "../core" }
 dotvm-compiler = { path = "../compiler" }
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
 tokio.workspace = true
 futures.workspace = true
 async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 thiserror.workspace = true
 tonic = "0.11"
 prost = "0.12"
 tonic-reflection = "0.11"
+tower = "0.4"
+tower-http = { version = "0.4", features = ["cors", "compression-br", "compression-gzip", "trace"] }
+hyper = { version = "0.14", features = ["full"] }
+bytes = "1.0"
 futures-timer = "3.0.3"
 rand = "0.9.1"
 ring = "0.17.14"
 dashmap = "6.1.0"
 base64 = "0.22.1"
+regex = "1.11.1"
 
 [dev-dependencies]
 tempfile = "3.8"

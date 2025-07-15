@@ -14,12 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Optimization profiling and performance analysis
+//! VM management service - handles VM status, configuration, and lifecycle
 
-pub mod hotspots;
-pub mod profiler;
-pub mod suggestions;
+pub mod service;
 
-pub use hotspots::{Hotspot, HotspotDetector, HotspotType};
-pub use profiler::{OptimizationProfiler, ProfilerConfig};
-pub use suggestions::{OptimizationSuggester, OptimizationSuggestion};
+pub use service::VmManagementService;
