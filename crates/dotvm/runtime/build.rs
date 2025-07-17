@@ -21,11 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     tonic_build::configure()
         .file_descriptor_set_path(out_dir.join("runtime_descriptor.bin"))
-        .compile(&["proto/runtime.proto"], &["proto"])?;
-
-    // Compile all proto files
-    tonic_build::compile_protos("proto/runtime.proto")?;
-    tonic_build::compile_protos("proto/vm_service.proto")?;
+        .compile(&["proto/runtime.proto", "proto/vm_service.proto"], &["proto"])?;
     // TODO: Enable when database service is ready
     // tonic_build::compile_protos("proto/database_service.proto")?;
 

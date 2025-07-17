@@ -8,7 +8,6 @@ mod tui;
 
 use crate::commands::CommandContext;
 use crate::config::DotLanthConfig;
-use crate::tui::run_tui;
 use anyhow::Result;
 
 /// CLI for DotLanth infrastructure management
@@ -127,7 +126,7 @@ fn main() -> Result<()> {
     // Dispatch commands
     match cli.command {
         Commands::Run => {
-            run_tui(ctx)?;
+            crate::tui::run(ctx)?;
         }
         Commands::Status => {
             commands::cluster::show_status(&ctx)?;

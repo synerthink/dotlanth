@@ -14,22 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! gRPC service implementations - modular architecture
+//! Streaming implementations for gRPC services
 
-// Modular services
-pub mod abi;
-pub mod dots;
-pub mod metrics;
-pub mod vm_management;
+pub mod dot_events;
+pub mod vm_metrics;
 
-// Unified VM service that coordinates all sub-services
-pub mod vm_service;
-pub mod health;
-pub mod streaming;
-
-// Re-export main services
-pub use abi::AbiService;
-pub use dots::DotsService;
-pub use metrics::MetricsService;
-pub use vm_management::VmManagementService;
-pub use vm_service::VmServiceImpl;
+pub use dot_events::{DotEventStream, DotEventBroadcaster};
+pub use vm_metrics::{VmMetricsStream, VmMetricsCollector};

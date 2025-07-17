@@ -25,6 +25,7 @@ use tracing::{error, info, instrument};
 
 // Import generated protobuf types
 use crate::proto::vm_service::{vm_service_server::VmService, *};
+use crate::streaming;
 
 use super::{AbiService, DotsService, MetricsService, VmManagementService};
 
@@ -177,14 +178,46 @@ impl VmService for VmServiceImpl {
     type StreamDotEventsStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<DotEvent, Status>> + Send>>;
     type StreamVMMetricsStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<VmMetric, Status>> + Send>>;
 
-    async fn stream_dot_events(&self, _request: Request<StreamDotEventsRequest>) -> TonicResult<Response<Self::StreamDotEventsStream>> {
-        // TODO: Implement streaming
-        Err(Status::unimplemented("Streaming not yet implemented"))
+    async fn stream_dot_events(&self, request: Request<StreamDotEventsRequest>) -> TonicResult<Response<Self::StreamDotEventsStream>> {
+        use crate::streaming::{DotEventBroadcaster, dot_events::create_filter_from_request};
+        
+        let req = request.into_inner();
+        let subscriber_id = uuid::Uuid::new_v4().to_string();
+        
+        info!("Starting dot events stream for subscriber: {}", subscriber_id);
+        
+        // Create broadcaster if not exists (in real implementation, this would be shared)
+        let broadcaster = DotEventBroadcaster::new(1000, 100);
+        
+        // Create filter from request
+        let filter = create_filter_from_request(&req);
+        
+        // Subscribe to events
+        let stream = broadcaster.subscribe(subscriber_id, filter).await
+            .map_err(|e| Status::internal(format!("Failed to subscribe to events: {}", e)))?;
+        
+        let boxed_stream = Box::pin(stream);
+        Ok(Response::new(boxed_stream))
     }
 
-    async fn stream_vm_metrics(&self, _request: Request<StreamVmMetricsRequest>) -> TonicResult<Response<Self::StreamVMMetricsStream>> {
-        // TODO: Implement streaming
-        Err(Status::unimplemented("Streaming not yet implemented"))
+    async fn stream_vm_metrics(&self, request: Request<StreamVmMetricsRequest>) -> TonicResult<Response<Self::StreamVMMetricsStream>> {
+        use crate::streaming::VmMetricsCollector;
+        use std::time::Duration;
+        
+        let req = request.into_inner();
+        let interval = Duration::from_secs(req.interval_seconds.max(1) as u64);
+        
+        info!("Starting VM metrics stream with interval: {:?}", interval);
+        
+        // Create metrics collector (in real implementation, this would be shared)
+        let collector = VmMetricsCollector::new(1000, interval);
+        collector.start().await;
+        
+        // Subscribe to metrics
+        let stream = collector.subscribe();
+        
+        let boxed_stream = Box::pin(stream);
+        Ok(Response::new(boxed_stream))
     }
 }
 

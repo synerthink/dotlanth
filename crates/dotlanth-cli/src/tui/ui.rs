@@ -12,13 +12,22 @@ use crate::tui::app::{App, TabIndex};
 pub fn ui(f: &mut Frame<'_>, app: &mut App) {
     let size = f.size();
 
-    // Create main layout
+    // Responsive layout based on terminal size
+    let (header_height, footer_height) = if size.height < 15 {
+        (2, 1) // Minimal for very small terminals
+    } else if size.height < 25 {
+        (3, 2) // Compact for small terminals  
+    } else {
+        (4, 3) // Full for normal terminals
+    };
+
+    // Create responsive main layout
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // Header with tabs
-            Constraint::Min(0),    // Main content
-            Constraint::Length(3), // Footer with status
+            Constraint::Length(header_height), // Header with tabs
+            Constraint::Min(0),                // Main content
+            Constraint::Length(footer_height), // Footer with status
         ])
         .split(size);
 
@@ -43,11 +52,24 @@ pub fn ui(f: &mut Frame<'_>, app: &mut App) {
 }
 
 fn render_header(f: &mut Frame<'_>, app: &App, area: Rect) {
-    let tab_titles = vec!["Overview", "Nodes", "Deployments", "Metrics", "Logs"];
+    let size = f.size();
+
+    // Responsive tab titles based on terminal width
+    let tab_titles = if size.width < 80 {
+        vec!["Overview", "Nodes", "Deploy", "Metrics", "Logs", "gRPC", "Endpoints"]
+    } else {
+        vec!["Overview", "Nodes", "Deployments", "Metrics", "Logs", "gRPC Server", "gRPC Endpoints"]
+    };
+
     let tabs = Tabs::new(tab_titles)
-        .block(Block::default().borders(Borders::ALL).title("DotLanth Infrastructure Management"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("DotLanth Infrastructure Management")
+                .border_style(Style::default().fg(Color::Cyan)),
+        )
         .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        .highlight_style(Style::default().fg(Color::Black).bg(Color::Yellow).add_modifier(Modifier::BOLD))
         .select(app.current_tab as usize);
 
     f.render_widget(tabs, area);
@@ -60,6 +82,8 @@ fn render_content(f: &mut Frame<'_>, app: &App, area: Rect) {
         TabIndex::Deployments => render_deployments(f, app, area),
         TabIndex::Metrics => render_metrics(f, app, area),
         TabIndex::Logs => render_logs(f, app, area),
+        TabIndex::GrpcServer => render_grpc_server_tab(f, app, area),
+        TabIndex::GrpcEndpoints => crate::tui::components::grpc_endpoints::render_grpc_endpoints_tab(f, app, area),
     }
 }
 
@@ -290,6 +314,60 @@ fn render_metrics(f: &mut Frame<'_>, app: &App, area: Rect) {
     ]);
 
     f.render_widget(table, chunks[1]);
+}
+
+fn render_grpc_server_tab(f: &mut Frame<'_>, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Header
+            Constraint::Length(8), // Server Status
+            Constraint::Length(8), // Server Controls
+            Constraint::Min(0),    // Output
+        ])
+        .split(area);
+
+    // Header
+    let header = Paragraph::new("gRPC Server Management")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL));
+    f.render_widget(header, chunks[0]);
+
+    // Server Status
+    let status_color = if app.grpc_server_running { Color::Green } else { Color::Red };
+    let status_text = if app.grpc_server_running { "RUNNING" } else { "STOPPED" };
+
+    let status = Paragraph::new(format!(
+        "Server Status: {}\nAddress: [::1]:50051\nReflection: Enabled\nServices: runtime.Runtime, vm_service.VmService",
+        status_text
+    ))
+    .style(Style::default().fg(status_color))
+    .block(Block::default().title("Server Status").borders(Borders::ALL))
+    .wrap(Wrap { trim: true });
+    f.render_widget(status, chunks[1]);
+
+    // Controls
+    let controls_text = if app.grpc_server_running {
+        "S - Stop Server | R - Restart | T - Test Connection | L - View Logs"
+    } else {
+        "S - Start Server | B - Build | C - Clean Build | T - Test Connection"
+    };
+
+    let controls = Paragraph::new(controls_text).block(Block::default().title("Controls").borders(Borders::ALL)).wrap(Wrap { trim: true });
+    f.render_widget(controls, chunks[2]);
+
+    // Output
+    let output_text = if app.grpc_server_running {
+        "Server is running...\nCheck logs for detailed output."
+    } else {
+        "Server is stopped.\nPress 'S' to start the server."
+    };
+
+    let output = Paragraph::new(output_text)
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().title("Server Output").borders(Borders::ALL))
+        .wrap(Wrap { trim: true });
+    f.render_widget(output, chunks[3]);
 }
 
 fn render_logs(f: &mut Frame<'_>, app: &App, area: Rect) {
