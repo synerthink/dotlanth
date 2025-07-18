@@ -25,6 +25,80 @@ use ratatui::{
 };
 
 use crate::tui::app::App;
+use serde_json;
+
+/// Format JSON string for better readability in TUI
+fn format_json_for_display(json_str: &str) -> String {
+    match serde_json::from_str::<serde_json::Value>(json_str) {
+        Ok(value) => {
+            // Use custom pretty printing with 2-space indentation
+            match serde_json::to_string_pretty(&value) {
+                Ok(pretty) => {
+                    // Replace 4-space indentation with 2-space for better TUI display
+                    pretty.lines()
+                        .map(|line| {
+                            let leading_spaces = line.len() - line.trim_start().len();
+                            let new_indent = " ".repeat(leading_spaces / 2);
+                            format!("{}{}", new_indent, line.trim_start())
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                }
+                Err(_) => json_str.to_string(),
+            }
+        }
+        Err(_) => json_str.to_string(),
+    }
+}
+
+/// Format test result for better display
+fn format_test_result(result: &str) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+    
+    // Try to parse as JSON first
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(result) {
+        let pretty_json = serde_json::to_string_pretty(&value).unwrap_or_else(|_| result.to_string());
+        
+        for line in pretty_json.lines() {
+            let line_owned = line.to_string();
+            if line.trim().starts_with('"') && line.contains(':') {
+                // Field name and value
+                let parts: Vec<&str> = line.splitn(2, ':').collect();
+                if parts.len() == 2 {
+                    lines.push(Line::from(vec![
+                        Span::styled(parts[0].trim().to_string(), Style::default().fg(Color::Cyan)),
+                        Span::raw(": "),
+                        Span::styled(parts[1].trim().to_string(), Style::default().fg(Color::Green)),
+                    ]));
+                } else {
+                    lines.push(Line::from(line_owned));
+                }
+            } else if line.trim() == "{" || line.trim() == "}" || line.trim() == "[" || line.trim() == "]" {
+                // Brackets
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Yellow))));
+            } else {
+                // Regular line
+                lines.push(Line::from(line_owned));
+            }
+        }
+    } else {
+        // Not JSON, format as regular text with some highlighting
+        for line in result.lines() {
+            let line_owned = line.to_string();
+            if line.contains("Error:") || line.contains("error") {
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Red))));
+            } else if line.contains("Success") || line.contains("OK") {
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Green))));
+            } else if line.contains("Warning") {
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Yellow))));
+            } else {
+                lines.push(Line::from(line_owned));
+            }
+        }
+    }
+    
+    lines
+}
 
 pub fn render_grpc_endpoints_tab(f: &mut Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
@@ -75,6 +149,7 @@ fn render_categories(f: &mut Frame, app: &App, area: Rect) {
         ("Runtime", app.grpc_endpoint_manager.current_category == 1),
         ("Reflection", app.grpc_endpoint_manager.current_category == 2),
         ("Advanced", app.grpc_endpoint_manager.current_category == 3),
+        ("Week 3 Features", app.grpc_endpoint_manager.current_category == 4),
     ];
 
     let category_items: Vec<ListItem> = categories
@@ -159,12 +234,13 @@ fn render_endpoint_details(f: &mut Frame, app: &App, area: Rect) {
     let endpoint = app.grpc_endpoint_manager.get_selected_endpoint();
 
     let details_text = if let Some(ep) = endpoint {
+        let formatted_request = format_json_for_display(&ep.example_request);
         format!(
-            "Service: {}\nMethod: {}\nAuth Required: {}\nExample Request:\n{}",
+            "Service: {}\nMethod: {}\nAuth Required: {}\nExample Request (JSON):\n{}",
             ep.service,
             ep.method,
             if ep.requires_auth { "Yes" } else { "No" },
-            ep.example_request
+            formatted_request
         )
     } else {
         "No endpoint selected".to_string()
@@ -227,16 +303,15 @@ fn render_test_results_detailed(f: &mut Frame, app: &App, area: Rect) {
             .block(Block::default().title("Latest Test Result").borders(Borders::ALL));
         f.render_widget(header, chunks[0]);
 
-        // Full response
-        let response_text = if last_result.response.is_empty() {
-            "No response data".to_string()
+        // Full response with improved formatting
+        let response_lines = if last_result.response.is_empty() {
+            vec![Line::from(Span::styled("No response data", Style::default().fg(Color::Gray)))]
         } else {
-            last_result.response.clone()
+            format_test_result(&last_result.response)
         };
 
-        let response = Paragraph::new(response_text)
-            .style(Style::default().fg(if last_result.success { Color::White } else { Color::Red }))
-            .block(Block::default().title("Full Response").borders(Borders::ALL).border_style(Style::default().fg(status_color)))
+        let response = Paragraph::new(response_lines)
+            .block(Block::default().title("Full Response (JSON Formatted)").borders(Borders::ALL).border_style(Style::default().fg(status_color)))
             .wrap(Wrap { trim: true });
         f.render_widget(response, chunks[1]);
     } else {

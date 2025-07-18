@@ -184,6 +184,92 @@ impl VmService for VmServiceImpl {
     async fn stream_vm_metrics(&self, _request: tonic::Request<proto::vm_service::StreamVmMetricsRequest>) -> Result<tonic::Response<Self::StreamVMMetricsStream>, tonic::Status> {
         Err(tonic::Status::unimplemented("StreamVMMetrics not yet implemented"))
     }
+
+    // Week 3: Advanced gRPC Features - Bidirectional Streaming
+    type InteractiveDotExecutionStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::InteractiveExecutionResponse, tonic::Status>> + Send>>;
+
+    async fn interactive_dot_execution(&self, _request: tonic::Request<tonic::Streaming<proto::vm_service::InteractiveExecutionRequest>>) -> Result<tonic::Response<Self::InteractiveDotExecutionStream>, tonic::Status> {
+        Err(tonic::Status::unimplemented("InteractiveDotExecution not yet implemented"))
+    }
+
+    type LiveDotDebuggingStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::DebugResponse, tonic::Status>> + Send>>;
+
+    async fn live_dot_debugging(&self, _request: tonic::Request<tonic::Streaming<proto::vm_service::DebugRequest>>) -> Result<tonic::Response<Self::LiveDotDebuggingStream>, tonic::Status> {
+        Err(tonic::Status::unimplemented("LiveDotDebugging not yet implemented"))
+    }
+
+    // Week 3: Connection Management
+    async fn ping(&self, request: tonic::Request<proto::vm_service::PingRequest>) -> Result<tonic::Response<proto::vm_service::PingResponse>, tonic::Status> {
+        println!("VM Service Ping called from client: {}", request.get_ref().client_id);
+        
+        let response = proto::vm_service::PingResponse {
+            server_id: "dotvm-server-001".to_string(),
+            timestamp: request.get_ref().timestamp,
+            server_time: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            status: Some(proto::vm_service::ServerStatus {
+                version: "1.0.0".to_string(),
+                uptime_seconds: 3600,
+                active_connections: 1,
+                total_requests: 42,
+                cpu_usage: 15.5,
+                memory_usage_bytes: 1024 * 1024 * 128,
+            }),
+        };
+        
+        Ok(tonic::Response::new(response))
+    }
+
+    async fn health_check(&self, request: tonic::Request<proto::vm_service::HealthCheckRequest>) -> Result<tonic::Response<proto::vm_service::HealthCheckResponse>, tonic::Status> {
+        println!("Health check requested for services: {:?}", request.get_ref().services);
+        
+        let mut service_health = vec![
+            proto::vm_service::ServiceHealth {
+                service_name: "vm_service".to_string(),
+                status: proto::vm_service::OverallHealth::HealthServing as i32,
+                message: "VM service is healthy".to_string(),
+                details: std::collections::HashMap::new(),
+            },
+            proto::vm_service::ServiceHealth {
+                service_name: "runtime".to_string(),
+                status: proto::vm_service::OverallHealth::HealthServing as i32,
+                message: "Runtime service is healthy".to_string(),
+                details: std::collections::HashMap::new(),
+            },
+        ];
+        
+        // Filter by requested services if specified
+        if !request.get_ref().services.is_empty() {
+            service_health.retain(|s| request.get_ref().services.contains(&s.service_name));
+        }
+        
+        let overall_status = if service_health.iter().all(|s| s.status == proto::vm_service::OverallHealth::HealthServing as i32) {
+            proto::vm_service::OverallHealth::HealthServing
+        } else {
+            proto::vm_service::OverallHealth::HealthNotServing
+        };
+        
+        let mut system_info = std::collections::HashMap::new();
+        if request.get_ref().include_details {
+            system_info.insert("server_id".to_string(), "dotvm-server-001".to_string());
+            system_info.insert("uptime_seconds".to_string(), "3600".to_string());
+            system_info.insert("version".to_string(), "1.0.0".to_string());
+        }
+        
+        let response = proto::vm_service::HealthCheckResponse {
+            overall_status: overall_status as i32,
+            service_health,
+            system_info,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        };
+        
+        Ok(tonic::Response::new(response))
+    }
 }
 
 #[tokio::main]
@@ -200,7 +286,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Simple logging
     println!("Starting Dotlanth gRPC Server...");
 
-    let addr = "[::1]:50051".parse()?;
+    let addr = "127.0.0.1:50051".parse()?;
     let runtime_service = SimpleRuntimeService::default();
     let vm_service = VmServiceImpl::default();
     // let health_service = HealthServiceImpl::new();

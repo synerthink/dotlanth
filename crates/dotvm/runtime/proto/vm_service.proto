@@ -29,9 +29,17 @@ service VmService {
   rpc GetVMMetrics(GetVMMetricsRequest) returns (GetVMMetricsResponse);
   rpc GetArchitectures(GetArchitecturesRequest) returns (GetArchitecturesResponse);
   
-  // Streaming operations
+  // Streaming operations (Week 3: Advanced gRPC Features)
   rpc StreamDotEvents(StreamDotEventsRequest) returns (stream DotEvent);
   rpc StreamVMMetrics(StreamVMMetricsRequest) returns (stream VMMetric);
+  
+  // Bidirectional streaming for real-time interaction
+  rpc InteractiveDotExecution(stream InteractiveExecutionRequest) returns (stream InteractiveExecutionResponse);
+  rpc LiveDotDebugging(stream DebugRequest) returns (stream DebugResponse);
+  
+  // Connection management
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
 
 // Dot execution request
@@ -571,4 +579,281 @@ message LogEntry {
   uint64 timestamp = 3;
   string source = 4;
   map<string, string> context = 5;
+}
+
+// Week 3: Advanced gRPC Features - Bidirectional Streaming Messages
+
+// Interactive execution for real-time dot interaction
+message InteractiveExecutionRequest {
+  oneof request_type {
+    StartInteractiveExecution start = 1;
+    ExecutionInput input = 2;
+    ExecutionCommand command = 3;
+    StopExecution stop = 4;
+  }
+}
+
+message StartInteractiveExecution {
+  string dot_id = 1;
+  map<string, bytes> initial_inputs = 2;
+  bool debug_mode = 3;
+  string session_id = 4;
+}
+
+message ExecutionInput {
+  string session_id = 1;
+  map<string, bytes> inputs = 2;
+  uint64 sequence_number = 3;
+}
+
+message ExecutionCommand {
+  string session_id = 1;
+  CommandType command = 2;
+  map<string, string> parameters = 3;
+}
+
+enum CommandType {
+  COMMAND_UNKNOWN = 0;
+  COMMAND_PAUSE = 1;
+  COMMAND_RESUME = 2;
+  COMMAND_STEP = 3;
+  COMMAND_RESET = 4;
+  COMMAND_SET_BREAKPOINT = 5;
+  COMMAND_REMOVE_BREAKPOINT = 6;
+}
+
+message StopExecution {
+  string session_id = 1;
+  bool force = 2;
+}
+
+message InteractiveExecutionResponse {
+  oneof response_type {
+    ExecutionStarted started = 1;
+    ExecutionOutput output = 2;
+    ExecutionEvent event = 3;
+    ExecutionError error = 4;
+    ExecutionStopped stopped = 5;
+  }
+}
+
+message ExecutionStarted {
+  string session_id = 1;
+  string dot_id = 2;
+  uint64 timestamp = 3;
+}
+
+message ExecutionOutput {
+  string session_id = 1;
+  map<string, bytes> outputs = 2;
+  uint64 sequence_number = 3;
+  ExecutionState state = 4;
+}
+
+message ExecutionEvent {
+  string session_id = 1;
+  EventType event_type = 2;
+  string message = 3;
+  map<string, string> metadata = 4;
+  uint64 timestamp = 5;
+}
+
+enum EventType {
+  EVENT_UNKNOWN = 0;
+  EVENT_BREAKPOINT_HIT = 1;
+  EVENT_EXCEPTION = 2;
+  EVENT_STATE_CHANGED = 3;
+  EVENT_PARADOT_SPAWNED = 4;
+  EVENT_MEMORY_ALLOCATED = 5;
+}
+
+message ExecutionError {
+  string session_id = 1;
+  string error_code = 2;
+  string error_message = 3;
+  string stack_trace = 4;
+}
+
+message ExecutionStopped {
+  string session_id = 1;
+  StopReason reason = 2;
+  ExecutionMetrics final_metrics = 3;
+}
+
+enum StopReason {
+  STOP_UNKNOWN = 0;
+  STOP_COMPLETED = 1;
+  STOP_USER_REQUESTED = 2;
+  STOP_ERROR = 3;
+  STOP_TIMEOUT = 4;
+}
+
+message ExecutionState {
+  uint64 instruction_pointer = 1;
+  repeated StackFrame stack_frames = 2;
+  map<string, bytes> variables = 3;
+  uint64 memory_usage = 4;
+}
+
+message StackFrame {
+  string function_name = 1;
+  uint64 instruction_pointer = 2;
+  map<string, bytes> local_variables = 3;
+}
+
+// Live debugging messages
+message DebugRequest {
+  oneof request_type {
+    StartDebugSession start = 1;
+    DebugCommand command = 2;
+    InspectVariable inspect = 3;
+    SetBreakpoint breakpoint = 4;
+    StopDebugSession stop = 5;
+  }
+}
+
+message StartDebugSession {
+  string dot_id = 1;
+  string session_id = 2;
+  bool attach_to_running = 3;
+}
+
+message DebugCommand {
+  string session_id = 1;
+  DebugCommandType command = 2;
+  map<string, string> parameters = 3;
+}
+
+enum DebugCommandType {
+  DEBUG_UNKNOWN = 0;
+  DEBUG_CONTINUE = 1;
+  DEBUG_STEP_OVER = 2;
+  DEBUG_STEP_INTO = 3;
+  DEBUG_STEP_OUT = 4;
+  DEBUG_PAUSE = 5;
+}
+
+message InspectVariable {
+  string session_id = 1;
+  string variable_name = 2;
+  string scope = 3;
+}
+
+message SetBreakpoint {
+  string session_id = 1;
+  uint64 instruction_address = 2;
+  string condition = 3;
+  bool enabled = 4;
+}
+
+message StopDebugSession {
+  string session_id = 1;
+}
+
+message DebugResponse {
+  oneof response_type {
+    DebugSessionStarted started = 1;
+    DebugEvent event = 2;
+    VariableInspection inspection = 3;
+    BreakpointSet breakpoint_set = 4;
+    DebugError error = 5;
+    DebugSessionStopped stopped = 6;
+  }
+}
+
+message DebugSessionStarted {
+  string session_id = 1;
+  string dot_id = 2;
+  ExecutionState initial_state = 3;
+}
+
+message DebugEvent {
+  string session_id = 1;
+  DebugEventType event_type = 2;
+  ExecutionState current_state = 3;
+  string message = 4;
+  uint64 timestamp = 5;
+}
+
+enum DebugEventType {
+  DEBUG_EVENT_UNKNOWN = 0;
+  DEBUG_EVENT_BREAKPOINT = 1;
+  DEBUG_EVENT_STEP_COMPLETE = 2;
+  DEBUG_EVENT_EXCEPTION = 3;
+  DEBUG_EVENT_EXECUTION_COMPLETE = 4;
+}
+
+message VariableInspection {
+  string session_id = 1;
+  string variable_name = 2;
+  bytes value = 3;
+  string type_info = 4;
+  repeated VariableInspection children = 5;
+}
+
+message BreakpointSet {
+  string session_id = 1;
+  uint64 breakpoint_id = 2;
+  uint64 instruction_address = 3;
+  bool success = 4;
+}
+
+message DebugError {
+  string session_id = 1;
+  string error_code = 2;
+  string error_message = 3;
+}
+
+message DebugSessionStopped {
+  string session_id = 1;
+  string reason = 2;
+}
+
+// Connection management messages
+message PingRequest {
+  string client_id = 1;
+  uint64 timestamp = 2;
+  map<string, string> metadata = 3;
+}
+
+message PingResponse {
+  string server_id = 1;
+  uint64 timestamp = 2;
+  uint64 server_time = 3;
+  ServerStatus status = 4;
+}
+
+message HealthCheckRequest {
+  repeated string services = 1;
+  bool include_details = 2;
+}
+
+message HealthCheckResponse {
+  OverallHealth overall_status = 1;
+  repeated ServiceHealth service_health = 2;
+  map<string, string> system_info = 3;
+  uint64 timestamp = 4;
+}
+
+enum OverallHealth {
+  HEALTH_UNKNOWN = 0;
+  HEALTH_SERVING = 1;
+  HEALTH_NOT_SERVING = 2;
+  HEALTH_SERVICE_UNKNOWN = 3;
+}
+
+message ServiceHealth {
+  string service_name = 1;
+  OverallHealth status = 2;
+  string message = 3;
+  map<string, string> details = 4;
+}
+
+message ServerStatus {
+  string version = 1;
+  uint64 uptime_seconds = 2;
+  uint32 active_connections = 3;
+  uint64 total_requests = 4;
+  double cpu_usage = 5;
+  uint64 memory_usage_bytes = 6;
 }

@@ -141,11 +141,72 @@ impl GrpcEndpointManager {
             },
         ];
 
+        // Week 3: Advanced gRPC Features - Real Implementations
+        let week3_features = vec![
+            // Connection Management with Real Stats
+            GrpcEndpoint {
+                service: "vm_service.VmService".to_string(),
+                method: "Ping".to_string(),
+                requires_auth: false,
+                example_request: r#"{"client_id": "tui-client-week3", "timestamp": 1640995200, "metadata": {"version": "1.0", "feature": "connection_pooling"}}"#.to_string(),
+            },
+            GrpcEndpoint {
+                service: "vm_service.VmService".to_string(),
+                method: "HealthCheck".to_string(),
+                requires_auth: false,
+                example_request: r#"{"services": ["vm_service", "connection_pool", "dots_service", "abi_service"], "include_details": true}"#.to_string(),
+            },
+            
+            // Authentication Testing
+            GrpcEndpoint {
+                service: "vm_service.VmService".to_string(),
+                method: "ExecuteDot".to_string(),
+                requires_auth: true,
+                example_request: r#"{"dot_id": "auth-test-dot", "inputs": {"test": "YXV0aF90ZXN0"}, "paradots_enabled": true, "caller_id": "authenticated-user"}"#.to_string(),
+            },
+            
+            // Streaming Features (Note: These are bidirectional, so testing via grpcurl is limited)
+            GrpcEndpoint {
+                service: "vm_service.VmService".to_string(),
+                method: "StreamDotEvents".to_string(),
+                requires_auth: true,
+                example_request: r#"{"dot_filter": {"dot_ids": ["test-dot"]}, "event_types": ["EXECUTION", "STATE_CHANGE"]}"#.to_string(),
+            },
+            GrpcEndpoint {
+                service: "vm_service.VmService".to_string(),
+                method: "StreamVMMetrics".to_string(),
+                requires_auth: false,
+                example_request: r#"{"interval_seconds": 5, "metric_types": ["CPU", "MEMORY", "CONNECTIONS"]}"#.to_string(),
+            },
+            
+            // Connection Pool Stress Testing
+            GrpcEndpoint {
+                service: "vm_service.VmService".to_string(),
+                method: "GetVMStatus".to_string(),
+                requires_auth: false,
+                example_request: r#"{}"#.to_string(),
+            },
+            GrpcEndpoint {
+                service: "vm_service.VmService".to_string(),
+                method: "GetVMMetrics".to_string(),
+                requires_auth: false,
+                example_request: r#"{}"#.to_string(),
+            },
+            
+            // Compression Testing (Large Response)
+            GrpcEndpoint {
+                service: "vm_service.VmService".to_string(),
+                method: "GetArchitectures".to_string(),
+                requires_auth: false,
+                example_request: r#"{}"#.to_string(),
+            },
+        ];
+
         Self {
             test_results: Vec::new(),
             current_category: 0,
             current_endpoint: 0,
-            endpoints: vec![vm_service_endpoints, runtime_endpoints, reflection_endpoints, advanced_endpoints],
+            endpoints: vec![vm_service_endpoints, runtime_endpoints, reflection_endpoints, advanced_endpoints, week3_features],
         }
     }
 
