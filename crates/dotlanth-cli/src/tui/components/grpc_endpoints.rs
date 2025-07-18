@@ -30,9 +30,7 @@ use serde_json;
 /// Format JSON string for better readability in TUI
 fn format_json_for_display(json_str: &str) -> String {
     match serde_json::from_str::<serde_json::Value>(json_str) {
-        Ok(value) => {
-            serde_json::to_string_pretty(&value).unwrap_or_else(|_| json_str.to_string())
-        }
+        Ok(value) => serde_json::to_string_pretty(&value).unwrap_or_else(|_| json_str.to_string()),
         Err(_) => json_str.to_string(),
     }
 }
@@ -40,14 +38,14 @@ fn format_json_for_display(json_str: &str) -> String {
 /// Improved JSON formatting for test results with better error handling
 fn format_test_result(result: &str) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-    
+
     // First try to parse as JSON
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(result) {
         let pretty_json = serde_json::to_string_pretty(&value).unwrap_or_else(|_| result.to_string());
-        
+
         for line in pretty_json.lines() {
             let line_owned = line.to_string();
-            
+
             // Color different JSON elements
             if line.trim_start().starts_with('"') && line.contains(':') {
                 // Field names and values
@@ -55,7 +53,7 @@ fn format_test_result(result: &str) -> Vec<Line<'static>> {
                 if parts.len() == 2 {
                     let key_part = parts[0].trim();
                     let value_part = parts[1].trim();
-                    
+
                     lines.push(Line::from(vec![
                         Span::raw("  ".repeat(line.len() - line.trim_start().len())), // Preserve indentation
                         Span::styled(key_part.to_string(), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
@@ -94,11 +92,11 @@ fn format_test_result(result: &str) -> Vec<Line<'static>> {
             }
         }
     }
-    
+
     if lines.is_empty() {
         lines.push(Line::from(Span::styled("(empty response)", Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC))));
     }
-    
+
     lines
 }
 
@@ -309,7 +307,12 @@ fn render_test_results_detailed(f: &mut Frame, app: &App, area: Rect) {
         };
 
         let response = Paragraph::new(response_lines)
-            .block(Block::default().title("Full Response (JSON Formatted)").borders(Borders::ALL).border_style(Style::default().fg(status_color)))
+            .block(
+                Block::default()
+                    .title("Full Response (JSON Formatted)")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(status_color)),
+            )
             .wrap(Wrap { trim: true });
         f.render_widget(response, chunks[1]);
     } else {

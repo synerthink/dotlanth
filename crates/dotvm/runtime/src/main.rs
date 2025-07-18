@@ -191,7 +191,7 @@ impl VmService for VmServiceImpl {
     async fn execute_dot(&self, request: Request<proto::vm_service::ExecuteDotRequest>) -> Result<Response<proto::vm_service::ExecuteDotResponse>, Status> {
         let req = request.into_inner();
         println!("ExecuteDot called for dot_id: {}", req.dot_id);
-        
+
         let response = proto::vm_service::ExecuteDotResponse {
             success: false,
             outputs: std::collections::HashMap::new(),
@@ -208,7 +208,7 @@ impl VmService for VmServiceImpl {
     async fn deploy_dot(&self, request: Request<proto::vm_service::DeployDotRequest>) -> Result<Response<proto::vm_service::DeployDotResponse>, Status> {
         let req = request.into_inner();
         println!("DeployDot called for dot_name: {}", req.dot_name);
-        
+
         let response = proto::vm_service::DeployDotResponse {
             success: false,
             dot_id: "".to_string(),
@@ -223,7 +223,7 @@ impl VmService for VmServiceImpl {
     async fn get_dot_state(&self, request: Request<proto::vm_service::GetDotStateRequest>) -> Result<Response<proto::vm_service::GetDotStateResponse>, Status> {
         let req = request.into_inner();
         println!("GetDotState called for dot_id: {}", req.dot_id);
-        
+
         let response = proto::vm_service::GetDotStateResponse {
             success: false,
             state_data: std::collections::HashMap::new(),
@@ -236,7 +236,7 @@ impl VmService for VmServiceImpl {
 
     async fn list_dots(&self, _request: Request<proto::vm_service::ListDotsRequest>) -> Result<Response<proto::vm_service::ListDotsResponse>, Status> {
         println!("ListDots called");
-        
+
         let response = proto::vm_service::ListDotsResponse {
             dots: vec![], // Empty list for now
             total_count: 0,
@@ -249,7 +249,7 @@ impl VmService for VmServiceImpl {
     async fn delete_dot(&self, request: Request<proto::vm_service::DeleteDotRequest>) -> Result<Response<proto::vm_service::DeleteDotResponse>, Status> {
         let req = request.into_inner();
         println!("DeleteDot called for dot_id: {}", req.dot_id);
-        
+
         let response = proto::vm_service::DeleteDotResponse {
             success: false,
             error_message: "DeleteDot not yet implemented - this is a placeholder response".to_string(),
@@ -260,7 +260,7 @@ impl VmService for VmServiceImpl {
     async fn get_bytecode(&self, request: Request<proto::vm_service::GetBytecodeRequest>) -> Result<Response<proto::vm_service::GetBytecodeResponse>, Status> {
         let req = request.into_inner();
         println!("GetBytecode called for dot_id: {}", req.dot_id);
-        
+
         let response = proto::vm_service::GetBytecodeResponse {
             success: false,
             bytecode: vec![],
@@ -273,7 +273,7 @@ impl VmService for VmServiceImpl {
     async fn validate_bytecode(&self, request: Request<proto::vm_service::ValidateBytecodeRequest>) -> Result<Response<proto::vm_service::ValidateBytecodeResponse>, Status> {
         let req = request.into_inner();
         println!("ValidateBytecode called for {} bytes", req.bytecode.len());
-        
+
         let response = proto::vm_service::ValidateBytecodeResponse {
             valid: false,
             errors: vec![proto::vm_service::ValidationError {
@@ -289,7 +289,7 @@ impl VmService for VmServiceImpl {
     async fn get_dot_abi(&self, request: Request<proto::vm_service::GetDotAbiRequest>) -> Result<Response<proto::vm_service::GetDotAbiResponse>, Status> {
         let req = request.into_inner();
         println!("GetDotABI called for dot_id: {}", req.dot_id);
-        
+
         let response = proto::vm_service::GetDotAbiResponse {
             success: false,
             abi: None,
@@ -301,7 +301,7 @@ impl VmService for VmServiceImpl {
     async fn validate_abi(&self, request: Request<proto::vm_service::ValidateAbiRequest>) -> Result<Response<proto::vm_service::ValidateAbiResponse>, Status> {
         let req = request.into_inner();
         println!("ValidateABI called");
-        
+
         let response = proto::vm_service::ValidateAbiResponse {
             valid: false,
             errors: vec![proto::vm_service::ValidationError {
@@ -317,7 +317,7 @@ impl VmService for VmServiceImpl {
     async fn generate_abi(&self, request: Request<proto::vm_service::GenerateAbiRequest>) -> Result<Response<proto::vm_service::GenerateAbiResponse>, Status> {
         let req = request.into_inner();
         println!("GenerateABI called");
-        
+
         let response = proto::vm_service::GenerateAbiResponse {
             success: false,
             abi: None,
@@ -330,7 +330,7 @@ impl VmService for VmServiceImpl {
     async fn register_abi(&self, request: Request<proto::vm_service::RegisterAbiRequest>) -> Result<Response<proto::vm_service::RegisterAbiResponse>, Status> {
         let req = request.into_inner();
         println!("RegisterABI called for dot_id: {}", req.dot_id);
-        
+
         let response = proto::vm_service::RegisterAbiResponse {
             success: false,
             abi_version: "0".to_string(),
@@ -343,7 +343,7 @@ impl VmService for VmServiceImpl {
 
     async fn stream_dot_events(&self, _request: Request<proto::vm_service::StreamDotEventsRequest>) -> Result<Response<Self::StreamDotEventsStream>, Status> {
         println!("StreamDotEvents called - returning empty stream");
-        
+
         // Create an empty stream that completes immediately
         let stream = futures::stream::empty();
         Ok(Response::new(Box::pin(stream)))
@@ -353,7 +353,7 @@ impl VmService for VmServiceImpl {
 
     async fn stream_vm_metrics(&self, _request: Request<proto::vm_service::StreamVmMetricsRequest>) -> Result<Response<Self::StreamVMMetricsStream>, Status> {
         println!("StreamVMMetrics called - returning empty stream");
-        
+
         // Create an empty stream that completes immediately
         let stream = futures::stream::empty();
         Ok(Response::new(Box::pin(stream)))
@@ -361,12 +361,9 @@ impl VmService for VmServiceImpl {
 
     type InteractiveDotExecutionStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::InteractiveExecutionResponse, Status>> + Send>>;
 
-    async fn interactive_dot_execution(
-        &self,
-        _request: Request<tonic::Streaming<proto::vm_service::InteractiveExecutionRequest>>,
-    ) -> Result<Response<Self::InteractiveDotExecutionStream>, Status> {
+    async fn interactive_dot_execution(&self, _request: Request<tonic::Streaming<proto::vm_service::InteractiveExecutionRequest>>) -> Result<Response<Self::InteractiveDotExecutionStream>, Status> {
         println!("InteractiveDotExecution called - returning empty stream");
-        
+
         // Create an empty stream that completes immediately
         let stream = futures::stream::empty();
         Ok(Response::new(Box::pin(stream)))
@@ -376,7 +373,7 @@ impl VmService for VmServiceImpl {
 
     async fn live_dot_debugging(&self, _request: Request<tonic::Streaming<proto::vm_service::DebugRequest>>) -> Result<Response<Self::LiveDotDebuggingStream>, Status> {
         println!("LiveDotDebugging called - returning empty stream");
-        
+
         // Create an empty stream that completes immediately
         let stream = futures::stream::empty();
         Ok(Response::new(Box::pin(stream)))
