@@ -156,7 +156,6 @@ impl GrpcEndpointManager {
                 requires_auth: false,
                 example_request: r#"{"services": ["vm_service", "connection_pool", "dots_service", "abi_service"], "include_details": true}"#.to_string(),
             },
-            
             // Authentication Testing
             GrpcEndpoint {
                 service: "vm_service.VmService".to_string(),
@@ -164,7 +163,6 @@ impl GrpcEndpointManager {
                 requires_auth: true,
                 example_request: r#"{"dot_id": "auth-test-dot", "inputs": {"test": "YXV0aF90ZXN0"}, "paradots_enabled": true, "caller_id": "authenticated-user"}"#.to_string(),
             },
-            
             // Streaming Features (Note: These are bidirectional, so testing via grpcurl is limited)
             GrpcEndpoint {
                 service: "vm_service.VmService".to_string(),
@@ -178,7 +176,6 @@ impl GrpcEndpointManager {
                 requires_auth: false,
                 example_request: r#"{"interval_seconds": 5, "metric_types": ["CPU", "MEMORY", "CONNECTIONS"]}"#.to_string(),
             },
-            
             // Connection Pool Stress Testing
             GrpcEndpoint {
                 service: "vm_service.VmService".to_string(),
@@ -192,7 +189,6 @@ impl GrpcEndpointManager {
                 requires_auth: false,
                 example_request: r#"{}"#.to_string(),
             },
-            
             // Compression Testing (Large Response)
             GrpcEndpoint {
                 service: "vm_service.VmService".to_string(),
@@ -425,7 +421,7 @@ impl App {
         let mut cmd = std::process::Command::new("grpcurl");
         let timeout_secs = (self.context.config.grpc.connection_timeout_ms / 1000).to_string();
         cmd.args(&["-plaintext", "-max-time", &timeout_secs]);
-        
+
         // Note: grpcurl doesn't have -4 flag, so we rely on using 127.0.0.1 instead of localhost
 
         // Add auth header if required
@@ -679,7 +675,12 @@ impl App {
         // Simulate getting logs from the server process
         if self.grpc_server_running {
             let new_logs = vec![
-                format!("[{}] gRPC server listening on {}:{}", chrono::Local::now().format("%H:%M:%S"), self.context.config.grpc.server_host, self.context.config.grpc.server_port),
+                format!(
+                    "[{}] gRPC server listening on {}:{}",
+                    chrono::Local::now().format("%H:%M:%S"),
+                    self.context.config.grpc.server_host,
+                    self.context.config.grpc.server_port
+                ),
                 format!("[{}] Reflection service enabled", chrono::Local::now().format("%H:%M:%S")),
                 format!("[{}] VM service registered", chrono::Local::now().format("%H:%M:%S")),
                 format!("[{}] Runtime service registered", chrono::Local::now().format("%H:%M:%S")),

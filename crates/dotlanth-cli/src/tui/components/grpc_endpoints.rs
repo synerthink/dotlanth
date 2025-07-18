@@ -35,7 +35,8 @@ fn format_json_for_display(json_str: &str) -> String {
             match serde_json::to_string_pretty(&value) {
                 Ok(pretty) => {
                     // Replace 4-space indentation with 2-space for better TUI display
-                    pretty.lines()
+                    pretty
+                        .lines()
                         .map(|line| {
                             let leading_spaces = line.len() - line.trim_start().len();
                             let new_indent = " ".repeat(leading_spaces / 2);
@@ -54,11 +55,11 @@ fn format_json_for_display(json_str: &str) -> String {
 /// Format test result for better display
 fn format_test_result(result: &str) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-    
+
     // Try to parse as JSON first
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(result) {
         let pretty_json = serde_json::to_string_pretty(&value).unwrap_or_else(|_| result.to_string());
-        
+
         for line in pretty_json.lines() {
             let line_owned = line.to_string();
             if line.trim().starts_with('"') && line.contains(':') {
@@ -96,7 +97,7 @@ fn format_test_result(result: &str) -> Vec<Line<'static>> {
             }
         }
     }
-    
+
     lines
 }
 
@@ -311,7 +312,12 @@ fn render_test_results_detailed(f: &mut Frame, app: &App, area: Rect) {
         };
 
         let response = Paragraph::new(response_lines)
-            .block(Block::default().title("Full Response (JSON Formatted)").borders(Borders::ALL).border_style(Style::default().fg(status_color)))
+            .block(
+                Block::default()
+                    .title("Full Response (JSON Formatted)")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(status_color)),
+            )
             .wrap(Wrap { trim: true });
         f.render_widget(response, chunks[1]);
     } else {

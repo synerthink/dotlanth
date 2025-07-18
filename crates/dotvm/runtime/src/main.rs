@@ -191,7 +191,10 @@ impl VmService for VmServiceImpl {
     // Week 3: Advanced gRPC Features - Bidirectional Streaming
     type InteractiveDotExecutionStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::InteractiveExecutionResponse, tonic::Status>> + Send>>;
 
-    async fn interactive_dot_execution(&self, _request: tonic::Request<tonic::Streaming<proto::vm_service::InteractiveExecutionRequest>>) -> Result<tonic::Response<Self::InteractiveDotExecutionStream>, tonic::Status> {
+    async fn interactive_dot_execution(
+        &self,
+        _request: tonic::Request<tonic::Streaming<proto::vm_service::InteractiveExecutionRequest>>,
+    ) -> Result<tonic::Response<Self::InteractiveDotExecutionStream>, tonic::Status> {
         Err(tonic::Status::unimplemented("InteractiveDotExecution not yet implemented"))
     }
 
@@ -204,14 +207,11 @@ impl VmService for VmServiceImpl {
     // Week 3: Connection Management
     async fn ping(&self, request: tonic::Request<proto::vm_service::PingRequest>) -> Result<tonic::Response<proto::vm_service::PingResponse>, tonic::Status> {
         println!("VM Service Ping called from client: {}", request.get_ref().client_id);
-        
+
         let response = proto::vm_service::PingResponse {
             server_id: "dotvm-server-001".to_string(),
             timestamp: request.get_ref().timestamp,
-            server_time: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            server_time: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
             status: Some(proto::vm_service::ServerStatus {
                 version: "1.0.0".to_string(),
                 uptime_seconds: 3600,
@@ -221,13 +221,13 @@ impl VmService for VmServiceImpl {
                 memory_usage_bytes: 1024 * 1024 * 128,
             }),
         };
-        
+
         Ok(tonic::Response::new(response))
     }
 
     async fn health_check(&self, request: tonic::Request<proto::vm_service::HealthCheckRequest>) -> Result<tonic::Response<proto::vm_service::HealthCheckResponse>, tonic::Status> {
         println!("Health check requested for services: {:?}", request.get_ref().services);
-        
+
         let mut service_health = vec![
             proto::vm_service::ServiceHealth {
                 service_name: "vm_service".to_string(),
@@ -242,35 +242,32 @@ impl VmService for VmServiceImpl {
                 details: std::collections::HashMap::new(),
             },
         ];
-        
+
         // Filter by requested services if specified
         if !request.get_ref().services.is_empty() {
             service_health.retain(|s| request.get_ref().services.contains(&s.service_name));
         }
-        
+
         let overall_status = if service_health.iter().all(|s| s.status == proto::vm_service::OverallHealth::HealthServing as i32) {
             proto::vm_service::OverallHealth::HealthServing
         } else {
             proto::vm_service::OverallHealth::HealthNotServing
         };
-        
+
         let mut system_info = std::collections::HashMap::new();
         if request.get_ref().include_details {
             system_info.insert("server_id".to_string(), "dotvm-server-001".to_string());
             system_info.insert("uptime_seconds".to_string(), "3600".to_string());
             system_info.insert("version".to_string(), "1.0.0".to_string());
         }
-        
+
         let response = proto::vm_service::HealthCheckResponse {
             overall_status: overall_status as i32,
             service_health,
             system_info,
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
         };
-        
+
         Ok(tonic::Response::new(response))
     }
 }

@@ -43,7 +43,7 @@ impl Default for RuntimeConfig {
 impl RuntimeConfig {
     pub fn from_env() -> Self {
         let mut config = Self::default();
-        
+
         // Allow override via environment variables
         if let Ok(addr_str) = std::env::var("GRPC_BIND_ADDR") {
             if let Ok(addr) = SocketAddr::from_str(&addr_str) {
@@ -52,22 +52,22 @@ impl RuntimeConfig {
                 eprintln!("Warning: Invalid GRPC_BIND_ADDR '{}', using default", addr_str);
             }
         }
-        
+
         if let Ok(max_conn_str) = std::env::var("GRPC_MAX_CONNECTIONS") {
             if let Ok(max_conn) = max_conn_str.parse::<u32>() {
                 config.max_connections = max_conn;
             }
         }
-        
+
         if let Ok(timeout_str) = std::env::var("GRPC_CONNECTION_TIMEOUT_MS") {
             if let Ok(timeout) = timeout_str.parse::<u64>() {
                 config.connection_timeout_ms = timeout;
             }
         }
-        
+
         config
     }
-    
+
     pub fn get_bind_address_for_platform(&self) -> SocketAddr {
         // Cross-platform binding strategy
         let host = if cfg!(target_os = "linux") {
@@ -83,9 +83,7 @@ impl RuntimeConfig {
             // Default fallback
             "127.0.0.1"
         };
-        
-        format!("{}:{}", host, self.bind_address.port())
-            .parse()
-            .unwrap_or(self.bind_address)
+
+        format!("{}:{}", host, self.bind_address.port()).parse().unwrap_or(self.bind_address)
     }
 }
