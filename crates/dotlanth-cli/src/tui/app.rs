@@ -117,7 +117,7 @@ impl GrpcEndpointManager {
             service: "grpc.reflection.v1alpha.ServerReflection".to_string(),
             method: "ServerReflectionInfo".to_string(),
             requires_auth: false,
-            example_request: r#"{"host": "localhost", "list_services": ""}"#.to_string(),
+            example_request: r#"{"host": "127.0.0.1", "list_services": ""}"#.to_string(),
         }];
 
         let advanced_endpoints = vec![
@@ -423,7 +423,10 @@ impl App {
         self.request_metrics.total_requests += 1;
 
         let mut cmd = std::process::Command::new("grpcurl");
-        cmd.args(&["-plaintext", "-max-time", "10"]);
+        let timeout_secs = (self.context.config.grpc.connection_timeout_ms / 1000).to_string();
+        cmd.args(&["-plaintext", "-max-time", &timeout_secs]);
+        
+        // Note: grpcurl doesn't have -4 flag, so we rely on using 127.0.0.1 instead of localhost
 
         // Add auth header if required
         if endpoint.requires_auth {
@@ -446,8 +449,9 @@ impl App {
             cmd.args(&["-d", "{}"]);
         }
 
-        // Add service and method
-        cmd.args(&["localhost:50051", &format!("{}/{}", endpoint.service, endpoint.method)]);
+        // Use configured gRPC address for cross-platform compatibility
+        let grpc_addr = format!("{}:{}", self.context.config.grpc.client_host, self.context.config.grpc.client_port);
+        cmd.args(&[&grpc_addr, &format!("{}/{}", endpoint.service, endpoint.method)]);
 
         // Execute command
         let result = cmd.output();
@@ -624,7 +628,8 @@ impl App {
     pub fn test_grpc_connection(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.status_message = "Testing gRPC connection...".to_string();
 
-        let output = std::process::Command::new("grpcurl").args(&["-plaintext", "localhost:50051", "list"]).output();
+        let grpc_addr = format!("{}:{}", self.context.config.grpc.client_host, self.context.config.grpc.client_port);
+        let output = std::process::Command::new("grpcurl").args(&["-plaintext", &grpc_addr, "list"]).output();
 
         match output {
             Ok(result) if result.status.success() => {
@@ -674,7 +679,7 @@ impl App {
         // Simulate getting logs from the server process
         if self.grpc_server_running {
             let new_logs = vec![
-                format!("[{}] gRPC server listening on [::1]:50051", chrono::Local::now().format("%H:%M:%S")),
+                format!("[{}] gRPC server listening on {}:{}", chrono::Local::now().format("%H:%M:%S"), self.context.config.grpc.server_host, self.context.config.grpc.server_port),
                 format!("[{}] Reflection service enabled", chrono::Local::now().format("%H:%M:%S")),
                 format!("[{}] VM service registered", chrono::Local::now().format("%H:%M:%S")),
                 format!("[{}] Runtime service registered", chrono::Local::now().format("%H:%M:%S")),

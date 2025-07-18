@@ -18,6 +18,9 @@ use std::sync::Arc;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
+mod config;
+use config::RuntimeConfig;
+
 // Basic proto imports
 mod proto {
     tonic::include_proto!("runtime");
@@ -286,7 +289,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Simple logging
     println!("Starting Dotlanth gRPC Server...");
 
-    let addr = "127.0.0.1:50051".parse()?;
+    // Load runtime configuration with cross-platform support
+    let runtime_config = RuntimeConfig::from_env();
+    let addr = runtime_config.get_bind_address_for_platform();
     let runtime_service = SimpleRuntimeService::default();
     let vm_service = VmServiceImpl::default();
     // let health_service = HealthServiceImpl::new();
@@ -302,9 +307,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("gRPC reflection enabled");
     println!("");
     println!("Test with:");
-    println!("  grpcurl -plaintext -d '{{\"message\": \"hello\"}}' localhost:50051 runtime.Runtime/Ping");
-    println!("  grpcurl -plaintext localhost:50051 list");
-    println!("  grpcurl -plaintext localhost:50051 vm_service.VmService/GetArchitectures");
+    println!("  grpcurl -plaintext -d '{{\"message\": \"hello\"}}' {} runtime.Runtime/Ping", addr);
+    println!("  grpcurl -plaintext {} list", addr);
+    println!("  grpcurl -plaintext {} vm_service.VmService/GetArchitectures", addr);
+    println!("");
+    println!("Cross-platform connection tips:");
+    println!("  Ubuntu/Linux: Use 127.0.0.1:{} (recommended) or localhost:{}", addr.port(), addr.port());
+    println!("  macOS: Use 127.0.0.1:{} or localhost:{}", addr.port(), addr.port());
+    println!("  Windows: Use 127.0.0.1:{} or localhost:{}", addr.port(), addr.port());
+    println!("  Force IPv4: Use 127.0.0.1:{} instead of localhost", addr.port());
+    println!("  IPv6 (if enabled): grpcurl -plaintext [::1]:{} list", addr.port());
 
     // Start the server with graceful shutdown
     println!("Starting server with graceful shutdown support...");

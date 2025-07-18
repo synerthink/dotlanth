@@ -7,6 +7,7 @@ pub struct DotLanthConfig {
     pub data_dir: PathBuf,
     pub ui: UiConfig,
     pub mock_data: MockDataConfig,
+    pub grpc: GrpcConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,6 +26,16 @@ pub struct MockDataConfig {
     pub simulate_failures: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GrpcConfig {
+    pub server_host: String,
+    pub server_port: u16,
+    pub client_host: String,
+    pub client_port: u16,
+    pub prefer_ipv4: bool,
+    pub connection_timeout_ms: u64,
+}
+
 impl Default for DotLanthConfig {
     fn default() -> Self {
         Self {
@@ -40,6 +51,14 @@ impl Default for DotLanthConfig {
                 node_count: 3,
                 deployment_count: 5,
                 simulate_failures: true,
+            },
+            grpc: GrpcConfig {
+                server_host: "127.0.0.1".to_string(),
+                server_port: 50051,
+                client_host: "127.0.0.1".to_string(),
+                client_port: 50051,
+                prefer_ipv4: true,
+                connection_timeout_ms: 10000,
             },
         }
     }

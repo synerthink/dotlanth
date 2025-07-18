@@ -338,8 +338,10 @@ fn render_grpc_server_tab(f: &mut Frame<'_>, app: &App, area: Rect) {
     let status_text = if app.grpc_server_running { "RUNNING" } else { "STOPPED" };
 
     let status = Paragraph::new(format!(
-        "Server Status: {}\nAddress: [::1]:50051\nReflection: Enabled\nServices: runtime.Runtime, vm_service.VmService",
-        status_text
+        "Server Status: {}\nAddress: {}:{}\nReflection: Enabled\nServices: runtime.Runtime, vm_service.VmService",
+        status_text,
+        app.context.config.grpc.server_host,
+        app.context.config.grpc.server_port
     ))
     .style(Style::default().fg(status_color))
     .block(Block::default().title("Server Status").borders(Borders::ALL))
