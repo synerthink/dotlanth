@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -32,32 +31,17 @@ mod proto {
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("runtime_descriptor");
 }
 
-// Import our advanced services (simplified for now)
-// mod services {
-//     pub mod health;
-// }
-// use services::health::{HealthService, ServingStatus};
-
 use proto::runtime_server::{Runtime, RuntimeServer};
 use proto::vm_service::vm_service_server::{VmService, VmServiceServer};
-
-// Health service proto (commented out for now)
-// pub mod health_proto {
-//     tonic::include_proto!("grpc.health.v1");
-// }
-// use health_proto::health_server::{Health, HealthServer};
 
 // Simple working runtime service
 #[derive(Debug, Default)]
 struct SimpleRuntimeService;
 
-// Health service implementation (simplified for now)
-// Will be added back once proto issues are resolved
-
 #[tonic::async_trait]
 impl Runtime for SimpleRuntimeService {
     async fn ping(&self, request: Request<proto::PingRequest>) -> Result<Response<proto::PingResponse>, Status> {
-        println!("Received ping: {}", request.get_ref().message);
+        println!("Runtime Ping received: {}", request.get_ref().message);
 
         let response = proto::PingResponse {
             message: format!("Dotlanth Server Response: {}", request.into_inner().message),
@@ -67,13 +51,13 @@ impl Runtime for SimpleRuntimeService {
     }
 }
 
-// Basic VM service implementation
+// Basic VM service implementation - simplified and working
 #[derive(Debug, Default)]
 struct VmServiceImpl;
 
 #[tonic::async_trait]
 impl VmService for VmServiceImpl {
-    async fn get_architectures(&self, _request: tonic::Request<proto::vm_service::GetArchitecturesRequest>) -> Result<tonic::Response<proto::vm_service::GetArchitecturesResponse>, tonic::Status> {
+    async fn get_architectures(&self, _request: Request<proto::vm_service::GetArchitecturesRequest>) -> Result<Response<proto::vm_service::GetArchitecturesResponse>, Status> {
         println!("GetArchitectures called");
         let response = proto::vm_service::GetArchitecturesResponse {
             architectures: vec![
@@ -93,10 +77,11 @@ impl VmService for VmServiceImpl {
                 },
             ],
         };
-        Ok(tonic::Response::new(response))
+        Ok(Response::new(response))
     }
 
-    async fn get_vm_status(&self, _request: tonic::Request<proto::vm_service::GetVmStatusRequest>) -> Result<tonic::Response<proto::vm_service::GetVmStatusResponse>, tonic::Status> {
+    async fn get_vm_status(&self, _request: Request<proto::vm_service::GetVmStatusRequest>) -> Result<Response<proto::vm_service::GetVmStatusResponse>, Status> {
+        println!("GetVMStatus called");
         let response = proto::vm_service::GetVmStatusResponse {
             status: 1, // Running
             active_dots: vec![],
@@ -116,10 +101,11 @@ impl VmService for VmServiceImpl {
             }),
             active_paradots: vec![],
         };
-        Ok(tonic::Response::new(response))
+        Ok(Response::new(response))
     }
 
-    async fn get_vm_metrics(&self, _request: tonic::Request<proto::vm_service::GetVmMetricsRequest>) -> Result<tonic::Response<proto::vm_service::GetVmMetricsResponse>, tonic::Status> {
+    async fn get_vm_metrics(&self, _request: Request<proto::vm_service::GetVmMetricsRequest>) -> Result<Response<proto::vm_service::GetVmMetricsResponse>, Status> {
+        println!("GetVMMetrics called");
         let response = proto::vm_service::GetVmMetricsResponse {
             metrics: vec![proto::vm_service::VmMetric {
                 name: "cpu_usage".to_string(),
@@ -128,89 +114,17 @@ impl VmService for VmServiceImpl {
                 labels: std::collections::HashMap::new(),
             }],
         };
-        Ok(tonic::Response::new(response))
+        Ok(Response::new(response))
     }
 
-    // Placeholder implementations for required methods
-    async fn execute_dot(&self, _request: tonic::Request<proto::vm_service::ExecuteDotRequest>) -> Result<tonic::Response<proto::vm_service::ExecuteDotResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("ExecuteDot not yet implemented"))
-    }
-
-    async fn deploy_dot(&self, _request: tonic::Request<proto::vm_service::DeployDotRequest>) -> Result<tonic::Response<proto::vm_service::DeployDotResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("DeployDot not yet implemented"))
-    }
-
-    async fn get_dot_state(&self, _request: tonic::Request<proto::vm_service::GetDotStateRequest>) -> Result<tonic::Response<proto::vm_service::GetDotStateResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("GetDotState not yet implemented"))
-    }
-
-    async fn list_dots(&self, _request: tonic::Request<proto::vm_service::ListDotsRequest>) -> Result<tonic::Response<proto::vm_service::ListDotsResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("ListDots not yet implemented"))
-    }
-
-    async fn delete_dot(&self, _request: tonic::Request<proto::vm_service::DeleteDotRequest>) -> Result<tonic::Response<proto::vm_service::DeleteDotResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("DeleteDot not yet implemented"))
-    }
-
-    async fn get_bytecode(&self, _request: tonic::Request<proto::vm_service::GetBytecodeRequest>) -> Result<tonic::Response<proto::vm_service::GetBytecodeResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("GetBytecode not yet implemented"))
-    }
-
-    async fn validate_bytecode(&self, _request: tonic::Request<proto::vm_service::ValidateBytecodeRequest>) -> Result<tonic::Response<proto::vm_service::ValidateBytecodeResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("ValidateBytecode not yet implemented"))
-    }
-
-    async fn get_dot_abi(&self, _request: tonic::Request<proto::vm_service::GetDotAbiRequest>) -> Result<tonic::Response<proto::vm_service::GetDotAbiResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("GetDotABI not yet implemented"))
-    }
-
-    async fn validate_abi(&self, _request: tonic::Request<proto::vm_service::ValidateAbiRequest>) -> Result<tonic::Response<proto::vm_service::ValidateAbiResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("ValidateABI not yet implemented"))
-    }
-
-    async fn generate_abi(&self, _request: tonic::Request<proto::vm_service::GenerateAbiRequest>) -> Result<tonic::Response<proto::vm_service::GenerateAbiResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("GenerateABI not yet implemented"))
-    }
-
-    async fn register_abi(&self, _request: tonic::Request<proto::vm_service::RegisterAbiRequest>) -> Result<tonic::Response<proto::vm_service::RegisterAbiResponse>, tonic::Status> {
-        Err(tonic::Status::unimplemented("RegisterABI not yet implemented"))
-    }
-
-    type StreamDotEventsStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::DotEvent, tonic::Status>> + Send>>;
-
-    async fn stream_dot_events(&self, _request: tonic::Request<proto::vm_service::StreamDotEventsRequest>) -> Result<tonic::Response<Self::StreamDotEventsStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented("StreamDotEvents not yet implemented"))
-    }
-
-    type StreamVMMetricsStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::VmMetric, tonic::Status>> + Send>>;
-
-    async fn stream_vm_metrics(&self, _request: tonic::Request<proto::vm_service::StreamVmMetricsRequest>) -> Result<tonic::Response<Self::StreamVMMetricsStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented("StreamVMMetrics not yet implemented"))
-    }
-
-    // Week 3: Advanced gRPC Features - Bidirectional Streaming
-    type InteractiveDotExecutionStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::InteractiveExecutionResponse, tonic::Status>> + Send>>;
-
-    async fn interactive_dot_execution(
-        &self,
-        _request: tonic::Request<tonic::Streaming<proto::vm_service::InteractiveExecutionRequest>>,
-    ) -> Result<tonic::Response<Self::InteractiveDotExecutionStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented("InteractiveDotExecution not yet implemented"))
-    }
-
-    type LiveDotDebuggingStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::DebugResponse, tonic::Status>> + Send>>;
-
-    async fn live_dot_debugging(&self, _request: tonic::Request<tonic::Streaming<proto::vm_service::DebugRequest>>) -> Result<tonic::Response<Self::LiveDotDebuggingStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented("LiveDotDebugging not yet implemented"))
-    }
-
-    // Week 3: Connection Management
-    async fn ping(&self, request: tonic::Request<proto::vm_service::PingRequest>) -> Result<tonic::Response<proto::vm_service::PingResponse>, tonic::Status> {
-        println!("VM Service Ping called from client: {}", request.get_ref().client_id);
+    // VM Service Ping - working implementation
+    async fn ping(&self, request: Request<proto::vm_service::PingRequest>) -> Result<Response<proto::vm_service::PingResponse>, Status> {
+        let req = request.into_inner();
+        println!("VM Service Ping called from client: {}", req.client_id);
 
         let response = proto::vm_service::PingResponse {
             server_id: "dotvm-server-001".to_string(),
-            timestamp: request.get_ref().timestamp,
+            timestamp: req.timestamp,
             server_time: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
             status: Some(proto::vm_service::ServerStatus {
                 version: "1.0.0".to_string(),
@@ -222,11 +136,13 @@ impl VmService for VmServiceImpl {
             }),
         };
 
-        Ok(tonic::Response::new(response))
+        Ok(Response::new(response))
     }
 
-    async fn health_check(&self, request: tonic::Request<proto::vm_service::HealthCheckRequest>) -> Result<tonic::Response<proto::vm_service::HealthCheckResponse>, tonic::Status> {
-        println!("Health check requested for services: {:?}", request.get_ref().services);
+    // Health Check - working implementation
+    async fn health_check(&self, request: Request<proto::vm_service::HealthCheckRequest>) -> Result<Response<proto::vm_service::HealthCheckResponse>, Status> {
+        let req = request.into_inner();
+        println!("Health check requested for services: {:?}", req.services);
 
         let mut service_health = vec![
             proto::vm_service::ServiceHealth {
@@ -244,8 +160,8 @@ impl VmService for VmServiceImpl {
         ];
 
         // Filter by requested services if specified
-        if !request.get_ref().services.is_empty() {
-            service_health.retain(|s| request.get_ref().services.contains(&s.service_name));
+        if !req.services.is_empty() {
+            service_health.retain(|s| req.services.contains(&s.service_name));
         }
 
         let overall_status = if service_health.iter().all(|s| s.status == proto::vm_service::OverallHealth::HealthServing as i32) {
@@ -255,7 +171,7 @@ impl VmService for VmServiceImpl {
         };
 
         let mut system_info = std::collections::HashMap::new();
-        if request.get_ref().include_details {
+        if req.include_details {
             system_info.insert("server_id".to_string(), "dotvm-server-001".to_string());
             system_info.insert("uptime_seconds".to_string(), "3600".to_string());
             system_info.insert("version".to_string(), "1.0.0".to_string());
@@ -268,7 +184,202 @@ impl VmService for VmServiceImpl {
             timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
         };
 
-        Ok(tonic::Response::new(response))
+        Ok(Response::new(response))
+    }
+
+    // Basic implementations to avoid RST_STREAM errors
+    async fn execute_dot(&self, request: Request<proto::vm_service::ExecuteDotRequest>) -> Result<Response<proto::vm_service::ExecuteDotResponse>, Status> {
+        let req = request.into_inner();
+        println!("ExecuteDot called for dot_id: {}", req.dot_id);
+        
+        let response = proto::vm_service::ExecuteDotResponse {
+            success: false,
+            outputs: std::collections::HashMap::new(),
+            execution_time_ms: 0,
+            paradots_used: vec![],
+            logs: vec![],
+            events: vec![],
+            error_message: "ExecuteDot not yet implemented - this is a placeholder response".to_string(),
+            metrics: None,
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn deploy_dot(&self, request: Request<proto::vm_service::DeployDotRequest>) -> Result<Response<proto::vm_service::DeployDotResponse>, Status> {
+        let req = request.into_inner();
+        println!("DeployDot called for dot_name: {}", req.dot_name);
+        
+        let response = proto::vm_service::DeployDotResponse {
+            success: false,
+            dot_id: "".to_string(),
+            bytecode: vec![],
+            abi: None,
+            metrics: None,
+            error_message: "DeployDot not yet implemented - this is a placeholder response".to_string(),
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn get_dot_state(&self, request: Request<proto::vm_service::GetDotStateRequest>) -> Result<Response<proto::vm_service::GetDotStateResponse>, Status> {
+        let req = request.into_inner();
+        println!("GetDotState called for dot_id: {}", req.dot_id);
+        
+        let response = proto::vm_service::GetDotStateResponse {
+            success: false,
+            state_data: std::collections::HashMap::new(),
+            state_root_hash: "".to_string(),
+            version: 0,
+            error_message: "GetDotState not yet implemented - this is a placeholder response".to_string(),
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn list_dots(&self, _request: Request<proto::vm_service::ListDotsRequest>) -> Result<Response<proto::vm_service::ListDotsResponse>, Status> {
+        println!("ListDots called");
+        
+        let response = proto::vm_service::ListDotsResponse {
+            dots: vec![], // Empty list for now
+            total_count: 0,
+            next_cursor: "".to_string(),
+            has_more: false,
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn delete_dot(&self, request: Request<proto::vm_service::DeleteDotRequest>) -> Result<Response<proto::vm_service::DeleteDotResponse>, Status> {
+        let req = request.into_inner();
+        println!("DeleteDot called for dot_id: {}", req.dot_id);
+        
+        let response = proto::vm_service::DeleteDotResponse {
+            success: false,
+            error_message: "DeleteDot not yet implemented - this is a placeholder response".to_string(),
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn get_bytecode(&self, request: Request<proto::vm_service::GetBytecodeRequest>) -> Result<Response<proto::vm_service::GetBytecodeResponse>, Status> {
+        let req = request.into_inner();
+        println!("GetBytecode called for dot_id: {}", req.dot_id);
+        
+        let response = proto::vm_service::GetBytecodeResponse {
+            success: false,
+            bytecode: vec![],
+            info: None,
+            error_message: "GetBytecode not yet implemented - this is a placeholder response".to_string(),
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn validate_bytecode(&self, request: Request<proto::vm_service::ValidateBytecodeRequest>) -> Result<Response<proto::vm_service::ValidateBytecodeResponse>, Status> {
+        let req = request.into_inner();
+        println!("ValidateBytecode called for {} bytes", req.bytecode.len());
+        
+        let response = proto::vm_service::ValidateBytecodeResponse {
+            valid: false,
+            errors: vec![proto::vm_service::ValidationError {
+                field: "bytecode".to_string(),
+                error_code: "NOT_IMPLEMENTED".to_string(),
+                message: "ValidateBytecode not yet implemented - this is a placeholder response".to_string(),
+            }],
+            analysis: None,
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn get_dot_abi(&self, request: Request<proto::vm_service::GetDotAbiRequest>) -> Result<Response<proto::vm_service::GetDotAbiResponse>, Status> {
+        let req = request.into_inner();
+        println!("GetDotABI called for dot_id: {}", req.dot_id);
+        
+        let response = proto::vm_service::GetDotAbiResponse {
+            success: false,
+            abi: None,
+            error_message: "GetDotABI not yet implemented - this is a placeholder response".to_string(),
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn validate_abi(&self, request: Request<proto::vm_service::ValidateAbiRequest>) -> Result<Response<proto::vm_service::ValidateAbiResponse>, Status> {
+        let req = request.into_inner();
+        println!("ValidateABI called");
+        
+        let response = proto::vm_service::ValidateAbiResponse {
+            valid: false,
+            errors: vec![proto::vm_service::ValidationError {
+                field: "abi".to_string(),
+                error_code: "NOT_IMPLEMENTED".to_string(),
+                message: "ValidateABI not yet implemented - this is a placeholder response".to_string(),
+            }],
+            warnings: vec![],
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn generate_abi(&self, request: Request<proto::vm_service::GenerateAbiRequest>) -> Result<Response<proto::vm_service::GenerateAbiResponse>, Status> {
+        let req = request.into_inner();
+        println!("GenerateABI called");
+        
+        let response = proto::vm_service::GenerateAbiResponse {
+            success: false,
+            abi: None,
+            warnings: vec![],
+            error_message: "GenerateABI not yet implemented - this is a placeholder response".to_string(),
+        };
+        Ok(Response::new(response))
+    }
+
+    async fn register_abi(&self, request: Request<proto::vm_service::RegisterAbiRequest>) -> Result<Response<proto::vm_service::RegisterAbiResponse>, Status> {
+        let req = request.into_inner();
+        println!("RegisterABI called for dot_id: {}", req.dot_id);
+        
+        let response = proto::vm_service::RegisterAbiResponse {
+            success: false,
+            abi_version: "0".to_string(),
+            error_message: "RegisterABI not yet implemented - this is a placeholder response".to_string(),
+        };
+        Ok(Response::new(response))
+    }
+
+    type StreamDotEventsStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::DotEvent, Status>> + Send>>;
+
+    async fn stream_dot_events(&self, _request: Request<proto::vm_service::StreamDotEventsRequest>) -> Result<Response<Self::StreamDotEventsStream>, Status> {
+        println!("StreamDotEvents called - returning empty stream");
+        
+        // Create an empty stream that completes immediately
+        let stream = futures::stream::empty();
+        Ok(Response::new(Box::pin(stream)))
+    }
+
+    type StreamVMMetricsStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::VmMetric, Status>> + Send>>;
+
+    async fn stream_vm_metrics(&self, _request: Request<proto::vm_service::StreamVmMetricsRequest>) -> Result<Response<Self::StreamVMMetricsStream>, Status> {
+        println!("StreamVMMetrics called - returning empty stream");
+        
+        // Create an empty stream that completes immediately
+        let stream = futures::stream::empty();
+        Ok(Response::new(Box::pin(stream)))
+    }
+
+    type InteractiveDotExecutionStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::InteractiveExecutionResponse, Status>> + Send>>;
+
+    async fn interactive_dot_execution(
+        &self,
+        _request: Request<tonic::Streaming<proto::vm_service::InteractiveExecutionRequest>>,
+    ) -> Result<Response<Self::InteractiveDotExecutionStream>, Status> {
+        println!("InteractiveDotExecution called - returning empty stream");
+        
+        // Create an empty stream that completes immediately
+        let stream = futures::stream::empty();
+        Ok(Response::new(Box::pin(stream)))
+    }
+
+    type LiveDotDebuggingStream = std::pin::Pin<Box<dyn futures::Stream<Item = Result<proto::vm_service::DebugResponse, Status>> + Send>>;
+
+    async fn live_dot_debugging(&self, _request: Request<tonic::Streaming<proto::vm_service::DebugRequest>>) -> Result<Response<Self::LiveDotDebuggingStream>, Status> {
+        println!("LiveDotDebugging called - returning empty stream");
+        
+        // Create an empty stream that completes immediately
+        let stream = futures::stream::empty();
+        Ok(Response::new(Box::pin(stream)))
     }
 }
 
@@ -283,7 +394,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Received Ctrl+C, shutting down gracefully...");
         let _ = shutdown_tx.send(()).await;
     });
-    // Simple logging
+
     println!("Starting Dotlanth gRPC Server...");
 
     // Load runtime configuration with cross-platform support
@@ -291,7 +402,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = runtime_config.get_bind_address_for_platform();
     let runtime_service = SimpleRuntimeService::default();
     let vm_service = VmServiceImpl::default();
-    // let health_service = HealthServiceImpl::new();
 
     // Set up reflection service
     let reflection_service = tonic_reflection::server::Builder::configure()
@@ -306,7 +416,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Test with:");
     println!("  grpcurl -plaintext -d '{{\"message\": \"hello\"}}' {} runtime.Runtime/Ping", addr);
     println!("  grpcurl -plaintext {} list", addr);
-    println!("  grpcurl -plaintext {} vm_service.VmService/GetArchitectures", addr);
+    println!("  grpcurl -plaintext -d '{{}}' {} vm_service.VmService/GetArchitectures", addr);
+    println!("  grpcurl -plaintext -d '{{\"client_id\": \"test\", \"timestamp\": 1640995200}}' {} vm_service.VmService/Ping", addr);
+    println!("  grpcurl -plaintext -d '{{\"services\": [], \"include_details\": true}}' {} vm_service.VmService/HealthCheck", addr);
     println!("");
     println!("Cross-platform connection tips:");
     println!("  Ubuntu/Linux: Use 127.0.0.1:{} (recommended) or localhost:{}", addr.port(), addr.port());
@@ -323,7 +435,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(reflection_service)
         .add_service(RuntimeServer::new(runtime_service))
         .add_service(VmServiceServer::new(vm_service))
-        // .add_service(HealthServer::new(health_service))  // Will add back later
         .serve_with_shutdown(addr, async {
             shutdown_rx.recv().await;
             println!("Shutdown signal received, stopping server...");

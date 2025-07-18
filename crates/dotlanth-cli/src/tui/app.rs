@@ -141,14 +141,14 @@ impl GrpcEndpointManager {
             },
         ];
 
-        // Week 3: Advanced gRPC Features - Real Implementations
-        let week3_features = vec![
-            // Connection Management with Real Stats
+        // Streaming and Advanced gRPC Features
+        let streaming_endpoints = vec![
+            // Connection Management
             GrpcEndpoint {
                 service: "vm_service.VmService".to_string(),
                 method: "Ping".to_string(),
                 requires_auth: false,
-                example_request: r#"{"client_id": "tui-client-week3", "timestamp": 1640995200, "metadata": {"version": "1.0", "feature": "connection_pooling"}}"#.to_string(),
+                example_request: r#"{"client_id": "dotlanth-cli", "timestamp": 1640995200, "metadata": {"version": "1.0", "feature": "connection_pooling"}}"#.to_string(),
             },
             GrpcEndpoint {
                 service: "vm_service.VmService".to_string(),
@@ -202,7 +202,7 @@ impl GrpcEndpointManager {
             test_results: Vec::new(),
             current_category: 0,
             current_endpoint: 0,
-            endpoints: vec![vm_service_endpoints, runtime_endpoints, reflection_endpoints, advanced_endpoints, week3_features],
+            endpoints: vec![vm_service_endpoints, runtime_endpoints, reflection_endpoints, advanced_endpoints, streaming_endpoints],
         }
     }
 

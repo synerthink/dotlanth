@@ -31,73 +31,74 @@ use serde_json;
 fn format_json_for_display(json_str: &str) -> String {
     match serde_json::from_str::<serde_json::Value>(json_str) {
         Ok(value) => {
-            // Use custom pretty printing with 2-space indentation
-            match serde_json::to_string_pretty(&value) {
-                Ok(pretty) => {
-                    // Replace 4-space indentation with 2-space for better TUI display
-                    pretty
-                        .lines()
-                        .map(|line| {
-                            let leading_spaces = line.len() - line.trim_start().len();
-                            let new_indent = " ".repeat(leading_spaces / 2);
-                            format!("{}{}", new_indent, line.trim_start())
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                }
-                Err(_) => json_str.to_string(),
-            }
+            serde_json::to_string_pretty(&value).unwrap_or_else(|_| json_str.to_string())
         }
         Err(_) => json_str.to_string(),
     }
 }
 
-/// Format test result for better display
+/// Improved JSON formatting for test results with better error handling
 fn format_test_result(result: &str) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-
-    // Try to parse as JSON first
+    
+    // First try to parse as JSON
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(result) {
         let pretty_json = serde_json::to_string_pretty(&value).unwrap_or_else(|_| result.to_string());
-
+        
         for line in pretty_json.lines() {
             let line_owned = line.to_string();
-            if line.trim().starts_with('"') && line.contains(':') {
-                // Field name and value
+            
+            // Color different JSON elements
+            if line.trim_start().starts_with('"') && line.contains(':') {
+                // Field names and values
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
                 if parts.len() == 2 {
+                    let key_part = parts[0].trim();
+                    let value_part = parts[1].trim();
+                    
                     lines.push(Line::from(vec![
-                        Span::styled(parts[0].trim().to_string(), Style::default().fg(Color::Cyan)),
+                        Span::raw("  ".repeat(line.len() - line.trim_start().len())), // Preserve indentation
+                        Span::styled(key_part.to_string(), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
                         Span::raw(": "),
-                        Span::styled(parts[1].trim().to_string(), Style::default().fg(Color::Green)),
+                        Span::styled(value_part.to_string(), Style::default().fg(Color::Green)),
                     ]));
                 } else {
-                    lines.push(Line::from(line_owned));
+                    lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::White))));
                 }
             } else if line.trim() == "{" || line.trim() == "}" || line.trim() == "[" || line.trim() == "]" {
                 // Brackets
-                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Yellow))));
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))));
+            } else if line.trim().starts_with('"') && line.trim().ends_with(',') {
+                // Array elements
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Magenta))));
             } else {
-                // Regular line
-                lines.push(Line::from(line_owned));
+                // Regular content
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::White))));
             }
         }
     } else {
-        // Not JSON, format as regular text with some highlighting
+        // Not JSON, format as regular text with highlighting
         for line in result.lines() {
             let line_owned = line.to_string();
-            if line.contains("Error:") || line.contains("error") {
-                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Red))));
-            } else if line.contains("Success") || line.contains("OK") {
-                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Green))));
-            } else if line.contains("Warning") {
-                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Yellow))));
+            if line.to_lowercase().contains("error") || line.contains("Error:") || line.contains("failed") {
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))));
+            } else if line.to_lowercase().contains("success") || line.contains("OK") || line.contains("ok") {
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))));
+            } else if line.to_lowercase().contains("warning") {
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))));
+            } else if line.starts_with("grpc.") || line.starts_with("vm_service.") || line.starts_with("runtime.") {
+                // Service names
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::Cyan))));
             } else {
-                lines.push(Line::from(line_owned));
+                lines.push(Line::from(Span::styled(line_owned, Style::default().fg(Color::White))));
             }
         }
     }
-
+    
+    if lines.is_empty() {
+        lines.push(Line::from(Span::styled("(empty response)", Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC))));
+    }
+    
     lines
 }
 
@@ -149,8 +150,8 @@ fn render_categories(f: &mut Frame, app: &App, area: Rect) {
         ("VM Service", app.grpc_endpoint_manager.current_category == 0),
         ("Runtime", app.grpc_endpoint_manager.current_category == 1),
         ("Reflection", app.grpc_endpoint_manager.current_category == 2),
-        ("Advanced", app.grpc_endpoint_manager.current_category == 3),
-        ("Week 3 Features", app.grpc_endpoint_manager.current_category == 4),
+        ("Deployment", app.grpc_endpoint_manager.current_category == 3),
+        ("Streaming", app.grpc_endpoint_manager.current_category == 4),
     ];
 
     let category_items: Vec<ListItem> = categories
@@ -179,17 +180,15 @@ fn render_endpoints(f: &mut Frame, app: &App, area: Rect) {
         .map(|(i, endpoint)| {
             let selected = i == app.grpc_endpoint_manager.current_endpoint;
             let style = if selected {
-                Style::default().fg(Color::Black).bg(Color::Cyan).add_modifier(Modifier::BOLD)
-            } else if endpoint.requires_auth {
-                Style::default().fg(Color::Yellow)
+                Style::default().fg(Color::Black).bg(Color::Green).add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::White)
             };
 
-            let auth_indicator = if endpoint.requires_auth { "🔒 " } else { "   " };
-            let method_text = format!("{}{}", auth_indicator, endpoint.method);
+            let auth_indicator = if endpoint.requires_auth { " [AUTH]" } else { "" };
+            let display_text = format!("{}{}", endpoint.method, auth_indicator);
 
-            ListItem::new(Line::from(Span::styled(method_text, style)))
+            ListItem::new(Line::from(Span::styled(display_text, style)))
         })
         .collect();
 
@@ -199,9 +198,7 @@ fn render_endpoints(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_endpoint_controls(f: &mut Frame, app: &App, area: Rect) {
-    let auth_status = if app.auth_token.is_some() { "🔑 Auth: Set" } else { "🔓 Auth: None" };
-
-    let controls_text = format!("↑↓: Select | ←→: Category | Enter: Test | A: Set Auth | X: Clear Auth\n{}", auth_status);
+    let controls_text = "Enter: Test | ←→: Categories | ↑↓: Endpoints | A: Auth Token";
 
     let controls = Paragraph::new(controls_text)
         .style(Style::default().fg(Color::Gray))
@@ -215,19 +212,19 @@ fn render_test_results(f: &mut Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(8), // Current endpoint details
-            Constraint::Length(4), // Request metrics (smaller)
-            Constraint::Min(0),    // Test results and responses (larger)
+            Constraint::Length(8), // Endpoint details
+            Constraint::Length(4), // Request metrics
+            Constraint::Min(0),    // Test results
         ])
         .split(area);
 
-    // Current endpoint details
+    // Endpoint details
     render_endpoint_details(f, app, chunks[0]);
 
     // Request metrics
     render_request_metrics(f, app, chunks[1]);
 
-    // Test results and full responses
+    // Test results
     render_test_results_detailed(f, app, chunks[2]);
 }
 
@@ -290,7 +287,7 @@ fn render_test_results_detailed(f: &mut Frame, app: &App, area: Rect) {
 
         // Result header
         let status_color = if last_result.success { Color::Green } else { Color::Red };
-        let status_icon = if last_result.success { "✅" } else { "❌" };
+        let status_icon = if last_result.success { "OK" } else { "FAIL" };
         let header_text = format!(
             "{} {} | {}ms | {}s ago",
             status_icon,
@@ -306,18 +303,13 @@ fn render_test_results_detailed(f: &mut Frame, app: &App, area: Rect) {
 
         // Full response with improved formatting
         let response_lines = if last_result.response.is_empty() {
-            vec![Line::from(Span::styled("No response data", Style::default().fg(Color::Gray)))]
+            vec![Line::from(Span::styled("No response data", Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC)))]
         } else {
             format_test_result(&last_result.response)
         };
 
         let response = Paragraph::new(response_lines)
-            .block(
-                Block::default()
-                    .title("Full Response (JSON Formatted)")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(status_color)),
-            )
+            .block(Block::default().title("Full Response (JSON Formatted)").borders(Borders::ALL).border_style(Style::default().fg(status_color)))
             .wrap(Wrap { trim: true });
         f.render_widget(response, chunks[1]);
     } else {
@@ -333,7 +325,7 @@ fn render_test_results_detailed(f: &mut Frame, app: &App, area: Rect) {
             .map(|result| {
                 let status_style = if result.success { Style::default().fg(Color::Green) } else { Style::default().fg(Color::Red) };
 
-                let status_text = if result.success { "✅ OK" } else { "❌ FAIL" };
+                let status_text = if result.success { "OK" } else { "FAIL" };
 
                 Row::new(vec![
                     format!("{}s ago", result.timestamp.elapsed().as_secs()),
