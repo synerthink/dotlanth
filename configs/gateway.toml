@@ -1,0 +1,59 @@
+# Built-in Rust Gateway Configuration
+[cluster]
+name = "dotlanth-prod"
+node_id = "gateway-1"
+node_type = "gateway"
+
+[gateway]
+# HTTP Load Balancing
+http_bind_address = "0.0.0.0:8080"
+https_bind_address = "0.0.0.0:8443"
+upstream_masters = [
+    "master-1:8080",
+    "master-2:8080", 
+    "master-3:8080"
+]
+
+# gRPC Load Balancing
+grpc_bind_address = "0.0.0.0:50051"
+upstream_grpc = [
+    "master-1:50051",
+    "master-2:50051",
+    "master-3:50051"
+]
+
+[load_balancing]
+algorithm = "least_connections"  # or "round_robin", "weighted_round_robin"
+health_check_interval_ms = 5000
+health_check_timeout_ms = 2000
+max_retries = 3
+circuit_breaker_enabled = true
+
+[security]
+tls_enabled = true
+cert_path = "/etc/dotlanth/certs/node.crt"
+key_path = "/etc/dotlanth/certs/node.key"
+ca_cert_path = "/etc/dotlanth/certs/ca.crt"
+require_client_cert = false  # For external clients
+
+[caching]
+# Built-in caching instead of Redis
+enabled = true
+max_cache_size_mb = 512
+cache_ttl_seconds = 300
+cache_type = "lru"  # or "lfu", "fifo"
+
+[rate_limiting]
+enabled = true
+requests_per_minute = 1000
+burst_size = 100
+
+[monitoring]
+metrics_enabled = true
+metrics_port = 9090
+log_level = "info"
+
+[performance]
+numa_enabled = true
+worker_threads = 4
+connection_pool_size = 100

@@ -1,46 +1,63 @@
-version: '3.8'
+# Docker Compose for Dotlanth Development
+
+networks:
+  dotlanth-dev:
+    driver: bridge
 
 services:
-  dotvm:
+  # Development Master Node
+  dotlanth-dev:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    container_name: dotlanth-dev
     volumes:
       - .:/app
       - cargo-cache:/usr/local/cargo/registry
+      - dev_data:/var/lib/dotlanth
     environment:
       - RUST_BACKTRACE=1
       - RUST_LOG=debug
       - ENVIRONMENT=development
+      - NODE_TYPE=master
+      - NODE_ID=dev-master
+      - IS_PRIMARY=true
     ports:
       - "8080:8080"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - "50051:50051"
+    networks:
+      - dotlanth-dev
+    restart: unless-stopped
 
-  docs:
+  # Development Storage
+  dotlanth-storage-dev:
     build:
       context: .
-      dockerfile: Dockerfile.docs
+      dockerfile: Dockerfile.dev
+    container_name: dotlanth-storage-dev
     volumes:
-      - ./docs:/app
-    ports:
-      - "3002:3000"
-    command: [ "mdbook", "serve", "--hostname", "0.0.0.0", "--port", "3000", "." ]
+      - .:/app
+      - cargo-cache:/usr/local/cargo/registry
+      - dev_storage:/var/lib/dotdb
     environment:
+      - RUST_BACKTRACE=1
       - RUST_LOG=debug
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - ENVIRONMENT=development
+      - NODE_TYPE=storage
+      - NODE_ID=dev-storage
+    ports:
+      - "5432:5432"
+    networks:
+      - dotlanth-dev
+    restart: unless-stopped
 
-  prometheus:
+  # Development Prometheus
+  prometheus-dev:
     image: prom/prometheus:latest
+    container_name: prometheus-dev
     volumes:
       - ./monitoring/prometheus:/etc/prometheus
+      - ./monitoring/prometheus/dev.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
     command:
@@ -48,6 +65,53 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - dotlanth-dev
+    restart: unless-stopped
+
+  # Development Grafana
+  grafana-dev:
+    image: grafana/grafana:latest
+    container_name: grafana-dev
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=true
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "3000:3000"
+    networks:
+      - dotlanth-dev
+    depends_on:
+      - prometheus-dev
+    restart: unless-stopped
+
+  # Documentation
+  docs-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    container_name: docs-dev
+    volumes:
+      - ./docs:/app
+    ports:
+      - "3002:3000"
+    command: [ "mdbook", "serve", "--hostname", "0.0.0.0", "--port", "3000", "." ]
+    environment:
+      - RUST_LOG=debug
+    networks:
+      - dotlanth-dev
+    restart: unless-stopped
+
+  # Built-in caching (no external Redis needed)
+  # Caching is handled internally by Dotlanth nodes
 
 volumes:
   cargo-cache:
+  dev_data:
+  dev_storage:
+  grafana_dev_data:

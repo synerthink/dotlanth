@@ -1,0 +1,156 @@
+groups:
+  - name: dotlanth_cluster
+    rules:
+      # Master Node Alerts
+      - alert: MasterNodeDown
+        expr: up{job="dotlanth-masters"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Master node {{ $labels.instance }} is down"
+          description: "Master node {{ $labels.instance }} has been down for more than 30 seconds"
+
+      - alert: PrimaryMasterDown
+        expr: up{job="dotlanth-masters",instance="master-1:9090"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Primary master node is down"
+          description: "Primary master node is down - failover should occur"
+
+      # Worker Node Alerts
+      - alert: WorkerNodeDown
+        expr: up{job="dotlanth-workers"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Worker node {{ $labels.instance }} is down"
+          description: "Worker node {{ $labels.instance }} has been down for more than 1 minute"
+
+      - alert: HighWorkerCPU
+        expr: rate(cpu_usage_seconds_total{job="dotlanth-workers"}[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on worker {{ $labels.instance }}"
+          description: "Worker {{ $labels.instance }} CPU usage is above 80% for 5 minutes"
+
+      # Storage Node Alerts
+      - alert: StorageNodeDown
+        expr: up{job="dotlanth-storage"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Storage node {{ $labels.instance }} is down"
+          description: "Storage node {{ $labels.instance }} has been down for more than 30 seconds"
+
+      - alert: PrimaryStorageDown
+        expr: up{job="dotlanth-storage",instance="storage-1:9090"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Primary storage node is down"
+          description: "Primary storage node is down - data availability at risk"
+
+      - alert: HighStorageDiskUsage
+        expr: disk_usage_percent{job="dotlanth-storage"} > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage on storage {{ $labels.instance }}"
+          description: "Storage {{ $labels.instance }} disk usage is above 85%"
+
+      # Cluster Health Alerts
+      - alert: ClusterDegraded
+        expr: (count(up{job="dotlanth-masters"} == 1) / count(up{job="dotlanth-masters"})) < 0.67
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cluster is degraded"
+          description: "Less than 2/3 of master nodes are available"
+
+      - alert: InsufficientWorkers
+        expr: count(up{job="dotlanth-workers"} == 1) < 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Insufficient worker nodes"
+          description: "Less than 1 worker node is available"
+
+      # Performance Alerts
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(request_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency"
+          description: "95th percentile latency is above 500ms for 5 minutes"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate"
+          description: "Error rate is above 5% for 5 minutes"
+
+      # Memory Alerts
+      - alert: HighMemoryUsage
+        expr: memory_usage_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 90% for 5 minutes"
+
+      # Network Alerts
+      - alert: HighNetworkLatency
+        expr: network_latency_ms > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High network latency to {{ $labels.target }}"
+          description: "Network latency to {{ $labels.target }} is above 100ms"
+
+  - name: dotlanth_security
+    rules:
+      # Security Alerts
+      - alert: CertificateExpiringSoon
+        expr: cert_expiry_days < 30
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Certificate expiring soon"
+          description: "Certificate for {{ $labels.instance }} expires in {{ $value }} days"
+
+      - alert: AuthenticationFailures
+        expr: rate(auth_failures_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is above 10/minute"
+
+      - alert: UnauthorizedAccess
+        expr: rate(unauthorized_requests_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Unauthorized access attempts"
+          description: "Unauthorized access attempts detected at rate {{ $value }}/minute"

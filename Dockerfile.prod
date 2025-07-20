@@ -1,11 +1,14 @@
 FROM rust:latest as builder
 
-# Install dependencies
+# Install dependencies including NUMA support
 RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     git \
     libssl-dev \
+    libnuma-dev \
+    numactl \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 # Install nightly components
@@ -15,24 +18,54 @@ RUN rustup default nightly && \
 # Set working directory
 WORKDIR /app
 
-# Copy Cargo files
+# Copy Cargo files first for better caching
 COPY Cargo.toml Cargo.lock ./
+COPY rust-toolchain.toml ./
 COPY crates ./crates
 
-# Build for release
+# Build for release with optimizations
+ENV RUSTFLAGS="-C target-cpu=native -C opt-level=3"
 RUN cargo build --workspace --release
 
 # Runtime stage
 FROM debian:bullseye-slim
 
+# Install runtime dependencies including NUMA
 RUN apt-get update && apt-get install -y \
     ca-certificates \
-    libssl-dev \
+    libssl1.1 \
+    libnuma1 \
+    numactl \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy binary from builder
-COPY --from=builder /app/target/release/dotvm /usr/local/bin/
-COPY --from=builder /app/target/release/deps /usr/local/bin/deps
+# Create dotlanth user
+RUN useradd -r -s /bin/false -d /var/lib/dotlanth dotlanth
 
-# Run in production mode
-CMD ["dotvm"]
+# Create directories
+RUN mkdir -p /var/lib/dotlanth /etc/dotlanth /var/log/dotlanth && \
+    chown -R dotlanth:dotlanth /var/lib/dotlanth /var/log/dotlanth
+
+# Copy binaries from builder
+COPY --from=builder /app/target/release/dotvm /usr/local/bin/
+COPY --from=builder /app/target/release/dotlanth-cli /usr/local/bin/
+COPY --from=builder /app/target/release/dotdb-cli /usr/local/bin/
+
+# Make binaries executable
+RUN chmod +x /usr/local/bin/dotvm /usr/local/bin/dotlanth-cli /usr/local/bin/dotdb-cli
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Switch to non-root user
+USER dotlanth
+
+# Expose ports
+EXPOSE 8080 50051
+
+# Set working directory
+WORKDIR /var/lib/dotlanth
+
+# Run with NUMA awareness
+CMD ["numactl", "--interleave=all", "dotvm"]

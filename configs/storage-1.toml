@@ -1,0 +1,43 @@
+# Storage Node 1 Configuration (Primary)
+[cluster]
+name = "dotlanth-prod"
+node_id = "storage-1"
+node_type = "storage"
+
+[network]
+bind_address = "0.0.0.0:5432"
+api_address = "0.0.0.0:8080"
+
+[storage]
+is_primary = true
+data_dir = "/var/lib/dotdb"
+log_dir = "/var/log/dotlanth"
+backup_dir = "/var/lib/dotlanth/backups"
+replica_endpoint = "storage-2:5432"
+
+[database]
+max_connections = 200
+shared_buffers_mb = 2048
+effective_cache_size_mb = 4096
+checkpoint_segments = 32
+wal_buffers_mb = 16
+
+[replication]
+sync_replication = true
+replication_timeout_ms = 5000
+backup_interval_minutes = 30
+
+[security]
+tls_enabled = false  # Disabled for testing
+cert_path = "/etc/dotlanth/certs/node.crt"
+key_path = "/etc/dotlanth/certs/node.key"
+ca_cert_path = "/etc/dotlanth/certs/ca.crt"
+
+[monitoring]
+metrics_enabled = true
+metrics_port = 9090
+log_level = "info"
+
+[performance]
+numa_enabled = true
+io_threads = 4

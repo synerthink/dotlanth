@@ -1,0 +1,56 @@
+# Master Node 1 Configuration (No TLS for Testing)
+[cluster]
+name = "dotlanth-prod"
+node_id = "master-1"
+node_type = "master"
+is_primary = true
+
+[network]
+bind_address = "0.0.0.0:50051"
+api_address = "0.0.0.0:8080"
+cluster_nodes = [
+    "master-1:50051",
+    "master-2:50051", 
+    "master-3:50051"
+]
+
+[consensus]
+algorithm = "simple_leader"
+election_timeout_ms = 5000
+heartbeat_interval_ms = 1000
+leader_lease_duration_ms = 10000
+
+[storage]
+data_dir = "/var/lib/dotlanth"
+log_dir = "/var/log/dotlanth"
+backup_dir = "/var/lib/dotlanth/backups"
+primary_storage_endpoint = "storage-1:5432"
+replica_storage_endpoint = "storage-2:5432"
+
+[security]
+tls_enabled = false  # Disabled for testing
+require_client_cert = false
+auth_enabled = false  # Simplified for testing
+
+[monitoring]
+metrics_enabled = true
+metrics_port = 9090
+prometheus_endpoint = "prometheus:9090"
+grafana_endpoint = "grafana:3000"
+jaeger_endpoint = "jaeger:14268"
+clickhouse_endpoint = "clickhouse:8123"
+log_level = "info"
+
+[performance]
+numa_enabled = true
+worker_threads = 4
+max_connections = 1000
+connection_timeout_ms = 30000
+
+[database]
+# Byzantine fault tolerance settings
+consensus_required = true
+min_replicas = 2
+max_byzantine_failures = 1
+checksum_verification = true
+automatic_recovery = true

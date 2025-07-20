@@ -1,41 +1,252 @@
-version: '3.8'
+# Docker Compose for Dotlanth Production
+
+networks:
+  dotlanth-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 services:
-  dotvm:
+  # Master Node 1 (Primary)
+  dotlanth-master-1:
     build:
       context: .
       dockerfile: Dockerfile.prod
+    container_name: dotlanth-master-1
+    hostname: master-1
     environment:
       - RUST_BACKTRACE=1
       - RUST_LOG=info
       - ENVIRONMENT=production
+      - NODE_TYPE=master
+      - NODE_ID=master-1
+      - IS_PRIMARY=true
+      - CLUSTER_NODES=master-1:50051,master-2:50051,master-3:50051
+      - TLS_ENABLED=false
     ports:
+      - "50051:50051"
       - "8080:8080"
+    volumes:
+      - master1_data:/var/lib/dotlanth
+      - ./configs/master-1.toml:/etc/dotlanth/config.toml:ro
+      - ./certs:/etc/dotlanth/certs:ro
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.1.10
     restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
 
-  docs:
+  # Master Node 2 (Secondary)
+  dotlanth-master-2:
     build:
       context: .
-      dockerfile: Dockerfile.docs
-    volumes:
-      - ./docs:/app:ro  # Read-only in production
+      dockerfile: Dockerfile.prod
+    container_name: dotlanth-master-2
+    hostname: master-2
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - ENVIRONMENT=production
+      - NODE_TYPE=master
+      - NODE_ID=master-2
+      - IS_PRIMARY=false
+      - CLUSTER_NODES=master-1:50051,master-2:50051,master-3:50051
     ports:
-      - "3002:3000"
-    command: [ "mdbook", "serve", "--hostname", "0.0.0.0", "--port", "3000", "." ]
+      - "50052:50051"
+      - "8081:8080"
+    volumes:
+      - master2_data:/var/lib/dotlanth
+      - ./configs/master-2.toml:/etc/dotlanth/config.toml:ro
+      - ./certs:/etc/dotlanth/certs:ro
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.1.11
     restart: always
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    depends_on:
+      - dotlanth-master-1
 
+  # Master Node 3 (Tertiary)
+  dotlanth-master-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: dotlanth-master-3
+    hostname: master-3
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - ENVIRONMENT=production
+      - NODE_TYPE=master
+      - NODE_ID=master-3
+      - IS_PRIMARY=false
+      - CLUSTER_NODES=master-1:50051,master-2:50051,master-3:50051
+    ports:
+      - "50053:50051"
+      - "8082:8080"
+    volumes:
+      - master3_data:/var/lib/dotlanth
+      - ./configs/master-3.toml:/etc/dotlanth/config.toml:ro
+      - ./certs:/etc/dotlanth/certs:ro
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.1.12
+    restart: always
+    depends_on:
+      - dotlanth-master-1
+
+  # Worker Nodes (Scalable)
+  dotlanth-worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: dotlanth-worker-1
+    hostname: worker-1
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - ENVIRONMENT=production
+      - NODE_TYPE=worker
+      - NODE_ID=worker-1
+      - MASTER_ENDPOINTS=master-1:50051,master-2:50051,master-3:50051
+    ports:
+      - "50061:50051"
+    volumes:
+      - worker1_data:/var/lib/dotlanth
+      - ./configs/worker-1.toml:/etc/dotlanth/config.toml:ro
+      - ./certs:/etc/dotlanth/certs:ro
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.2.10
+    restart: always
+    depends_on:
+      - dotlanth-master-1
+      - dotlanth-master-2
+      - dotlanth-master-3
+
+  dotlanth-worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: dotlanth-worker-2
+    hostname: worker-2
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - ENVIRONMENT=production
+      - NODE_TYPE=worker
+      - NODE_ID=worker-2
+      - MASTER_ENDPOINTS=master-1:50051,master-2:50051,master-3:50051
+    ports:
+      - "50062:50051"
+    volumes:
+      - worker2_data:/var/lib/dotlanth
+      - ./configs/worker-2.toml:/etc/dotlanth/config.toml:ro
+      - ./certs:/etc/dotlanth/certs:ro
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.2.11
+    restart: always
+    depends_on:
+      - dotlanth-master-1
+      - dotlanth-master-2
+      - dotlanth-master-3
+
+  # Storage Nodes (DotDB)
+  dotlanth-storage-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: dotlanth-storage-1
+    hostname: storage-1
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - ENVIRONMENT=production
+      - NODE_TYPE=storage
+      - NODE_ID=storage-1
+      - IS_PRIMARY_STORAGE=true
+    ports:
+      - "5432:5432"
+    volumes:
+      - storage1_data:/var/lib/dotlanth
+      - storage1_db:/var/lib/dotdb
+      - ./configs/storage-1.toml:/etc/dotlanth/config.toml:ro
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.3.10
+    restart: always
+
+  dotlanth-storage-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: dotlanth-storage-2
+    hostname: storage-2
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - ENVIRONMENT=production
+      - NODE_TYPE=storage
+      - NODE_ID=storage-2
+      - IS_PRIMARY_STORAGE=false
+      - PRIMARY_STORAGE_ENDPOINT=storage-1:5432
+    ports:
+      - "5433:5432"
+    volumes:
+      - storage2_data:/var/lib/dotlanth
+      - storage2_db:/var/lib/dotdb
+      - ./configs/storage-2.toml:/etc/dotlanth/config.toml:ro
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.3.11
+    restart: always
+    depends_on:
+      - dotlanth-storage-1
+
+  # Built-in Load Balancer (Rust-based)
+  dotlanth-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: dotlanth-gateway
+    hostname: gateway
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - ENVIRONMENT=production
+      - NODE_TYPE=gateway
+      - NODE_ID=gateway-1
+      - UPSTREAM_MASTERS=master-1:8080,master-2:8080,master-3:8080
+      - UPSTREAM_GRPC=master-1:50051,master-2:50051,master-3:50051
+    ports:
+      - "80:8080"
+      - "443:8443"
+      - "50050:50051"
+    volumes:
+      - gateway_data:/var/lib/dotlanth
+      - ./configs/gateway.toml:/etc/dotlanth/config.toml:ro
+      - ./certs:/etc/dotlanth/certs:ro
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.4.10
+    restart: always
+    depends_on:
+      - dotlanth-master-1
+      - dotlanth-master-2
+      - dotlanth-master-3
+
+  # Monitoring Stack
   prometheus:
     image: prom/prometheus:latest
+    container_name: dotlanth-prometheus
     volumes:
       - ./monitoring/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
@@ -46,20 +257,135 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.5.10
     restart: always
 
   grafana:
     image: grafana/grafana:latest
+    container_name: dotlanth-grafana
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
     ports:
       - "3000:3000"
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.5.11
     depends_on:
       - prometheus
     restart: always
 
+  # Node Exporter for metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: dotlanth-node-exporter
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro,rslave'
+    ports:
+      - "9100:9100"
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.5.12
+    restart: always
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: dotlanth-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Jaeger collector
+      - "6831:6831/udp"  # Jaeger agent
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.5.20
+    restart: always
+
+  # Loki for log aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: dotlanth-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki:/etc/loki
+      - loki_data:/loki
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.5.22
+    restart: always
+
+  # Promtail for log collection
+  promtail:
+    image: grafana/promtail:latest
+    container_name: dotlanth-promtail
+    volumes:
+      - ./monitoring/promtail:/etc/promtail
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.5.23
+    restart: always
+
+  # AlertManager for advanced alerting
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: dotlanth-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.5.24
+    restart: always
+
+  # Documentation
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    container_name: dotlanth-docs
+    volumes:
+      - ./docs:/app:ro
+    ports:
+      - "3002:3000"
+    command: [ "mdbook", "serve", "--hostname", "0.0.0.0", "--port", "3000", "." ]
+    networks:
+      dotlanth-network:
+        ipv4_address: 172.20.6.10
+    restart: always
+
 volumes:
+  master1_data:
+  master2_data:
+  master3_data:
+  worker1_data:
+  worker2_data:
+  storage1_data:
+  storage1_db:
+  storage2_data:
+  storage2_db:
+  gateway_data:
   prometheus_data:
   grafana_data:
+  loki_data:
+  alertmanager_data:

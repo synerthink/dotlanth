@@ -1,0 +1,41 @@
+# Worker Node 1 Configuration
+[cluster]
+name = "dotlanth-prod"
+node_id = "worker-1"
+node_type = "worker"
+
+[network]
+bind_address = "0.0.0.0:50051"
+master_endpoints = [
+    "master-1:50051",
+    "master-2:50051",
+    "master-3:50051"
+]
+
+[worker]
+capabilities = ["dotvm", "dotdb", "compute"]
+max_dots = 100
+max_cpu_cores = 4
+max_memory_gb = 8
+max_storage_gb = 100
+
+[storage]
+data_dir = "/var/lib/dotlanth"
+log_dir = "/var/log/dotlanth"
+cache_size_mb = 512
+
+[security]
+tls_enabled = false
+# cert_path = "/etc/dotlanth/certs/node.crt"  # Disabled for testing
+# key_path = "/etc/dotlanth/certs/node.key"   # Disabled for testing
+# ca_cert_path = "/etc/dotlanth/certs/ca.crt" # Disabled for testing
+
+[monitoring]
+metrics_enabled = true
+metrics_port = 9090
+log_level = "info"
+heartbeat_interval_ms = 5000
+
+[performance]
+numa_enabled = true
+worker_threads = 2
