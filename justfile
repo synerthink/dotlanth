@@ -10,6 +10,111 @@ build:
     @echo "🔨 Building all workspace components..."
     cargo build --workspace
 
+# FreeBSD deployment automation
+deploy-freebsd: build-release
+    sudo ./scripts/deploy-freebsd.sh
+
+# FreeBSD service management commands
+freebsd-start:
+    sudo service dotlanth start
+
+freebsd-stop:
+    sudo service dotlanth stop
+
+freebsd-restart:
+    sudo service dotlanth restart
+
+freebsd-status:
+    sudo service dotlanth status
+
+freebsd-logs:
+    tail -f /zroot/dotlanth/logs/dotlanth.log
+
+freebsd-test:
+    #!/usr/bin/env sh
+    echo "=== Testing Dotlanth Service ==="
+    echo "Service status:"
+    sudo service dotlanth status
+    echo "\nListening ports:"
+    sockstat -l | grep 8080 || echo "Port 8080 not listening"
+    echo "\nRunning processes:"
+    ps aux | grep dotvm | grep -v grep || echo "No dotvm processes found"
+    echo "\nTesting API:"
+    curl -s http://localhost:8080/health || echo "API not responding"
+
+# Setup monitoring stack (Prometheus, Grafana, Node Exporter)
+freebsd-monitoring:
+    sudo ./scripts/setup-monitoring.sh
+
+# Check monitoring services status
+freebsd-monitoring-status:
+    #!/usr/bin/env sh
+    echo "=== Monitoring Services Status ==="
+    echo "Prometheus:"
+    sudo service prometheus status
+    echo "\nGrafana:"
+    sudo service grafana status
+    echo "\nNode Exporter:"
+    sudo service node_exporter status
+    echo "\nListening ports:"
+    sockstat -l | grep -E "(9090|3000|9100)" || echo "No monitoring ports found"
+
+# Stop monitoring services
+freebsd-monitoring-stop:
+    sudo service prometheus stop
+    sudo service grafana stop
+    sudo service node_exporter stop
+
+# Start monitoring services
+freebsd-monitoring-start:
+    sudo service prometheus start
+    sudo service grafana start
+    sudo service node_exporter start
+
+# Restart monitoring services
+freebsd-monitoring-restart:
+    sudo service prometheus restart
+    sudo service grafana restart
+    sudo service node_exporter restart
+
+# Complete deployment with monitoring
+deploy-freebsd-full: deploy-freebsd freebsd-monitoring
+    @echo "=== Complete Deployment Finished! ==="
+    @echo "Services running:"
+    @echo "  - Dotlanth: http://localhost:8080"
+    @echo "  - Prometheus: http://localhost:9090"
+    @echo "  - Grafana: http://localhost:3000"
+
+freebsd-clean:
+    #!/usr/bin/env sh
+    echo "=== Cleaning Dotlanth FreeBSD Installation ==="
+    echo "⚠️  This will remove all Dotlanth files and data!"
+    echo "Press Ctrl+C to cancel, or Enter to continue..."
+    read dummy
+    
+    # Stop all services
+    sudo service dotlanth stop 2>/dev/null || true
+    sudo service prometheus stop 2>/dev/null || true
+    sudo service grafana stop 2>/dev/null || true
+    sudo service node_exporter stop 2>/dev/null || true
+    
+    # Disable services
+    sudo sysrc dotlanth_enable=NO 2>/dev/null || true
+    sudo sysrc prometheus_enable=NO 2>/dev/null || true
+    sudo sysrc grafana_enable=NO 2>/dev/null || true
+    sudo sysrc node_exporter_enable=NO 2>/dev/null || true
+    
+    # Remove Dotlanth files
+    sudo rm -f /usr/local/etc/rc.d/dotlanth
+    sudo rm -rf /usr/local/etc/dotlanth
+    sudo rm -f /usr/local/bin/dotvm /usr/local/bin/dotvm-runtime /usr/local/bin/dotlanth /usr/local/bin/dotdb
+    sudo rm -rf /var/lib/dotlanth /var/log/dotlanth /zroot/dotlanth
+    sudo pw userdel dotlanth 2>/dev/null || true
+    
+    echo "✅ Dotlanth FreeBSD installation cleaned"
+    echo "Note: Monitoring packages (prometheus, grafana, node_exporter) are still installed"
+    echo "To remove them: pkg remove prometheus grafana9 node_exporter"
+
 # Build in release mode
 build-release:
     @echo "🚀 Building all components in release mode..."
