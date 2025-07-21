@@ -48,11 +48,11 @@ RUN mkdir -p /var/lib/dotlanth /etc/dotlanth /var/log/dotlanth && \
 
 # Copy binaries from builder
 COPY --from=builder /app/target/release/dotvm /usr/local/bin/
-COPY --from=builder /app/target/release/dotlanth-cli /usr/local/bin/
-COPY --from=builder /app/target/release/dotdb-cli /usr/local/bin/
+COPY --from=builder /app/target/release/dotlanth /usr/local/bin/
+COPY --from=builder /app/target/release/dotdb /usr/local/bin/
 
 # Make binaries executable
-RUN chmod +x /usr/local/bin/dotvm /usr/local/bin/dotlanth-cli /usr/local/bin/dotdb-cli
+RUN chmod +x /usr/local/bin/dotvm /usr/local/bin/dotlanth /usr/local/bin/dotdb
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

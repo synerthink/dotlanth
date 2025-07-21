@@ -56,7 +56,6 @@ services:
     container_name: prometheus-dev
     volumes:
       - ./monitoring/prometheus:/etc/prometheus
-      - ./monitoring/prometheus/dev.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
     command:
