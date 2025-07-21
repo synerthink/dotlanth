@@ -67,18 +67,24 @@ SERVER_ARGS=""
 # Test dotvm-runtime first (most likely to be the server)
 if [ -f "/usr/local/bin/dotvm-runtime" ]; then
     echo "Testing dotvm-runtime..."
-    if /usr/local/bin/dotvm-runtime --help >/dev/null 2>&1; then
+    timeout 5 /usr/local/bin/dotvm-runtime --help >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
         SERVER_BINARY="/usr/local/bin/dotvm-runtime"
         echo "✅ Using dotvm-runtime as server"
+    else
+        echo "⚠️  dotvm-runtime test failed or timed out"
     fi
 fi
 
 # Test dotlanth if dotvm-runtime didn't work
 if [ -z "$SERVER_BINARY" ] && [ -f "/usr/local/bin/dotlanth" ]; then
     echo "Testing dotlanth..."
-    if /usr/local/bin/dotlanth --help >/dev/null 2>&1; then
+    timeout 5 /usr/local/bin/dotlanth --help >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
         SERVER_BINARY="/usr/local/bin/dotlanth"
         echo "✅ Using dotlanth as server"
+    else
+        echo "⚠️  dotlanth test failed or timed out"
     fi
 fi
 
@@ -86,20 +92,27 @@ fi
 if [ -z "$SERVER_BINARY" ] && [ -f "/usr/local/bin/dotvm" ]; then
     echo "Testing dotvm subcommands..."
     for cmd in server run start; do
-        if /usr/local/bin/dotvm $cmd --help >/dev/null 2>&1; then
+        timeout 5 /usr/local/bin/dotvm $cmd --help >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
             SERVER_BINARY="/usr/local/bin/dotvm"
             SERVER_ARGS="$cmd"
             echo "✅ Using dotvm $cmd as server"
             break
         fi
     done
+    if [ -z "$SERVER_BINARY" ]; then
+        echo "⚠️  All dotvm subcommand tests failed or timed out"
+    fi
 fi
 
 # Fallback to dotvm without args
 if [ -z "$SERVER_BINARY" ]; then
     SERVER_BINARY="/usr/local/bin/dotvm"
+    SERVER_ARGS=""
     echo "⚠️  Using dotvm as fallback (may need manual configuration)"
 fi
+
+echo "Selected server: $SERVER_BINARY $SERVER_ARGS"
 
 # Step 7: Create config file
 echo "\n=== Step 7: Creating config file ==="
