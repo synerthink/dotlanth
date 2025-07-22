@@ -24,3 +24,4 @@ pub mod rollback;
 pub mod state;
 pub mod transpiler_integration;
 pub mod validation;
+pub mod wasm;

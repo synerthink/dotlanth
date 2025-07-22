@@ -143,6 +143,42 @@ impl WasmValue {
             Self::ExternRef(v) => v.is_none(),
         }
     }
+
+    /// Convert from VM StackValue to WasmValue
+    pub fn from_vm_value(value: dotvm_core::vm::stack::StackValue) -> Self {
+        use dotvm_core::vm::stack::StackValue;
+        match value {
+            StackValue::Int64(v) => {
+                // Convert i64 to i32 if it fits, otherwise keep as i64
+                if v >= i32::MIN as i64 && v <= i32::MAX as i64 {
+                    WasmValue::I32(v as i32)
+                } else {
+                    WasmValue::I64(v)
+                }
+            }
+            StackValue::Float64(v) => WasmValue::F64(v),
+            StackValue::Bool(v) => WasmValue::I32(if v { 1 } else { 0 }),
+            StackValue::Null => WasmValue::I32(0),
+            // For other types, convert to i32 representation
+            _ => WasmValue::I32(0),
+        }
+    }
+
+    /// Convert to VM StackValue
+    pub fn to_vm_value(&self) -> dotvm_core::vm::stack::StackValue {
+        use dotvm_core::vm::stack::StackValue;
+        match self {
+            WasmValue::I32(v) => StackValue::Int64(*v as i64),
+            WasmValue::I64(v) => StackValue::Int64(*v),
+            WasmValue::F32(v) => StackValue::Float64(*v as f64),
+            WasmValue::F64(v) => StackValue::Float64(*v),
+            WasmValue::V128(_) => StackValue::Int64(0), // Simplified for now
+            WasmValue::FuncRef(Some(idx)) => StackValue::Int64(*idx as i64),
+            WasmValue::FuncRef(None) => StackValue::Null,
+            WasmValue::ExternRef(Some(idx)) => StackValue::Int64(*idx as i64),
+            WasmValue::ExternRef(None) => StackValue::Null,
+        }
+    }
 }
 
 /// WebAssembly function type (signature)
