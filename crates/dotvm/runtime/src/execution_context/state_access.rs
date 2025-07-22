@@ -165,6 +165,8 @@ pub enum StateAccessError {
     ValueEncodingError(String),
     /// Access denied
     AccessDenied,
+    /// Concurrency error (lock acquisition failed)
+    ConcurrencyError,
     /// Operation not supported
     OperationNotSupported(String),
 }
@@ -184,6 +186,7 @@ impl fmt::Display for StateAccessError {
             StateAccessError::KeyEncodingError(msg) => write!(f, "Key encoding error: {msg}"),
             StateAccessError::ValueEncodingError(msg) => write!(f, "Value encoding error: {msg}"),
             StateAccessError::AccessDenied => write!(f, "Access denied"),
+            StateAccessError::ConcurrencyError => write!(f, "Concurrency error: failed to acquire lock"),
             StateAccessError::OperationNotSupported(op) => write!(f, "Operation not supported: {op}"),
         }
     }
@@ -309,6 +312,30 @@ impl<S: NodeStorage> StateAccessManager<S> {
             }
         }
     }
+
+    /// Generate contract prefix for MPT key filtering
+    fn generate_contract_prefix(&self, contract: ContractAddress) -> StateAccessResult<Vec<u8>> {
+        // Create a prefix from contract address for efficient key filtering
+        let mut prefix = Vec::new();
+        prefix.extend_from_slice(&contract); // ContractAddress is [u8; 20]
+        prefix.push(0xFF); // Separator to avoid key collisions
+        Ok(prefix)
+    }
+
+    /// Extract storage key from MPT key by removing contract prefix
+    fn extract_storage_key_from_mpt(&self, mpt_key: &Key, contract: ContractAddress) -> StateAccessResult<Option<Vec<u8>>> {
+        let contract_prefix = self.generate_contract_prefix(contract)?;
+        let key_bytes: &[u8] = mpt_key.as_ref(); // Key implements AsRef<[u8]>
+
+        // Check if key starts with contract prefix
+        if key_bytes.len() <= contract_prefix.len() || !key_bytes.starts_with(&contract_prefix) {
+            return Ok(None);
+        }
+
+        // Extract storage key part (after contract prefix)
+        let storage_key = key_bytes[contract_prefix.len()..].to_vec();
+        Ok(Some(storage_key))
+    }
 }
 
 impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
@@ -420,10 +447,51 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         Ok(())
     }
 
-    fn get_storage_keys(&self, contract: ContractAddress, _start_key: Option<&[u8]>, _limit: usize) -> StateAccessResult<Vec<Vec<u8>>> {
-        // This would require iteration support in the underlying trie
-        // For now, return not supported
-        Err(StateAccessError::OperationNotSupported("get_storage_keys".to_string()))
+    fn get_storage_keys(&self, contract: ContractAddress, start_key: Option<&[u8]>, limit: usize) -> StateAccessResult<Vec<Vec<u8>>> {
+        // Generate contract prefix for filtering keys
+        let contract_prefix = self.generate_contract_prefix(contract)?;
+
+        // Get trie read lock
+        let trie = self.trie.read().map_err(|_| StateAccessError::ConcurrencyError)?;
+
+        // Get all keys from trie and filter by contract prefix
+        let all_keys = trie.get_all_keys().map_err(|e| StateAccessError::StorageError(e.to_string()))?;
+
+        let mut filtered_keys = Vec::new();
+        let mut count = 0;
+
+        // Filter keys by contract prefix and apply pagination
+        for key in all_keys {
+            let key_bytes: &[u8] = key.as_ref();
+
+            // Check if key starts with contract prefix
+            if !key_bytes.starts_with(&contract_prefix) {
+                continue;
+            }
+
+            // Extract storage key from MPT key (remove contract prefix)
+            if let Some(storage_key) = self.extract_storage_key_from_mpt(&key, contract)? {
+                // Apply start_key constraint
+                if let Some(start) = start_key {
+                    if storage_key.as_slice() < start {
+                        continue;
+                    }
+                }
+
+                filtered_keys.push(storage_key);
+                count += 1;
+
+                // Apply limit
+                if count >= limit {
+                    break;
+                }
+            }
+        }
+
+        // Sort keys for consistent ordering
+        filtered_keys.sort();
+
+        Ok(filtered_keys)
     }
 }
 
