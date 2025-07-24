@@ -39,7 +39,7 @@ pub struct RuleApplication {
     pub description: String,
 }
 
-pub trait OptimizationRule {
+pub trait OptimizationRule: Send + Sync {
     fn name(&self) -> &str;
     fn apply(&self, plan: &QueryPlan) -> Result<RuleApplication, RuleError>;
     fn applicable(&self, plan: &QueryPlan) -> bool;
