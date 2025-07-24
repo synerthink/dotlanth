@@ -749,6 +749,7 @@ dependencies = [
  "dotdb-core",
  "dotvm-common",
  "futures",
+ "hex",
  "libc",
  "metrics",
  "mockall",

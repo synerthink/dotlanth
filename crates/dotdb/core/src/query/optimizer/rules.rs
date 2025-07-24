@@ -74,7 +74,12 @@ pub enum JoinType {
 }
 
 /// Rule for pushing predicates down the query tree
+#[derive(Debug)]
 pub struct PredicatePushdownRule;
+
+// Implement Send + Sync for thread safety
+unsafe impl Send for PredicatePushdownRule {}
+unsafe impl Sync for PredicatePushdownRule {}
 
 impl OptimizationRule for PredicatePushdownRule {
     fn name(&self) -> &str {
@@ -140,7 +145,12 @@ impl OptimizationRule for PredicatePushdownRule {
 }
 
 /// Rule for folding constant expressions
+#[derive(Debug)]
 pub struct ConstantFoldingRule;
+
+// Implement Send + Sync for thread safety
+unsafe impl Send for ConstantFoldingRule {}
+unsafe impl Sync for ConstantFoldingRule {}
 
 impl OptimizationRule for ConstantFoldingRule {
     fn name(&self) -> &str {
@@ -271,9 +281,14 @@ impl ConstantFoldingRule {
 }
 
 /// Rule for reordering joins to optimize execution
+#[derive(Debug)]
 pub struct JoinReorderingRule {
     cardinality_estimates: HashMap<String, u64>,
 }
+
+// Implement Send + Sync for thread safety
+unsafe impl Send for JoinReorderingRule {}
+unsafe impl Sync for JoinReorderingRule {}
 
 impl JoinReorderingRule {
     pub fn new(cardinality_estimates: HashMap<String, u64>) -> Self {
