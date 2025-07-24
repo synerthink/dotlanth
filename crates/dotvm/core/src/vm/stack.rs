@@ -39,6 +39,8 @@ pub enum StackValue {
     Bool(bool),
     /// Null value
     Null,
+    /// Raw bytes for database operations
+    Bytes(Vec<u8>),
     /// JSON value for database operations
     Json(serde_json::Value),
     /// Document ID for database operations
@@ -68,6 +70,7 @@ impl StackValue {
             StackValue::String(v) => ConstantValue::String(v.clone()),
             StackValue::Bool(v) => ConstantValue::Bool(*v),
             StackValue::Null => ConstantValue::Null,
+            StackValue::Bytes(v) => ConstantValue::String(String::from_utf8_lossy(v).to_string()),
             StackValue::Json(v) => ConstantValue::Json(v.clone()),
             StackValue::DocumentId(v) => ConstantValue::String(v.clone()),
             StackValue::Collection(v) => ConstantValue::String(v.clone()),
@@ -82,6 +85,7 @@ impl StackValue {
             StackValue::String(_) => "string",
             StackValue::Bool(_) => "bool",
             StackValue::Null => "null",
+            StackValue::Bytes(_) => "bytes",
             StackValue::Json(_) => "json",
             StackValue::DocumentId(_) => "document_id",
             StackValue::Collection(_) => "collection",
@@ -96,6 +100,7 @@ impl StackValue {
             StackValue::Float64(f) => *f != 0.0,
             StackValue::String(s) => !s.is_empty(),
             StackValue::Null => false,
+            StackValue::Bytes(b) => !b.is_empty(),
             StackValue::Json(v) => !v.is_null(),
             StackValue::DocumentId(s) => !s.is_empty(),
             StackValue::Collection(s) => !s.is_empty(),
@@ -110,6 +115,7 @@ impl StackValue {
             StackValue::String(v) => serde_json::Value::String(v.clone()),
             StackValue::Bool(v) => serde_json::Value::Bool(*v),
             StackValue::Null => serde_json::Value::Null,
+            StackValue::Bytes(v) => serde_json::Value::String(hex::encode(v)),
             StackValue::Json(v) => v.clone(),
             StackValue::DocumentId(v) => serde_json::Value::String(v.clone()),
             StackValue::Collection(v) => serde_json::Value::String(v.clone()),
@@ -122,6 +128,7 @@ impl StackValue {
             StackValue::String(s) => Some(s.clone()),
             StackValue::DocumentId(s) => Some(s.clone()),
             StackValue::Collection(s) => Some(s.clone()),
+            StackValue::Bytes(b) => Some(String::from_utf8_lossy(b).to_string()),
             _ => None,
         }
     }
@@ -165,7 +172,47 @@ impl StackValue {
             StackValue::Float64(f) => f.to_string(),
             StackValue::Bool(b) => b.to_string(),
             StackValue::Null => "null".to_string(),
+            StackValue::Bytes(b) => String::from_utf8_lossy(b).to_string(),
             StackValue::Json(v) => v.to_string(),
+        }
+    }
+
+    /// Convert to bytes (for database operations)
+    pub fn as_bytes_value(&self) -> Vec<u8> {
+        match self {
+            StackValue::String(s) => s.as_bytes().to_vec(),
+            StackValue::DocumentId(s) => s.as_bytes().to_vec(),
+            StackValue::Collection(s) => s.as_bytes().to_vec(),
+            StackValue::Int64(i) => i.to_le_bytes().to_vec(),
+            StackValue::Float64(f) => f.to_le_bytes().to_vec(),
+            StackValue::Bool(b) => vec![if *b { 1 } else { 0 }],
+            StackValue::Null => vec![],
+            StackValue::Bytes(b) => b.clone(),
+            StackValue::Json(v) => v.to_string().as_bytes().to_vec(),
+        }
+    }
+
+    /// Convert to u32 (for table IDs)
+    pub fn as_u32_value(&self) -> u32 {
+        match self {
+            StackValue::Int64(i) => *i as u32,
+            StackValue::Float64(f) => *f as u32,
+            StackValue::Bool(b) => {
+                if *b {
+                    1
+                } else {
+                    0
+                }
+            }
+            StackValue::String(s) => s.parse().unwrap_or(0),
+            StackValue::Bytes(b) => {
+                if b.len() >= 4 {
+                    u32::from_le_bytes([b[0], b[1], b[2], b[3]])
+                } else {
+                    0
+                }
+            }
+            _ => 0,
         }
     }
 }
@@ -178,6 +225,7 @@ impl fmt::Display for StackValue {
             StackValue::String(v) => write!(f, "\"{v}\""),
             StackValue::Bool(v) => write!(f, "{v}"),
             StackValue::Null => write!(f, "null"),
+            StackValue::Bytes(v) => write!(f, "0x{}", hex::encode(v)),
             StackValue::Json(v) => write!(f, "{v}"),
             StackValue::DocumentId(v) => write!(f, "doc:{v}"),
             StackValue::Collection(v) => write!(f, "col:{v}"),
