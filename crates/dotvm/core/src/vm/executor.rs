@@ -25,6 +25,7 @@ use crate::opcode::control_flow_opcodes::ControlFlowOpcode;
 use crate::opcode::db_opcodes::DatabaseOpcode;
 use crate::opcode::stack_opcodes::{StackInstruction, StackOpcode};
 use crate::vm::database_bridge::DatabaseBridge;
+use crate::vm::database_executor::DatabaseOpcodeExecutor;
 use crate::vm::stack::{OperandStack, StackError, StackValue};
 use std::collections::HashMap;
 use std::path::Path;
@@ -102,6 +103,8 @@ pub struct VmExecutor {
     debug_info: DebugInfo,
     /// Database bridge for database operations
     database_bridge: DatabaseBridge,
+    /// Database opcode executor for new key-value operations
+    database_executor: Option<DatabaseOpcodeExecutor>,
 }
 
 impl VmExecutor {
@@ -112,6 +115,7 @@ impl VmExecutor {
             context: ExecutionContext::new(),
             debug_info: DebugInfo::new(),
             database_bridge: DatabaseBridge::new(),
+            database_executor: None,
         }
     }
 
@@ -122,7 +126,14 @@ impl VmExecutor {
             context: ExecutionContext::new(),
             debug_info: DebugInfo::new(),
             database_bridge,
+            database_executor: None,
         }
+    }
+
+    /// Set the database executor for new key-value operations
+    pub fn with_database_executor(mut self, database_executor: DatabaseOpcodeExecutor) -> Self {
+        self.database_executor = Some(database_executor);
+        self
     }
 
     /// Load bytecode from a file
@@ -440,6 +451,130 @@ impl VmExecutor {
     /// Execute a database instruction
     fn execute_database_instruction(&mut self, opcode: DatabaseOpcode) -> Result<(), ExecutorError> {
         match opcode {
+            // New key-value opcodes
+            DatabaseOpcode::DbRead => {
+                // Stack: [table_id, key] -> [value] or [null]
+                let key = self.context.stack.pop()?.as_bytes_value();
+                let table_id = self.context.stack.pop()?.as_u32_value();
+
+                if let Some(ref executor) = self.database_executor {
+                    match executor.execute_db_read(table_id, key) {
+                        Ok(Some(value)) => {
+                            self.context.stack.push(StackValue::Bytes(value))?;
+                        }
+                        Ok(None) => {
+                            self.context.stack.push(StackValue::Null)?;
+                        }
+                        Err(e) => {
+                            return Err(ExecutorError::DatabaseError(e.to_string()));
+                        }
+                    }
+                } else {
+                    return Err(ExecutorError::DatabaseError("Database executor not configured".to_string()));
+                }
+            }
+
+            DatabaseOpcode::DbWrite => {
+                // Stack: [table_id, key, value] -> []
+                let value = self.context.stack.pop()?.as_bytes_value();
+                let key = self.context.stack.pop()?.as_bytes_value();
+                let table_id = self.context.stack.pop()?.as_u32_value();
+
+                if let Some(ref executor) = self.database_executor {
+                    if let Err(e) = executor.execute_db_write(table_id, key, value) {
+                        return Err(ExecutorError::DatabaseError(e.to_string()));
+                    }
+                } else {
+                    return Err(ExecutorError::DatabaseError("Database executor not configured".to_string()));
+                }
+            }
+
+            DatabaseOpcode::DbQuery => {
+                // Stack: [query_spec_json] -> [query_result_json]
+                let query_spec_json = self.context.stack.pop()?.as_string_value();
+
+                if let Some(ref executor) = self.database_executor {
+                    // Parse query spec from JSON
+                    let query_spec: crate::vm::database_executor::QuerySpec = serde_json::from_str(&query_spec_json).map_err(|e| ExecutorError::DatabaseError(format!("Invalid query spec: {}", e)))?;
+
+                    match executor.execute_db_query(query_spec) {
+                        Ok(result) => {
+                            let result_json = serde_json::to_string(&result).map_err(|e| ExecutorError::DatabaseError(format!("Failed to serialize result: {}", e)))?;
+                            self.context.stack.push(StackValue::String(result_json))?;
+                        }
+                        Err(e) => {
+                            return Err(ExecutorError::DatabaseError(e.to_string()));
+                        }
+                    }
+                } else {
+                    return Err(ExecutorError::DatabaseError("Database executor not configured".to_string()));
+                }
+            }
+
+            DatabaseOpcode::DbTransaction => {
+                // Stack: [transaction_ops_json] -> [transaction_result_json]
+                let tx_ops_json = self.context.stack.pop()?.as_string_value();
+
+                if let Some(ref executor) = self.database_executor {
+                    // Parse transaction operations from JSON
+                    let tx_ops: Vec<crate::vm::database_executor::TransactionOp> =
+                        serde_json::from_str(&tx_ops_json).map_err(|e| ExecutorError::DatabaseError(format!("Invalid transaction ops: {}", e)))?;
+
+                    match executor.execute_db_transaction(tx_ops) {
+                        Ok(result) => {
+                            let result_json = serde_json::to_string(&result).map_err(|e| ExecutorError::DatabaseError(format!("Failed to serialize result: {}", e)))?;
+                            self.context.stack.push(StackValue::String(result_json))?;
+                        }
+                        Err(e) => {
+                            return Err(ExecutorError::DatabaseError(e.to_string()));
+                        }
+                    }
+                } else {
+                    return Err(ExecutorError::DatabaseError("Database executor not configured".to_string()));
+                }
+            }
+
+            DatabaseOpcode::DbIndex => {
+                // Stack: [index_operation_json] -> []
+                let index_op_json = self.context.stack.pop()?.as_string_value();
+
+                if let Some(ref executor) = self.database_executor {
+                    // Parse index operation from JSON
+                    let index_op: crate::vm::database_executor::IndexOperation =
+                        serde_json::from_str(&index_op_json).map_err(|e| ExecutorError::DatabaseError(format!("Invalid index operation: {}", e)))?;
+
+                    if let Err(e) = executor.execute_db_index(index_op) {
+                        return Err(ExecutorError::DatabaseError(e.to_string()));
+                    }
+                } else {
+                    return Err(ExecutorError::DatabaseError("Database executor not configured".to_string()));
+                }
+            }
+
+            DatabaseOpcode::DbStream => {
+                // Stack: [stream_spec_json] -> [stream_result_json]
+                let stream_spec_json = self.context.stack.pop()?.as_string_value();
+
+                if let Some(ref executor) = self.database_executor {
+                    // Parse stream spec from JSON
+                    let stream_spec: crate::vm::database_executor::StreamSpec =
+                        serde_json::from_str(&stream_spec_json).map_err(|e| ExecutorError::DatabaseError(format!("Invalid stream spec: {}", e)))?;
+
+                    match executor.execute_db_stream(stream_spec) {
+                        Ok(result) => {
+                            let result_json = serde_json::to_string(&result).map_err(|e| ExecutorError::DatabaseError(format!("Failed to serialize result: {}", e)))?;
+                            self.context.stack.push(StackValue::String(result_json))?;
+                        }
+                        Err(e) => {
+                            return Err(ExecutorError::DatabaseError(e.to_string()));
+                        }
+                    }
+                } else {
+                    return Err(ExecutorError::DatabaseError("Database executor not configured".to_string()));
+                }
+            }
+
+            // Legacy document opcodes
             DatabaseOpcode::DbGet => {
                 // Stack: [collection_name, document_id] -> [document_json]
                 let document_id = self.context.stack.pop()?.as_string_value();
