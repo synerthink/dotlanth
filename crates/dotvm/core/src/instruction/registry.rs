@@ -16,7 +16,9 @@
 
 use super::arithmetic::ArithmeticInstruction;
 use super::control_flow::{IfElseInstruction, JumpInstruction, LoopInstruction, LoopType};
-use super::crypto::{DecryptInstruction, EncryptInstruction, HashInstruction, SignInstruction, VerifySignatureInstruction};
+use super::crypto::{DecryptInstruction, EncryptInstruction, HashInstruction, SecureRandomInstruction, SignInstruction, VerifySignatureInstruction, ZkProofInstruction, ZkVerifyInstruction};
+use super::crypto_impl::create_default_crypto_executor;
+use super::crypto_provider::*;
 use super::instruction::Instruction;
 use super::system_call::{CreateProcessInstruction, ReadSysCallInstruction, ReceiveNetworkPacketInstruction, SendNetworkPacketInstruction, TerminateProcessInstruction, WriteSysCallInstruction};
 use crate::instruction::memory::{AllocateInstruction, DeallocateInstruction, LoadInstruction, PointerOperationInstruction, PointerOperationType, StoreInstruction};
@@ -261,31 +263,74 @@ impl InstructionRegistry {
 
     fn build_crypto_registry() -> HashMap<CryptoOpcode, Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>> {
         let mut registry = HashMap::new();
+
+        // Create shared crypto executor
+        let crypto_executor = Arc::new(create_default_crypto_executor());
+
+        // Hash instruction with SHA256 as default
+        let crypto_exec_hash = crypto_executor.clone();
         registry.insert(
             CryptoOpcode::Hash,
-            Box::new(|_args: Option<Vec<usize>>| Ok(Arc::new(HashInstruction::new()) as Arc<dyn Instruction>))
+            Box::new(move |_args: Option<Vec<usize>>| Ok(Arc::new(HashInstruction::new(crypto_exec_hash.clone(), HashAlgorithm::Sha256)) as Arc<dyn Instruction>))
                 as Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
         );
+
+        // Encrypt instruction with AES-256-GCM as default
+        let crypto_exec_encrypt = crypto_executor.clone();
         registry.insert(
             CryptoOpcode::Encrypt,
-            Box::new(|_args: Option<Vec<usize>>| Ok(Arc::new(EncryptInstruction::new()) as Arc<dyn Instruction>))
+            Box::new(move |_args: Option<Vec<usize>>| Ok(Arc::new(EncryptInstruction::new(crypto_exec_encrypt.clone(), EncryptionAlgorithm::Aes256Gcm)) as Arc<dyn Instruction>))
                 as Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
         );
+
+        // Decrypt instruction with AES-256-GCM as default
+        let crypto_exec_decrypt = crypto_executor.clone();
         registry.insert(
             CryptoOpcode::Decrypt,
-            Box::new(|_args: Option<Vec<usize>>| Ok(Arc::new(DecryptInstruction::new()) as Arc<dyn Instruction>))
+            Box::new(move |_args: Option<Vec<usize>>| Ok(Arc::new(DecryptInstruction::new(crypto_exec_decrypt.clone(), EncryptionAlgorithm::Aes256Gcm)) as Arc<dyn Instruction>))
                 as Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
         );
+
+        // Sign instruction with Ed25519 as default
+        let crypto_exec_sign = crypto_executor.clone();
         registry.insert(
             CryptoOpcode::Sign,
-            Box::new(|_args: Option<Vec<usize>>| Ok(Arc::new(SignInstruction::new()) as Arc<dyn Instruction>))
+            Box::new(move |_args: Option<Vec<usize>>| Ok(Arc::new(SignInstruction::new(crypto_exec_sign.clone(), SignatureAlgorithm::Ed25519)) as Arc<dyn Instruction>))
                 as Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
         );
+
+        // Verify signature instruction with Ed25519 as default
+        let crypto_exec_verify = crypto_executor.clone();
         registry.insert(
             CryptoOpcode::VerifySignature,
-            Box::new(|_args: Option<Vec<usize>>| Ok(Arc::new(VerifySignatureInstruction::new()) as Arc<dyn Instruction>))
+            Box::new(move |_args: Option<Vec<usize>>| Ok(Arc::new(VerifySignatureInstruction::new(crypto_exec_verify.clone(), SignatureAlgorithm::Ed25519)) as Arc<dyn Instruction>))
                 as Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
         );
+
+        // Secure random instruction
+        let crypto_exec_random = crypto_executor.clone();
+        registry.insert(
+            CryptoOpcode::SecureRandom,
+            Box::new(move |_args: Option<Vec<usize>>| Ok(Arc::new(SecureRandomInstruction::new(crypto_exec_random.clone())) as Arc<dyn Instruction>))
+                as Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+        );
+
+        // ZK proof instruction
+        let crypto_exec_zkproof = crypto_executor.clone();
+        registry.insert(
+            CryptoOpcode::ZkProof,
+            Box::new(move |_args: Option<Vec<usize>>| Ok(Arc::new(ZkProofInstruction::new(crypto_exec_zkproof.clone())) as Arc<dyn Instruction>))
+                as Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+        );
+
+        // ZK verify instruction
+        let crypto_exec_zkverify = crypto_executor.clone();
+        registry.insert(
+            CryptoOpcode::ZkVerify,
+            Box::new(move |_args: Option<Vec<usize>>| Ok(Arc::new(ZkVerifyInstruction::new(crypto_exec_zkverify.clone())) as Arc<dyn Instruction>))
+                as Box<dyn Fn(Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> + Send + Sync>,
+        );
+
         registry
     }
 
