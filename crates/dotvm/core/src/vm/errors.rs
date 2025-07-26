@@ -22,6 +22,7 @@ pub enum VMError {
     StackUnderflow,
     DivisionByZero,
     UnknownOpcode,
+    CryptographicError(String),
     InvalidJumpTarget(usize),
     InvalidInstructionArguments,
     MissingInstructionArguments,
@@ -30,7 +31,6 @@ pub enum VMError {
     MemoryOperationError(String),
     SystemCallError(String),
     ProcessError(String),
-    CryptoError(String),
     InvalidOperand(String),
     IntegerOverflow,
     ArchitectureMismatch(String), // For when a VmArchitecture label doesn't match a generic Arch type
@@ -44,6 +44,7 @@ impl fmt::Display for VMError {
             VMError::StackUnderflow => write!(f, "Stack underflow occurred"),
             VMError::DivisionByZero => write!(f, "Division by zero attempted"),
             VMError::UnknownOpcode => write!(f, "Unknown opcode encountered"),
+            VMError::CryptographicError(msg) => write!(f, "Cryptographic error: {msg}"),
             VMError::InvalidJumpTarget(target) => write!(f, "Invalid jump target: {target}"),
             VMError::InvalidInstructionArguments => {
                 write!(f, "Invalid instruction arguments provided")
@@ -54,7 +55,6 @@ impl fmt::Display for VMError {
             VMError::MemoryOperationError(msg) => write!(f, "Memory operation error: {msg}"),
             VMError::SystemCallError(msg) => write!(f, "System call error: {msg}"),
             VMError::ProcessError(msg) => write!(f, "Process error: {msg}"),
-            VMError::CryptoError(msg) => write!(f, "Cryptographic error: {msg}"),
             VMError::InvalidOperand(msg) => write!(f, "Invalid operand: {msg}"),
             VMError::IntegerOverflow => write!(f, "Integer overflow occurred"),
             VMError::ArchitectureMismatch(msg) => write!(f, "Architecture mismatch: {msg}"),
