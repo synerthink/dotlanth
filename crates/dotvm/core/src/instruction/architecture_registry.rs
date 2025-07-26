@@ -24,7 +24,9 @@ use super::{
     arithmetic::ArithmeticInstruction,
     bigint::BigIntInstruction,
     control_flow::{IfElseInstruction, JumpInstruction, LoopInstruction, LoopType},
-    crypto::{DecryptInstruction, EncryptInstruction, HashInstruction, SignInstruction, VerifySignatureInstruction},
+    crypto::{DecryptInstruction, EncryptInstruction, HashInstruction, SecureRandomInstruction, SignInstruction, VerifySignatureInstruction, ZkProofInstruction, ZkVerifyInstruction},
+    crypto_impl::create_default_crypto_executor,
+    crypto_provider::*,
     instruction::Instruction,
     memory::{AllocateInstruction, DeallocateInstruction, LoadInstruction, PointerOperationInstruction, PointerOperationType, StoreInstruction},
     system_call::{CreateProcessInstruction, ReadSysCallInstruction, ReceiveNetworkPacketInstruction, SendNetworkPacketInstruction, TerminateProcessInstruction, WriteSysCallInstruction},
@@ -212,12 +214,18 @@ impl Registry64 {
     }
 
     fn create_crypto_instruction(&self, opcode: CryptoOpcode, _args: Option<Vec<usize>>) -> Result<Arc<dyn Instruction>, VMError> {
+        // Create shared crypto executor
+        let crypto_executor = Arc::new(create_default_crypto_executor());
+
         match opcode {
-            CryptoOpcode::Hash => Ok(Arc::new(HashInstruction::new())),
-            CryptoOpcode::Encrypt => Ok(Arc::new(EncryptInstruction::new())),
-            CryptoOpcode::Decrypt => Ok(Arc::new(DecryptInstruction::new())),
-            CryptoOpcode::Sign => Ok(Arc::new(SignInstruction::new())),
-            CryptoOpcode::VerifySignature => Ok(Arc::new(VerifySignatureInstruction::new())),
+            CryptoOpcode::Hash => Ok(Arc::new(HashInstruction::new(crypto_executor, HashAlgorithm::Sha256))),
+            CryptoOpcode::Encrypt => Ok(Arc::new(EncryptInstruction::new(crypto_executor, EncryptionAlgorithm::Aes256Gcm))),
+            CryptoOpcode::Decrypt => Ok(Arc::new(DecryptInstruction::new(crypto_executor, EncryptionAlgorithm::Aes256Gcm))),
+            CryptoOpcode::Sign => Ok(Arc::new(SignInstruction::new(crypto_executor.clone(), SignatureAlgorithm::Ed25519))),
+            CryptoOpcode::VerifySignature => Ok(Arc::new(VerifySignatureInstruction::new(crypto_executor.clone(), SignatureAlgorithm::Ed25519))),
+            CryptoOpcode::SecureRandom => Ok(Arc::new(SecureRandomInstruction::new(crypto_executor.clone()))),
+            CryptoOpcode::ZkProof => Ok(Arc::new(ZkProofInstruction::new(crypto_executor.clone()))),
+            CryptoOpcode::ZkVerify => Ok(Arc::new(ZkVerifyInstruction::new(crypto_executor))),
         }
     }
 }
