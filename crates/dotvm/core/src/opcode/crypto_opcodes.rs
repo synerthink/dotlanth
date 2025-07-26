@@ -21,6 +21,9 @@ pub enum CryptoOpcode {
     Decrypt = 0x42,
     Sign = 0x43,
     VerifySignature = 0x44,
+    SecureRandom = 0x45,
+    ZkProof = 0x46,
+    ZkVerify = 0x47,
 }
 
 impl CryptoOpcode {
@@ -32,6 +35,9 @@ impl CryptoOpcode {
             "CRYPTO_DECRYPT" => Some(CryptoOpcode::Decrypt),
             "CRYPTO_SIGN" => Some(CryptoOpcode::Sign),
             "CRYPTO_VERIFY_SIGNATURE" => Some(CryptoOpcode::VerifySignature),
+            "CRYPTO_SECURE_RANDOM" => Some(CryptoOpcode::SecureRandom),
+            "CRYPTO_ZK_PROOF" => Some(CryptoOpcode::ZkProof),
+            "CRYPTO_ZK_VERIFY" => Some(CryptoOpcode::ZkVerify),
             _ => None,
         }
     }
@@ -44,6 +50,9 @@ impl CryptoOpcode {
             CryptoOpcode::Decrypt => "CRYPTO_DECRYPT",
             CryptoOpcode::Sign => "CRYPTO_SIGN",
             CryptoOpcode::VerifySignature => "CRYPTO_VERIFY_SIGNATURE",
+            CryptoOpcode::SecureRandom => "CRYPTO_SECURE_RANDOM",
+            CryptoOpcode::ZkProof => "CRYPTO_ZK_PROOF",
+            CryptoOpcode::ZkVerify => "CRYPTO_ZK_VERIFY",
         }
     }
 
@@ -60,6 +69,9 @@ impl CryptoOpcode {
             0x42 => Some(Self::Decrypt),
             0x43 => Some(Self::Sign),
             0x44 => Some(Self::VerifySignature),
+            0x45 => Some(Self::SecureRandom),
+            0x46 => Some(Self::ZkProof),
+            0x47 => Some(Self::ZkVerify),
             _ => None,
         }
     }
