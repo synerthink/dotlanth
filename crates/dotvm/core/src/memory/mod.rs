@@ -120,6 +120,13 @@ impl ExtendedMemory for Arch512 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MemoryHandle(pub usize);
 
+impl MemoryHandle {
+    /// Get the memory address from this handle
+    pub fn address(&self) -> usize {
+        self.0
+    }
+}
+
 /// Memory protection flags
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum Protection {
