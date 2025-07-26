@@ -19,6 +19,8 @@ pub mod arithmetic;
 pub mod bigint;
 pub mod control_flow;
 pub mod crypto;
+pub mod crypto_impl;
+pub mod crypto_provider;
 pub mod instruction;
 pub mod memory;
 pub mod registry;
