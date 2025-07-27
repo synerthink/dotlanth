@@ -51,9 +51,9 @@
 //!     SnapshotManager,
 //!     StatePruner,
 //!     PruningPolicy,
-//!     ContractVersionManager,
+//!     DotVersionManager,
 //!     StateVersionId,
-//!     ContractAddress,
+//!     DotAddress,
 //!     create_persistent_mpt,
 //!     create_in_memory_mpt,
 //!     DbConfig,
@@ -76,10 +76,10 @@
 //! let global_snapshot = snapshot_manager.create_snapshot("global_1".to_string(), &trie, Some(100), Some("Genesis state".to_string())).unwrap();
 //!
 //! // Create contract-specific snapshot with versioning
-//! let contract_address = ContractAddress::from([1u8; 20]);
-//! let contract_snapshot = snapshot_manager.create_contract_snapshot(
-//!     "contract_1".to_string(),
-//!     contract_address,
+//! let dot_address = DotAddress::from([1u8; 20]);
+//! let dot_snapshot = snapshot_manager.create_dot_snapshot(
+//!     "dot_1".to_string(),
+//!     dot_address,
 //!     &trie,
 //!     Some(101),
 //!     Some("Contract deployed".to_string())
@@ -102,7 +102,7 @@
 //! for different failure scenarios. See individual component
 //! documentation for detailed error handling information.
 
-pub mod contract_storage_layout;
+pub mod dot_storage_layout;
 pub mod db_interface;
 pub mod diff;
 pub mod mpt;
@@ -111,12 +111,12 @@ pub mod snapshot;
 pub mod versioning;
 
 // Re-export commonly used types
-pub use contract_storage_layout::{ContractAddress, ContractStorageLayout, StorageLayoutError, StorageValue, StorageVariable, StorageVariableType};
+pub use dot_storage_layout::{DotAddress, DotStorageLayout, StorageLayoutError, StorageValue, StorageVariable, StorageVariableType};
 pub use db_interface::{Database, DbConfig, DbError, MptStorageAdapter, create_in_memory_mpt, create_persistent_mpt};
 pub use diff::StateDiff;
 pub use mpt::{MPTError, MerklePatriciaTrie, StateProof};
 pub use pruning::{PruningPolicy, StatePruner};
 pub use snapshot::{SnapshotManager, StateSnapshot};
 pub use versioning::{
-    ContractStateVersion, ContractUpgradeInfo, ContractVersionManager, ContractVersioningError, ContractVersioningStatistics, LayoutChange, LayoutChangeType, StateVersionId, UpgradeType,
+    DotStateVersion, DotUpgradeInfo, DotVersionManager, DotVersioningError, DotVersioningStatistics, LayoutChange, LayoutChangeType, StateVersionId, UpgradeType,
 };

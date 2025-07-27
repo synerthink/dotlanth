@@ -29,9 +29,9 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::SystemTime;
 
-use crate::state::contract_storage_layout::ContractAddress;
+use crate::state::dot_storage_layout::DotAddress;
 use crate::state::mpt::Hash;
-use crate::state::versioning::{ContractStateVersion, ContractVersionManager, StateVersionId};
+use crate::state::versioning::{DotStateVersion, DotVersionManager, StateVersionId};
 use crate::storage_engine::file_format::{Page, PageId};
 use crate::storage_engine::lib::{StorageError, StorageResult};
 use crate::storage_engine::transaction::{IsolationLevel, TransactionId};
@@ -259,9 +259,9 @@ pub struct MVCCManager {
     /// Garbage collection threshold
     gc_threshold: usize,
     /// Contract version manager for contract state versioning integration
-    contract_version_manager: Arc<ContractVersionManager>,
+    dot_version_manager: Arc<DotVersionManager>,
     /// Transaction to contract state mapping
-    transaction_contract_states: RwLock<HashMap<TransactionId, Vec<(ContractAddress, StateVersionId)>>>,
+    transaction_dot_states: RwLock<HashMap<TransactionId, Vec<(DotAddress, StateVersionId)>>>,
 }
 
 impl MVCCManager {
@@ -273,21 +273,21 @@ impl MVCCManager {
             commit_timestamps: RwLock::new(HashMap::new()),
             timestamp_counter: Mutex::new(Self::current_timestamp()),
             gc_threshold: 1000, // Trigger GC after 1000 versions
-            contract_version_manager: Arc::new(ContractVersionManager::default()),
-            transaction_contract_states: RwLock::new(HashMap::new()),
+            dot_version_manager: Arc::new(DotVersionManager::default()),
+            transaction_dot_states: RwLock::new(HashMap::new()),
         }
     }
 
     /// Create a new MVCC manager with custom contract version manager
-    pub fn new_with_contract_manager(contract_manager: Arc<ContractVersionManager>) -> Self {
+    pub fn new_with_dot_manager(dot_manager: Arc<DotVersionManager>) -> Self {
         Self {
             version_chains: RwLock::new(HashMap::new()),
             transaction_snapshots: RwLock::new(HashMap::new()),
             commit_timestamps: RwLock::new(HashMap::new()),
             timestamp_counter: Mutex::new(Self::current_timestamp()),
             gc_threshold: 1000,
-            contract_version_manager: contract_manager,
-            transaction_contract_states: RwLock::new(HashMap::new()),
+            dot_version_manager: dot_manager,
+            transaction_dot_states: RwLock::new(HashMap::new()),
         }
     }
 
@@ -437,25 +437,25 @@ impl MVCCManager {
     }
 
     /// Create contract state version for a transaction
-    pub fn create_contract_state_version(&self, txn_id: TransactionId, contract_address: ContractAddress, mpt_root_hash: Hash, description: String) -> StorageResult<StateVersionId> {
+    pub fn create_dot_state_version(&self, txn_id: TransactionId, dot_address: DotAddress, mpt_root_hash: Hash, description: String) -> StorageResult<StateVersionId> {
         let version_id = self
-            .contract_version_manager
-            .create_version(contract_address, mpt_root_hash, description)
+            .dot_version_manager
+            .create_version(dot_address, mpt_root_hash, description)
             .map_err(|e| StorageError::Corruption(format!("Failed to create contract version: {e:?}")))?;
 
-        // Track the contract state for this transaction
-        self.transaction_contract_states.write().unwrap().entry(txn_id).or_default().push((contract_address, version_id));
+        // Track the dot state for this transaction
+        self.transaction_dot_states.write().unwrap().entry(txn_id).or_default().push((dot_address, version_id));
 
         Ok(version_id)
     }
 
     /// Get contract state version at transaction snapshot
-    pub fn get_contract_state_at_snapshot(&self, txn_id: TransactionId, contract_address: ContractAddress) -> StorageResult<Option<ContractStateVersion>> {
+    pub fn get_dot_state_at_snapshot(&self, txn_id: TransactionId, dot_address: DotAddress) -> StorageResult<Option<DotStateVersion>> {
         let snapshots = self.transaction_snapshots.read().unwrap();
         if let Some(snapshot) = snapshots.get(&txn_id) {
             // Find the latest committed version before the snapshot timestamp
-            let all_versions = self.contract_version_manager.get_all_versions(contract_address);
-            let mut visible_version: Option<ContractStateVersion> = None;
+            let all_versions = self.dot_version_manager.get_all_versions(dot_address);
+            let mut visible_version: Option<DotStateVersion> = None;
 
             for version in all_versions {
                 if version.created_at <= snapshot.timestamp && version.is_finalized && (visible_version.is_none() || version.created_at > visible_version.as_ref().unwrap().created_at) {
@@ -470,15 +470,15 @@ impl MVCCManager {
     }
 
     /// Commit contract state changes for a transaction
-    pub fn commit_contract_states(&self, txn_id: TransactionId) -> StorageResult<()> {
+    pub fn commit_dot_states(&self, txn_id: TransactionId) -> StorageResult<()> {
         let states = {
-            let mut contract_states = self.transaction_contract_states.write().unwrap();
-            contract_states.remove(&txn_id).unwrap_or_default()
+            let mut dot_states = self.transaction_dot_states.write().unwrap();
+            dot_states.remove(&txn_id).unwrap_or_default()
         };
 
-        for (contract_address, version_id) in states {
-            self.contract_version_manager
-                .finalize_version(contract_address, version_id)
+        for (dot_address, version_id) in states {
+            self.dot_version_manager
+                .finalize_version(dot_address, version_id)
                 .map_err(|e| StorageError::Corruption(format!("Failed to finalize contract version: {e:?}")))?;
         }
 
@@ -486,10 +486,10 @@ impl MVCCManager {
     }
 
     /// Rollback contract state changes for a transaction
-    pub fn rollback_contract_states(&self, txn_id: TransactionId) -> StorageResult<()> {
+    pub fn rollback_dot_states(&self, txn_id: TransactionId) -> StorageResult<()> {
         let states = {
-            let mut contract_states = self.transaction_contract_states.write().unwrap();
-            contract_states.remove(&txn_id).unwrap_or_default()
+            let mut dot_states = self.transaction_dot_states.write().unwrap();
+            dot_states.remove(&txn_id).unwrap_or_default()
         };
 
         // For contract versioning, we don't need to explicitly remove versions

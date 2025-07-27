@@ -68,10 +68,10 @@
 //! `Result<T, SnapshotError>`. The `SnapshotError` enum provides detailed
 //! error information for different failure scenarios.
 
-use crate::state::contract_storage_layout::ContractAddress;
+use crate::state::dot_storage_layout::DotAddress;
 use crate::state::mpt::trie::NodeStorage;
 use crate::state::mpt::{Hash, MPTError, MerklePatriciaTrie};
-use crate::state::versioning::{ContractVersionManager, ContractVersioningError, StateVersionId};
+use crate::state::versioning::{DotVersionManager, DotVersioningError, StateVersionId};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -88,7 +88,7 @@ pub struct StateSnapshot {
     /// Versioning system state version ID
     pub version_id: StateVersionId,
     /// Optional contract address for contract-specific snapshots
-    pub contract_address: Option<ContractAddress>,
+    pub dot_address: Option<DotAddress>,
     /// Root hash of the state tree at snapshot time
     pub root_hash: Hash,
     /// Optional metadata for the snapshot
@@ -119,7 +119,7 @@ pub enum SnapshotError {
     /// Versioning operation failed
     VersioningError(String),
     /// Contract not found
-    ContractNotFound(ContractAddress),
+    DotNotFound(DotAddress),
     /// Serialization/deserialization error
     SerializationError(String),
     /// I/O error
@@ -132,8 +132,8 @@ impl From<MPTError> for SnapshotError {
     }
 }
 
-impl From<ContractVersioningError> for SnapshotError {
-    fn from(err: ContractVersioningError) -> Self {
+impl From<DotVersioningError> for SnapshotError {
+    fn from(err: DotVersioningError) -> Self {
         SnapshotError::VersioningError(format!("{err:?}"))
     }
 }
@@ -146,7 +146,7 @@ impl Default for StateSnapshot {
         Self {
             id: "default".to_string(),
             version_id: StateVersionId::default(),
-            contract_address: None,
+            dot_address: None,
             root_hash: [0u8; 32],
             metadata: HashMap::new(),
             height: None,
@@ -176,7 +176,7 @@ impl StateSnapshot {
         Self {
             id,
             version_id,
-            contract_address: None,
+            dot_address: None,
             root_hash,
             metadata: HashMap::new(),
             height,
@@ -190,7 +190,7 @@ impl StateSnapshot {
     ///
     /// * `id` - Unique identifier for the snapshot
     /// * `version_id` - State version ID from versioning system
-    /// * `contract_address` - Optional contract address for contract-specific snapshots
+    /// * `dot_address` - Optional contract address for contract-specific snapshots
     /// * `root_hash` - Root hash of the state tree
     /// * `height` - Optional block height
     /// * `description` - Optional description
@@ -198,11 +198,11 @@ impl StateSnapshot {
     /// # Returns
     ///
     /// A new StateSnapshot instance
-    pub fn new_with_version(id: SnapshotId, version_id: StateVersionId, contract_address: Option<ContractAddress>, root_hash: Hash, height: Option<u64>, description: Option<String>) -> Self {
+    pub fn new_with_version(id: SnapshotId, version_id: StateVersionId, dot_address: Option<DotAddress>, root_hash: Hash, height: Option<u64>, description: Option<String>) -> Self {
         Self {
             id,
             version_id,
-            contract_address,
+            dot_address,
             root_hash,
             metadata: HashMap::new(),
             height,
@@ -287,8 +287,8 @@ impl StateSnapshot {
     /// # Returns
     ///
     /// True if this snapshot is for a specific contract
-    pub fn is_contract_snapshot(&self) -> bool {
-        self.contract_address.is_some()
+    pub fn is_dot_snapshot(&self) -> bool {
+        self.dot_address.is_some()
     }
 
     /// Get contract address if this is a contract-specific snapshot
@@ -296,8 +296,8 @@ impl StateSnapshot {
     /// # Returns
     ///
     /// Optional reference to the contract address
-    pub fn get_contract_address(&self) -> Option<&ContractAddress> {
-        self.contract_address.as_ref()
+    pub fn get_dot_address(&self) -> Option<&DotAddress> {
+        self.dot_address.as_ref()
     }
 }
 
@@ -340,7 +340,7 @@ pub struct SnapshotManager<S: NodeStorage> {
     /// Reference to the underlying MPT for state reconstruction
     current_trie: Option<MerklePatriciaTrie<S>>,
     /// Contract version manager for versioning integration
-    version_manager: ContractVersionManager,
+    version_manager: DotVersionManager,
 }
 
 impl<S: NodeStorage> SnapshotManager<S> {
@@ -358,7 +358,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
             config,
             snapshots: HashMap::new(),
             current_trie: None,
-            version_manager: ContractVersionManager::new(100), // Default: keep 100 versions per contract
+            version_manager: DotVersionManager::new(100), // Default: keep 100 versions per contract
         }
     }
 
@@ -417,7 +417,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     /// # Arguments
     ///
     /// * `id` - Unique identifier for the snapshot
-    /// * `contract_address` - Contract address for this snapshot
+    /// * `dot_address` - Contract address for this snapshot
     /// * `trie` - The trie to snapshot
     /// * `height` - Optional block height
     /// * `description` - Optional description
@@ -425,10 +425,10 @@ impl<S: NodeStorage> SnapshotManager<S> {
     /// # Returns
     ///
     /// A Result containing the created snapshot or an error
-    pub fn create_contract_snapshot(
+    pub fn create_dot_snapshot(
         &mut self,
         id: SnapshotId,
-        contract_address: ContractAddress,
+        dot_address: DotAddress,
         trie: &MerklePatriciaTrie<S>,
         height: Option<u64>,
         description: Option<String>,
@@ -441,13 +441,13 @@ impl<S: NodeStorage> SnapshotManager<S> {
         // Create a version in the version manager
         let version_id = self
             .version_manager
-            .create_version(contract_address, trie.root_hash(), description.clone().unwrap_or_else(|| format!("Snapshot: {id}")))?;
+            .create_version(dot_address, trie.root_hash(), description.clone().unwrap_or_else(|| format!("Snapshot: {id}")))?;
 
         // Create the snapshot with versioning information
-        let snapshot = StateSnapshot::new_with_version(id.clone(), version_id, Some(contract_address), trie.root_hash(), height, description);
+        let snapshot = StateSnapshot::new_with_version(id.clone(), version_id, Some(dot_address), trie.root_hash(), height, description);
 
         // Acquire snapshot reference in version manager
-        self.version_manager.acquire_snapshot(contract_address, version_id)?;
+        self.version_manager.acquire_snapshot(dot_address, version_id)?;
 
         // Store the snapshot
         self.snapshots.insert(id, snapshot.clone());
@@ -472,30 +472,30 @@ impl<S: NodeStorage> SnapshotManager<S> {
     /// # Returns
     ///
     /// A Result containing the created snapshot or an error
-    pub fn create_snapshot_from_version(&mut self, id: SnapshotId, contract_address: ContractAddress, version_id: StateVersionId, trie: &MerklePatriciaTrie<S>) -> SnapshotResult<StateSnapshot> {
+    pub fn create_snapshot_from_version(&mut self, id: SnapshotId, dot_address: DotAddress, version_id: StateVersionId, trie: &MerklePatriciaTrie<S>) -> SnapshotResult<StateSnapshot> {
         // Check if snapshot already exists
         if self.snapshots.contains_key(&id) {
             return Err(SnapshotError::AlreadyExists(id));
         }
 
         // Get the contract version to extract metadata
-        let contract_version = self
+        let dot_version = self
             .version_manager
-            .get_version(contract_address, version_id)
+            .get_version(dot_address, version_id)
             .ok_or_else(|| SnapshotError::VersioningError(format!("Version not found: {version_id:?}")))?;
 
         // Create the snapshot with versioning information
         let snapshot = StateSnapshot::new_with_version(
             id.clone(),
             version_id,
-            Some(contract_address),
+            Some(dot_address),
             trie.root_hash(),
-            contract_version.block_height,
-            Some(contract_version.description),
+            dot_version.block_height,
+            Some(dot_version.description),
         );
 
         // Acquire snapshot reference in version manager
-        self.version_manager.acquire_snapshot(contract_address, version_id)?;
+        self.version_manager.acquire_snapshot(dot_address, version_id)?;
 
         // Store the snapshot
         self.snapshots.insert(id, snapshot.clone());
@@ -549,8 +549,8 @@ impl<S: NodeStorage> SnapshotManager<S> {
         let snapshot = self.snapshots.remove(id).ok_or_else(|| SnapshotError::NotFound(id.clone()))?;
 
         // If this is a contract snapshot, release the version reference
-        if let Some(contract_address) = snapshot.contract_address {
-            self.version_manager.release_snapshot(contract_address, snapshot.version_id);
+        if let Some(dot_address) = snapshot.dot_address {
+            self.version_manager.release_snapshot(dot_address, snapshot.version_id);
         }
 
         Ok(snapshot)
@@ -754,13 +754,13 @@ impl<S: NodeStorage> SnapshotManager<S> {
     ///
     /// # Arguments
     ///
-    /// * `contract_address` - Contract address to filter by
+    /// * `dot_address` - Contract address to filter by
     ///
     /// # Returns
     ///
     /// Vector of snapshots for the specified contract
-    pub fn get_contract_snapshots(&self, contract_address: ContractAddress) -> Vec<&StateSnapshot> {
-        self.snapshots.values().filter(|snapshot| snapshot.contract_address == Some(contract_address)).collect()
+    pub fn get_dot_snapshots(&self, dot_address: DotAddress) -> Vec<&StateSnapshot> {
+        self.snapshots.values().filter(|snapshot| snapshot.dot_address == Some(dot_address)).collect()
     }
 
     /// Get global (non-contract-specific) snapshots
@@ -769,7 +769,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     ///
     /// Vector of global snapshots
     pub fn get_global_snapshots(&self) -> Vec<&StateSnapshot> {
-        self.snapshots.values().filter(|snapshot| snapshot.contract_address.is_none()).collect()
+        self.snapshots.values().filter(|snapshot| snapshot.dot_address.is_none()).collect()
     }
 }
 

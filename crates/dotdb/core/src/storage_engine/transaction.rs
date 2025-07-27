@@ -337,9 +337,9 @@ impl Transaction {
     }
 
     /// Create a contract state version during this transaction
-    pub fn create_contract_state_version(
+    pub fn create_dot_state_version(
         &mut self,
-        contract_address: crate::state::contract_storage_layout::ContractAddress,
+        dot_address: crate::state::dot_storage_layout::DotAddress,
         mpt_root_hash: crate::state::mpt::Hash,
         description: String,
     ) -> StorageResult<crate::state::versioning::StateVersionId> {
@@ -347,12 +347,12 @@ impl Transaction {
             return Err(StorageError::TransactionAborted(format!("Cannot create contract version in transaction state: {:?}", self.state)));
         }
 
-        self.mvcc_manager.create_contract_state_version(self.id, contract_address, mpt_root_hash, description)
+        self.mvcc_manager.create_dot_state_version(self.id, dot_address, mpt_root_hash, description)
     }
 
     /// Get contract state at transaction snapshot
-    pub fn get_contract_state_at_snapshot(&self, contract_address: crate::state::contract_storage_layout::ContractAddress) -> StorageResult<Option<crate::state::versioning::ContractStateVersion>> {
-        self.mvcc_manager.get_contract_state_at_snapshot(self.id, contract_address)
+    pub fn get_dot_state_at_snapshot(&self, dot_address: crate::state::dot_storage_layout::DotAddress) -> StorageResult<Option<crate::state::versioning::DotStateVersion>> {
+        self.mvcc_manager.get_dot_state_at_snapshot(self.id, dot_address)
     }
 
     /// Commit this transaction
@@ -390,7 +390,7 @@ impl Transaction {
         self.isolation_enforcer.handle_commit(self.id)?;
 
         // Commit contract state changes
-        self.mvcc_manager.commit_contract_states(self.id)?;
+        self.mvcc_manager.commit_dot_states(self.id)?;
 
         // Remove from deadlock detector
         self.deadlock_detector.remove_transaction(self.id);
@@ -439,7 +439,7 @@ impl Transaction {
         self.isolation_enforcer.handle_abort(self.id)?;
 
         // Rollback contract state changes
-        self.mvcc_manager.rollback_contract_states(self.id)?;
+        self.mvcc_manager.rollback_dot_states(self.id)?;
 
         // Remove from deadlock detector
         self.deadlock_detector.remove_transaction(self.id);

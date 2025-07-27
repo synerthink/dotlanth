@@ -33,7 +33,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
-use dotdb_core::state::{ContractAddress, StorageValue, StorageVariableType};
+use dotdb_core::state::{DotAddress, StorageValue, StorageVariableType};
 use serde::{Deserialize, Serialize};
 
 /// Result type for state transition validation
@@ -46,7 +46,7 @@ pub type ValidationResult = StateTransitionResult<ValidationSummary>;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StateTransition {
     /// Contract address where the transition occurs
-    pub contract_address: ContractAddress,
+    pub dot_address: DotAddress,
     /// Storage key being modified
     pub storage_key: Vec<u8>,
     /// Previous value (None if key didn't exist)
@@ -63,9 +63,9 @@ pub struct StateTransition {
 #[derive(Debug, Clone)]
 pub struct ValidationContext {
     /// Address of the contract calling the operation
-    pub caller: ContractAddress,
+    pub caller: DotAddress,
     /// Address of the contract being executed
-    pub contract: ContractAddress,
+    pub dot: DotAddress,
     /// Current gas limit
     pub gas_limit: u64,
     /// Gas used so far
@@ -473,14 +473,14 @@ impl TransitionRule for PermissionValidationRule {
         // Check if the caller has permission to modify this storage
 
         // Basic rule: only the contract itself can modify its storage
-        if context.caller != transition.contract_address && context.contract == transition.contract_address {
+        if context.caller != transition.dot_address && context.dot == transition.dot_address {
             // External call trying to modify storage - this might be allowed in some cases
             // For now, we'll issue a warning
             return Ok(RuleResult {
                 passed: true,
                 gas_used: self.gas_cost(),
                 violation: None,
-                warning: Some(format!("External caller {:?} modifying contract {:?} storage", context.caller, transition.contract_address)),
+                warning: Some(format!("External caller {:?} modifying contract {:?} storage", context.caller, transition.dot_address)),
             });
         }
 
@@ -615,7 +615,7 @@ mod tests {
 
     fn create_test_transition() -> StateTransition {
         StateTransition {
-            contract_address: [1u8; 20],
+            dot_address: [1u8; 20],
             storage_key: vec![0u8; 32],
             old_value: None,
             new_value: Some(StorageValue::U256([42u8; 32])),
@@ -627,7 +627,7 @@ mod tests {
     fn create_test_context() -> ValidationContext {
         ValidationContext {
             caller: [1u8; 20],
-            contract: [1u8; 20],
+            dot: [1u8; 20],
             gas_limit: 1000000,
             gas_used: 0,
             is_static_call: false,
