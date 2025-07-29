@@ -58,7 +58,7 @@ impl std::error::Error for Error {}
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Generic key type for state entries
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct StateKey(pub Vec<u8>);
 
 /// Core types for state management system.
@@ -82,7 +82,7 @@ impl StateKey {
 }
 
 /// Generic value type for state entries
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct StateValue(pub Vec<u8>);
 
 impl StateValue {
