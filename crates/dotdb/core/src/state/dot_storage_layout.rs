@@ -39,10 +39,10 @@
 //! ## Key Encoding Format
 //!
 //! ```text
-//! Contract Storage Key = contract_address || storage_slot_key
+//! Contract Storage Key = dot_address || storage_slot_key
 //!
 //! Where:
-//! - contract_address: 20 bytes (160 bits)
+//! - dot_address: 20 bytes (160 bits)
 //! - storage_slot_key: 32 bytes (256 bits)
 //! ```
 
@@ -55,7 +55,7 @@ use sha3::{Digest, Keccak256};
 use super::mpt::{Key, Value};
 
 /// Contract address type (20 bytes)
-pub type ContractAddress = [u8; 20];
+pub type DotAddress = [u8; 20];
 
 /// Storage slot identifier (32 bytes)
 pub type StorageSlot = [u8; 32];
@@ -101,9 +101,9 @@ pub struct StructField {
 
 /// Contract storage layout definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ContractStorageLayout {
+pub struct DotStorageLayout {
     /// Contract address this layout belongs to
-    pub contract_address: ContractAddress,
+    pub dot_address: DotAddress,
     /// Storage variables and their slot assignments
     pub variables: HashMap<String, StorageVariable>,
     /// Next available slot for new variables
@@ -157,11 +157,11 @@ impl fmt::Display for StorageLayoutError {
 
 impl std::error::Error for StorageLayoutError {}
 
-impl ContractStorageLayout {
+impl DotStorageLayout {
     /// Create a new storage layout for a contract
-    pub fn new(contract_address: ContractAddress) -> Self {
+    pub fn new(dot_address: DotAddress) -> Self {
         Self {
-            contract_address,
+            dot_address,
             variables: HashMap::new(),
             next_slot: 0,
             packed_storage: true,
@@ -191,7 +191,7 @@ impl ContractStorageLayout {
         let mut key_bytes = Vec::with_capacity(52); // 20 + 32 bytes
 
         // Add contract address prefix
-        key_bytes.extend_from_slice(&self.contract_address);
+        key_bytes.extend_from_slice(&self.dot_address);
 
         // Add slot as 32-byte big-endian
         let slot_bytes = slot.to_be_bytes();
@@ -211,7 +211,7 @@ impl ContractStorageLayout {
         let hash = hasher.finalize();
 
         let mut key_bytes = Vec::with_capacity(52);
-        key_bytes.extend_from_slice(&self.contract_address);
+        key_bytes.extend_from_slice(&self.dot_address);
         key_bytes.extend_from_slice(&hash);
 
         Ok(Key::from(key_bytes))
@@ -245,7 +245,7 @@ impl ContractStorageLayout {
         slot_number[24..32].copy_from_slice(&final_slot.to_be_bytes());
 
         let mut key_bytes = Vec::with_capacity(52);
-        key_bytes.extend_from_slice(&self.contract_address);
+        key_bytes.extend_from_slice(&self.dot_address);
         key_bytes.extend_from_slice(&slot_number);
 
         Ok(Key::from(key_bytes))
@@ -364,11 +364,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_contract_storage_layout_creation() {
+    fn test_dot_storage_layout_creation() {
         let address = [1u8; 20];
-        let layout = ContractStorageLayout::new(address);
+        let layout = DotStorageLayout::new(address);
 
-        assert_eq!(layout.contract_address, address);
+        assert_eq!(layout.dot_address, address);
         assert_eq!(layout.next_slot, 0);
         assert!(layout.variables.is_empty());
         assert!(layout.packed_storage);
@@ -376,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_add_simple_variable() {
-        let mut layout = ContractStorageLayout::new([1u8; 20]);
+        let mut layout = DotStorageLayout::new([1u8; 20]);
 
         let slot = layout.add_variable("balance".to_string(), StorageVariableType::Simple).unwrap();
 
@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_add_dynamic_array_variable() {
-        let mut layout = ContractStorageLayout::new([1u8; 20]);
+        let mut layout = DotStorageLayout::new([1u8; 20]);
 
         let slot = layout.add_variable("items".to_string(), StorageVariableType::DynamicArray).unwrap();
 
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_add_mapping_variable() {
-        let mut layout = ContractStorageLayout::new([1u8; 20]);
+        let mut layout = DotStorageLayout::new([1u8; 20]);
 
         let slot = layout
             .add_variable(
@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_add_struct_variable() {
-        let mut layout = ContractStorageLayout::new([1u8; 20]);
+        let mut layout = DotStorageLayout::new([1u8; 20]);
 
         let fields = vec![
             StructField {
@@ -450,7 +450,7 @@ mod tests {
 
     #[test]
     fn test_generate_storage_key() {
-        let layout = ContractStorageLayout::new([1u8; 20]);
+        let layout = DotStorageLayout::new([1u8; 20]);
         let key = layout.generate_storage_key(5).unwrap();
 
         // Key should be 52 bytes: 20 (address) + 32 (slot)
@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn test_generate_mapping_key() {
-        let layout = ContractStorageLayout::new([1u8; 20]);
+        let layout = DotStorageLayout::new([1u8; 20]);
         let mapping_key = b"test_key";
         let key = layout.generate_mapping_key(0, mapping_key).unwrap();
 
@@ -482,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_generate_array_key() {
-        let layout = ContractStorageLayout::new([1u8; 20]);
+        let layout = DotStorageLayout::new([1u8; 20]);
         let key1 = layout.generate_array_key(0, 0).unwrap();
         let key2 = layout.generate_array_key(0, 1).unwrap();
 
@@ -540,7 +540,7 @@ mod tests {
 
     #[test]
     fn test_slot_count_calculation() {
-        let layout = ContractStorageLayout::new([1u8; 20]);
+        let layout = DotStorageLayout::new([1u8; 20]);
 
         // Simple type should use 1 slot
         assert_eq!(layout.calculate_slot_count(&StorageVariableType::Simple), 1);
@@ -577,7 +577,7 @@ mod tests {
 
     #[test]
     fn test_multiple_variables() {
-        let mut layout = ContractStorageLayout::new([1u8; 20]);
+        let mut layout = DotStorageLayout::new([1u8; 20]);
 
         // Add multiple variables
         let slot1 = layout.add_variable("var1".to_string(), StorageVariableType::Simple).unwrap();
@@ -598,7 +598,7 @@ mod tests {
 
     #[test]
     fn test_key_uniqueness() {
-        let layout = ContractStorageLayout::new([1u8; 20]);
+        let layout = DotStorageLayout::new([1u8; 20]);
 
         // Generate multiple keys and ensure they're all different
         let key1 = layout.generate_storage_key(0).unwrap();

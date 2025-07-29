@@ -40,11 +40,11 @@
 //! Contract State Version = {
 //!     version_id: StateVersionId,
 //!     mpt_root_hash: Hash,
-//!     contract_address: ContractAddress,
+//!     dot_address: DotAddress,
 //!     parent_version: Option<StateVersionId>,
 //!     transaction_hash: Option<Hash>,
 //!     block_height: Option<u64>,
-//!     upgrade_info: Option<ContractUpgradeInfo>
+//!     upgrade_info: Option<DotUpgradeInfo>
 //! }
 //! ```
 
@@ -52,7 +52,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::{Mutex, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::state::contract_storage_layout::{ContractAddress, StorageLayoutError};
+use crate::state::dot_storage_layout::{DotAddress, StorageLayoutError};
 use crate::state::mpt::{Hash, MPTError};
 
 /// Timestamp type for versioning
@@ -103,7 +103,7 @@ impl Default for StateVersionId {
 
 /// Contract upgrade information
 #[derive(Debug, Clone)]
-pub struct ContractUpgradeInfo {
+pub struct DotUpgradeInfo {
     /// Previous contract version
     pub previous_version: StateVersionId,
     /// Upgrade type
@@ -163,13 +163,13 @@ pub enum LayoutChangeType {
 
 /// Contract state version metadata
 #[derive(Debug, Clone)]
-pub struct ContractStateVersion {
+pub struct DotStateVersion {
     /// Version identifier
     pub version_id: StateVersionId,
     /// MPT root hash at this version
     pub mpt_root_hash: Hash,
     /// Contract address
-    pub contract_address: ContractAddress,
+    pub dot_address: DotAddress,
     /// Parent version (previous state)
     pub parent_version: Option<StateVersionId>,
     /// Transaction that created this version
@@ -177,7 +177,7 @@ pub struct ContractStateVersion {
     /// Block height when version was created
     pub block_height: Option<BlockHeight>,
     /// Contract upgrade information (if this is an upgrade)
-    pub upgrade_info: Option<ContractUpgradeInfo>,
+    pub upgrade_info: Option<DotUpgradeInfo>,
     /// Creation timestamp
     pub created_at: Timestamp,
     /// Version description
@@ -190,13 +190,13 @@ pub struct ContractStateVersion {
     pub storage_slots_count: u64,
 }
 
-impl ContractStateVersion {
+impl DotStateVersion {
     /// Create a new contract state version
-    pub fn new(version_id: StateVersionId, mpt_root_hash: Hash, contract_address: ContractAddress, parent_version: Option<StateVersionId>, description: String) -> Self {
+    pub fn new(version_id: StateVersionId, mpt_root_hash: Hash, dot_address: DotAddress, parent_version: Option<StateVersionId>, description: String) -> Self {
         Self {
             version_id,
             mpt_root_hash,
-            contract_address,
+            dot_address,
             parent_version,
             transaction_hash: None,
             block_height: None,
@@ -210,18 +210,11 @@ impl ContractStateVersion {
     }
 
     /// Create a new version for contract upgrade
-    pub fn new_upgrade(
-        version_id: StateVersionId,
-        mpt_root_hash: Hash,
-        contract_address: ContractAddress,
-        parent_version: StateVersionId,
-        upgrade_info: ContractUpgradeInfo,
-        description: String,
-    ) -> Self {
+    pub fn new_upgrade(version_id: StateVersionId, mpt_root_hash: Hash, dot_address: DotAddress, parent_version: StateVersionId, upgrade_info: DotUpgradeInfo, description: String) -> Self {
         Self {
             version_id,
             mpt_root_hash,
-            contract_address,
+            dot_address,
             parent_version: Some(parent_version),
             transaction_hash: None,
             block_height: None,
@@ -263,33 +256,33 @@ impl ContractStateVersion {
 }
 
 /// Contract versioning manager
-pub struct ContractVersionManager {
+pub struct DotVersionManager {
     /// Contract versions by contract address and version ID
-    versions: RwLock<HashMap<ContractAddress, BTreeMap<StateVersionId, ContractStateVersion>>>,
+    versions: RwLock<HashMap<DotAddress, BTreeMap<StateVersionId, DotStateVersion>>>,
     /// Current version for each contract
-    current_versions: RwLock<HashMap<ContractAddress, StateVersionId>>,
+    current_versions: RwLock<HashMap<DotAddress, StateVersionId>>,
     /// Version counter for generating new version IDs
     version_counter: Mutex<u64>,
     /// Maximum versions to keep per contract
-    max_versions_per_contract: usize,
+    max_versions_per_dot: usize,
     /// Active snapshots reference counting
-    active_snapshots: Mutex<HashMap<(ContractAddress, StateVersionId), usize>>,
+    active_snapshots: Mutex<HashMap<(DotAddress, StateVersionId), usize>>,
 }
 
-impl ContractVersionManager {
+impl DotVersionManager {
     /// Create a new contract version manager
-    pub fn new(max_versions_per_contract: usize) -> Self {
+    pub fn new(max_versions_per_dot: usize) -> Self {
         Self {
             versions: RwLock::new(HashMap::new()),
             current_versions: RwLock::new(HashMap::new()),
             version_counter: Mutex::new(0),
-            max_versions_per_contract,
+            max_versions_per_dot,
             active_snapshots: Mutex::new(HashMap::new()),
         }
     }
 
     /// Create a new version for a contract
-    pub fn create_version(&self, contract_address: ContractAddress, mpt_root_hash: Hash, description: String) -> Result<StateVersionId, ContractVersioningError> {
+    pub fn create_version(&self, dot_address: DotAddress, mpt_root_hash: Hash, description: String) -> Result<StateVersionId, DotVersioningError> {
         let mut counter = self.version_counter.lock().unwrap();
         *counter += 1;
         let version_id = StateVersionId::new_with_current_time(*counter);
@@ -297,39 +290,33 @@ impl ContractVersionManager {
 
         let current_version = {
             let current_versions = self.current_versions.read().unwrap();
-            current_versions.get(&contract_address).copied()
+            current_versions.get(&dot_address).copied()
         };
 
-        let version = ContractStateVersion::new(version_id, mpt_root_hash, contract_address, current_version, description);
+        let version = DotStateVersion::new(version_id, mpt_root_hash, dot_address, current_version, description);
 
         {
             let mut versions = self.versions.write().unwrap();
-            let contract_versions = versions.entry(contract_address).or_default();
-            contract_versions.insert(version_id, version);
+            let dot_versions = versions.entry(dot_address).or_default();
+            dot_versions.insert(version_id, version);
 
             // Cleanup old versions if necessary
-            self.cleanup_old_versions_for_contract(contract_versions)?;
+            self.cleanup_old_versions_for_dot(dot_versions)?;
         }
 
         {
             let mut current_versions = self.current_versions.write().unwrap();
-            current_versions.insert(contract_address, version_id);
+            current_versions.insert(dot_address, version_id);
         }
 
         Ok(version_id)
     }
 
     /// Create a new version for contract upgrade
-    pub fn create_upgrade_version(
-        &self,
-        contract_address: ContractAddress,
-        mpt_root_hash: Hash,
-        upgrade_info: ContractUpgradeInfo,
-        description: String,
-    ) -> Result<StateVersionId, ContractVersioningError> {
+    pub fn create_upgrade_version(&self, dot_address: DotAddress, mpt_root_hash: Hash, upgrade_info: DotUpgradeInfo, description: String) -> Result<StateVersionId, DotVersioningError> {
         let current_version = {
             let current_versions = self.current_versions.read().unwrap();
-            current_versions.get(&contract_address).copied().ok_or(ContractVersioningError::ContractNotFound(contract_address))?
+            current_versions.get(&dot_address).copied().ok_or(DotVersioningError::DotNotFound(dot_address))?
         };
 
         let mut counter = self.version_counter.lock().unwrap();
@@ -337,58 +324,58 @@ impl ContractVersionManager {
         let version_id = StateVersionId::new_with_current_time(*counter);
         drop(counter);
 
-        let version = ContractStateVersion::new_upgrade(version_id, mpt_root_hash, contract_address, current_version, upgrade_info, description);
+        let version = DotStateVersion::new_upgrade(version_id, mpt_root_hash, dot_address, current_version, upgrade_info, description);
 
         {
             let mut versions = self.versions.write().unwrap();
-            let contract_versions = versions.entry(contract_address).or_default();
-            contract_versions.insert(version_id, version);
+            let dot_versions = versions.entry(dot_address).or_default();
+            dot_versions.insert(version_id, version);
         }
 
         {
             let mut current_versions = self.current_versions.write().unwrap();
-            current_versions.insert(contract_address, version_id);
+            current_versions.insert(dot_address, version_id);
         }
 
         Ok(version_id)
     }
 
     /// Get a specific version of a contract
-    pub fn get_version(&self, contract_address: ContractAddress, version_id: StateVersionId) -> Option<ContractStateVersion> {
+    pub fn get_version(&self, dot_address: DotAddress, version_id: StateVersionId) -> Option<DotStateVersion> {
         let versions = self.versions.read().unwrap();
-        versions.get(&contract_address)?.get(&version_id).cloned()
+        versions.get(&dot_address)?.get(&version_id).cloned()
     }
 
     /// Get the current version of a contract
-    pub fn get_current_version(&self, contract_address: ContractAddress) -> Option<ContractStateVersion> {
+    pub fn get_current_version(&self, dot_address: DotAddress) -> Option<DotStateVersion> {
         let current_versions = self.current_versions.read().unwrap();
-        let current_version_id = *current_versions.get(&contract_address)?;
+        let current_version_id = *current_versions.get(&dot_address)?;
         drop(current_versions);
 
-        self.get_version(contract_address, current_version_id)
+        self.get_version(dot_address, current_version_id)
     }
 
     /// Get all versions of a contract
-    pub fn get_all_versions(&self, contract_address: ContractAddress) -> Vec<ContractStateVersion> {
+    pub fn get_all_versions(&self, dot_address: DotAddress) -> Vec<DotStateVersion> {
         let versions = self.versions.read().unwrap();
-        if let Some(contract_versions) = versions.get(&contract_address) {
-            contract_versions.values().cloned().collect()
+        if let Some(dot_versions) = versions.get(&dot_address) {
+            dot_versions.values().cloned().collect()
         } else {
             Vec::new()
         }
     }
 
     /// Get versions in a specific time range
-    pub fn get_versions_in_range(&self, contract_address: ContractAddress, start_time: Timestamp, end_time: Timestamp) -> Vec<ContractStateVersion> {
-        self.get_all_versions(contract_address)
+    pub fn get_versions_in_range(&self, dot_address: DotAddress, start_time: Timestamp, end_time: Timestamp) -> Vec<DotStateVersion> {
+        self.get_all_versions(dot_address)
             .into_iter()
             .filter(|version| version.created_at >= start_time && version.created_at <= end_time)
             .collect()
     }
 
     /// Get version at specific block height
-    pub fn get_version_at_block(&self, contract_address: ContractAddress, block_height: BlockHeight) -> Option<ContractStateVersion> {
-        self.get_all_versions(contract_address)
+    pub fn get_version_at_block(&self, dot_address: DotAddress, block_height: BlockHeight) -> Option<DotStateVersion> {
+        self.get_all_versions(dot_address)
             .into_iter()
             .filter(|version| version.block_height.is_some())
             .filter(|version| version.block_height.unwrap() <= block_height)
@@ -396,49 +383,49 @@ impl ContractVersionManager {
     }
 
     /// Get all upgrade versions for a contract
-    pub fn get_upgrade_versions(&self, contract_address: ContractAddress) -> Vec<ContractStateVersion> {
-        self.get_all_versions(contract_address).into_iter().filter(|version| version.is_upgrade()).collect()
+    pub fn get_upgrade_versions(&self, dot_address: DotAddress) -> Vec<DotStateVersion> {
+        self.get_all_versions(dot_address).into_iter().filter(|version| version.is_upgrade()).collect()
     }
 
     /// Query historical state at specific MPT root
-    pub fn query_historical_state(&self, contract_address: ContractAddress, mpt_root_hash: Hash) -> Option<ContractStateVersion> {
-        self.get_all_versions(contract_address).into_iter().find(|version| version.mpt_root_hash == mpt_root_hash)
+    pub fn query_historical_state(&self, dot_address: DotAddress, mpt_root_hash: Hash) -> Option<DotStateVersion> {
+        self.get_all_versions(dot_address).into_iter().find(|version| version.mpt_root_hash == mpt_root_hash)
     }
 
     /// Finalize a version
-    pub fn finalize_version(&self, contract_address: ContractAddress, version_id: StateVersionId) -> Result<(), ContractVersioningError> {
+    pub fn finalize_version(&self, dot_address: DotAddress, version_id: StateVersionId) -> Result<(), DotVersioningError> {
         let mut versions = self.versions.write().unwrap();
-        let contract_versions = versions.get_mut(&contract_address).ok_or(ContractVersioningError::ContractNotFound(contract_address))?;
+        let dot_versions = versions.get_mut(&dot_address).ok_or(DotVersioningError::DotNotFound(dot_address))?;
 
-        let version = contract_versions.get_mut(&version_id).ok_or(ContractVersioningError::VersionNotFound(version_id))?;
+        let version = dot_versions.get_mut(&version_id).ok_or(DotVersioningError::VersionNotFound(version_id))?;
 
         version.finalize();
         Ok(())
     }
 
     /// Update version transaction information
-    pub fn update_transaction_info(&self, contract_address: ContractAddress, version_id: StateVersionId, tx_hash: TransactionHash, block_height: BlockHeight) -> Result<(), ContractVersioningError> {
+    pub fn update_transaction_info(&self, dot_address: DotAddress, version_id: StateVersionId, tx_hash: TransactionHash, block_height: BlockHeight) -> Result<(), DotVersioningError> {
         let mut versions = self.versions.write().unwrap();
-        let contract_versions = versions.get_mut(&contract_address).ok_or(ContractVersioningError::ContractNotFound(contract_address))?;
+        let dot_versions = versions.get_mut(&dot_address).ok_or(DotVersioningError::DotNotFound(dot_address))?;
 
-        let version = contract_versions.get_mut(&version_id).ok_or(ContractVersioningError::VersionNotFound(version_id))?;
+        let version = dot_versions.get_mut(&version_id).ok_or(DotVersioningError::VersionNotFound(version_id))?;
 
         version.set_transaction_info(tx_hash, block_height);
         Ok(())
     }
 
     /// Acquire snapshot reference
-    pub fn acquire_snapshot(&self, contract_address: ContractAddress, version_id: StateVersionId) -> Result<(), ContractVersioningError> {
+    pub fn acquire_snapshot(&self, dot_address: DotAddress, version_id: StateVersionId) -> Result<(), DotVersioningError> {
         let mut active_snapshots = self.active_snapshots.lock().unwrap();
-        let key = (contract_address, version_id);
+        let key = (dot_address, version_id);
         *active_snapshots.entry(key).or_insert(0) += 1;
         Ok(())
     }
 
     /// Release snapshot reference
-    pub fn release_snapshot(&self, contract_address: ContractAddress, version_id: StateVersionId) {
+    pub fn release_snapshot(&self, dot_address: DotAddress, version_id: StateVersionId) {
         let mut active_snapshots = self.active_snapshots.lock().unwrap();
-        let key = (contract_address, version_id);
+        let key = (dot_address, version_id);
         if let Some(count) = active_snapshots.get_mut(&key) {
             *count -= 1;
             if *count == 0 {
@@ -448,73 +435,73 @@ impl ContractVersionManager {
     }
 
     /// Check if version is actively referenced
-    pub fn is_version_active(&self, contract_address: ContractAddress, version_id: StateVersionId) -> bool {
+    pub fn is_version_active(&self, dot_address: DotAddress, version_id: StateVersionId) -> bool {
         let active_snapshots = self.active_snapshots.lock().unwrap();
-        active_snapshots.contains_key(&(contract_address, version_id))
+        active_snapshots.contains_key(&(dot_address, version_id))
     }
 
     /// Get contract versioning statistics
-    pub fn get_contract_statistics(&self, contract_address: ContractAddress) -> ContractVersioningStatistics {
+    pub fn get_dot_statistics(&self, dot_address: DotAddress) -> DotVersioningStatistics {
         let versions = self.versions.read().unwrap();
         let current_versions = self.current_versions.read().unwrap();
 
-        if let Some(contract_versions) = versions.get(&contract_address) {
-            let total_versions = contract_versions.len();
-            let finalized_versions = contract_versions.values().filter(|v| v.is_finalized).count();
-            let upgrade_versions = contract_versions.values().filter(|v| v.is_upgrade()).count();
-            let current_version = current_versions.get(&contract_address).copied();
+        if let Some(dot_versions) = versions.get(&dot_address) {
+            let total_versions = dot_versions.len();
+            let finalized_versions = dot_versions.values().filter(|v| v.is_finalized).count();
+            let upgrade_versions = dot_versions.values().filter(|v| v.is_upgrade()).count();
+            let current_version = current_versions.get(&dot_address).copied();
 
-            let total_state_size = contract_versions.values().map(|v| v.state_size).sum();
+            let total_state_size = dot_versions.values().map(|v| v.state_size).sum();
 
-            ContractVersioningStatistics {
-                contract_address,
+            DotVersioningStatistics {
+                dot_address,
                 total_versions,
                 finalized_versions,
                 upgrade_versions,
                 current_version,
                 total_state_size_bytes: total_state_size,
-                max_versions_per_contract: self.max_versions_per_contract,
+                max_versions_per_dot: self.max_versions_per_dot,
             }
         } else {
-            ContractVersioningStatistics {
-                contract_address,
+            DotVersioningStatistics {
+                dot_address,
                 total_versions: 0,
                 finalized_versions: 0,
                 upgrade_versions: 0,
                 current_version: None,
                 total_state_size_bytes: 0,
-                max_versions_per_contract: self.max_versions_per_contract,
+                max_versions_per_dot: self.max_versions_per_dot,
             }
         }
     }
 
     /// Clean up old versions for a contract
-    fn cleanup_old_versions_for_contract(&self, contract_versions: &mut BTreeMap<StateVersionId, ContractStateVersion>) -> Result<(), ContractVersioningError> {
-        if contract_versions.len() <= self.max_versions_per_contract {
+    fn cleanup_old_versions_for_dot(&self, dot_versions: &mut BTreeMap<StateVersionId, DotStateVersion>) -> Result<(), DotVersioningError> {
+        if dot_versions.len() <= self.max_versions_per_dot {
             return Ok(());
         }
 
         // Keep finalized versions and recent versions
         let mut versions_to_remove = Vec::new();
-        let mut version_list: Vec<_> = contract_versions.iter().collect();
+        let mut version_list: Vec<_> = dot_versions.iter().collect();
         version_list.sort_by_key(|(version_id, _)| version_id.timestamp);
 
         // Remove oldest non-finalized versions
-        for (version_id, version) in version_list.iter().take(contract_versions.len() - self.max_versions_per_contract) {
-            if !version.is_finalized && !self.is_version_active(version.contract_address, **version_id) {
+        for (version_id, version) in version_list.iter().take(dot_versions.len() - self.max_versions_per_dot) {
+            if !version.is_finalized && !self.is_version_active(version.dot_address, **version_id) {
                 versions_to_remove.push(**version_id);
             }
         }
 
         for version_id in versions_to_remove {
-            contract_versions.remove(&version_id);
+            dot_versions.remove(&version_id);
         }
 
         Ok(())
     }
 }
 
-impl Default for ContractVersionManager {
+impl Default for DotVersionManager {
     fn default() -> Self {
         Self::new(100) // Default: keep 100 versions per contract
     }
@@ -522,9 +509,9 @@ impl Default for ContractVersionManager {
 
 /// Contract versioning statistics
 #[derive(Debug, Clone)]
-pub struct ContractVersioningStatistics {
+pub struct DotVersioningStatistics {
     /// Contract address
-    pub contract_address: ContractAddress,
+    pub dot_address: DotAddress,
     /// Total number of versions
     pub total_versions: usize,
     /// Number of finalized versions
@@ -536,14 +523,14 @@ pub struct ContractVersioningStatistics {
     /// Total state size across all versions
     pub total_state_size_bytes: u64,
     /// Maximum versions to keep
-    pub max_versions_per_contract: usize,
+    pub max_versions_per_dot: usize,
 }
 
 /// Errors that can occur during contract versioning operations
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ContractVersioningError {
+pub enum DotVersioningError {
     /// Contract not found
-    ContractNotFound(ContractAddress),
+    DotNotFound(DotAddress),
     /// Version not found
     VersionNotFound(StateVersionId),
     /// Version already exists
@@ -560,53 +547,53 @@ pub enum ContractVersioningError {
     InternalError(String),
 }
 
-impl std::fmt::Display for ContractVersioningError {
+impl std::fmt::Display for DotVersioningError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ContractVersioningError::ContractNotFound(addr) => {
+            DotVersioningError::DotNotFound(addr) => {
                 write!(f, "Contract not found: {addr:?}")
             }
-            ContractVersioningError::VersionNotFound(version) => {
+            DotVersioningError::VersionNotFound(version) => {
                 write!(f, "Version not found: {version:?}")
             }
-            ContractVersioningError::VersionAlreadyExists(version) => {
+            DotVersioningError::VersionAlreadyExists(version) => {
                 write!(f, "Version already exists: {version:?}")
             }
-            ContractVersioningError::InvalidUpgrade(msg) => {
+            DotVersioningError::InvalidUpgrade(msg) => {
                 write!(f, "Invalid upgrade: {msg}")
             }
-            ContractVersioningError::StorageLayoutError(msg) => {
+            DotVersioningError::StorageLayoutError(msg) => {
                 write!(f, "Storage layout error: {msg}")
             }
-            ContractVersioningError::MPTError(msg) => {
+            DotVersioningError::MPTError(msg) => {
                 write!(f, "MPT error: {msg}")
             }
-            ContractVersioningError::SerializationError(msg) => {
+            DotVersioningError::SerializationError(msg) => {
                 write!(f, "Serialization error: {msg}")
             }
-            ContractVersioningError::InternalError(msg) => {
+            DotVersioningError::InternalError(msg) => {
                 write!(f, "Internal error: {msg}")
             }
         }
     }
 }
 
-impl std::error::Error for ContractVersioningError {}
+impl std::error::Error for DotVersioningError {}
 
-impl From<StorageLayoutError> for ContractVersioningError {
+impl From<StorageLayoutError> for DotVersioningError {
     fn from(err: StorageLayoutError) -> Self {
-        ContractVersioningError::StorageLayoutError(format!("{err:?}"))
+        DotVersioningError::StorageLayoutError(format!("{err:?}"))
     }
 }
 
-impl From<MPTError> for ContractVersioningError {
+impl From<MPTError> for DotVersioningError {
     fn from(err: MPTError) -> Self {
-        ContractVersioningError::MPTError(format!("{err:?}"))
+        DotVersioningError::MPTError(format!("{err:?}"))
     }
 }
 
 /// Utility functions for contract versioning
-pub mod contract_version_utils {
+pub mod dot_version_utils {
     use super::*;
 
     /// Compare two contract state versions
@@ -625,8 +612,8 @@ pub mod contract_version_utils {
     }
 
     /// Find the common ancestor version between two versions
-    pub fn find_common_ancestor(v1: StateVersionId, v2: StateVersionId, contract_address: ContractAddress, manager: &ContractVersionManager) -> Option<StateVersionId> {
-        let versions = manager.get_all_versions(contract_address);
+    pub fn find_common_ancestor(v1: StateVersionId, v2: StateVersionId, dot_address: DotAddress, manager: &DotVersionManager) -> Option<StateVersionId> {
+        let versions = manager.get_all_versions(dot_address);
         let mut v1_chain = Vec::new();
         let mut v2_chain = Vec::new();
 
@@ -650,7 +637,7 @@ pub mod contract_version_utils {
     }
 
     /// Build version chain from current version to root
-    fn build_version_chain(version: &ContractStateVersion, all_versions: &[ContractStateVersion], chain: &mut Vec<StateVersionId>) {
+    fn build_version_chain(version: &DotStateVersion, all_versions: &[DotStateVersion], chain: &mut Vec<StateVersionId>) {
         chain.push(version.version_id);
 
         if let Some(parent_id) = version.parent_version
@@ -661,9 +648,9 @@ pub mod contract_version_utils {
     }
 
     /// Get versions between two versions
-    pub fn get_versions_between(start: StateVersionId, end: StateVersionId, contract_address: ContractAddress, manager: &ContractVersionManager) -> Vec<StateVersionId> {
+    pub fn get_versions_between(start: StateVersionId, end: StateVersionId, dot_address: DotAddress, manager: &DotVersionManager) -> Vec<StateVersionId> {
         manager
-            .get_all_versions(contract_address)
+            .get_all_versions(dot_address)
             .into_iter()
             .filter(|version| version.version_id >= start && version.version_id <= end)
             .map(|version| version.version_id)
@@ -671,7 +658,7 @@ pub mod contract_version_utils {
     }
 
     /// Check if an upgrade is compatible
-    pub fn is_upgrade_compatible(from_version: &ContractStateVersion, to_version: &ContractStateVersion) -> bool {
+    pub fn is_upgrade_compatible(from_version: &DotStateVersion, to_version: &DotStateVersion) -> bool {
         if let Some(upgrade_info) = &to_version.upgrade_info {
             match upgrade_info.upgrade_type {
                 UpgradeType::Minor => true,
@@ -707,7 +694,7 @@ fn current_timestamp() -> Timestamp {
 mod tests {
     use super::*;
 
-    fn create_test_contract_address() -> ContractAddress {
+    fn create_test_dot_address() -> DotAddress {
         [1u8; 20]
     }
 
@@ -727,29 +714,29 @@ mod tests {
     }
 
     #[test]
-    fn test_contract_state_version_creation() {
+    fn test_dot_state_version_creation() {
         let version_id = StateVersionId::new(1, 1000);
-        let contract_addr = create_test_contract_address();
+        let dot_addr = create_test_dot_address();
         let mpt_root = create_test_mpt_root();
 
-        let version = ContractStateVersion::new(version_id, mpt_root, contract_addr, None, "Initial version".to_string());
+        let version = DotStateVersion::new(version_id, mpt_root, dot_addr, None, "Initial version".to_string());
 
         assert_eq!(version.version_id, version_id);
         assert_eq!(version.mpt_root_hash, mpt_root);
-        assert_eq!(version.contract_address, contract_addr);
+        assert_eq!(version.dot_address, dot_addr);
         assert_eq!(version.parent_version, None);
         assert!(!version.is_upgrade());
         assert!(!version.is_finalized);
     }
 
     #[test]
-    fn test_contract_upgrade_version() {
+    fn test_dot_upgrade_version() {
         let version_id = StateVersionId::new(2, 2000);
         let parent_version_id = StateVersionId::new(1, 1000);
-        let contract_addr = create_test_contract_address();
+        let dot_addr = create_test_dot_address();
         let mpt_root = create_test_mpt_root();
 
-        let upgrade_info = ContractUpgradeInfo {
+        let upgrade_info = DotUpgradeInfo {
             previous_version: parent_version_id,
             upgrade_type: UpgradeType::Major,
             migration_description: "Added new feature".to_string(),
@@ -757,7 +744,7 @@ mod tests {
             upgrade_timestamp: 2000,
         };
 
-        let version = ContractStateVersion::new_upgrade(version_id, mpt_root, contract_addr, parent_version_id, upgrade_info, "Major upgrade".to_string());
+        let version = DotStateVersion::new_upgrade(version_id, mpt_root, dot_addr, parent_version_id, upgrade_info, "Major upgrade".to_string());
 
         assert!(version.is_upgrade());
         assert_eq!(version.upgrade_type(), Some(&UpgradeType::Major));
@@ -765,38 +752,38 @@ mod tests {
     }
 
     #[test]
-    fn test_contract_version_manager_basic_operations() {
-        let manager = ContractVersionManager::new(10);
-        let contract_addr = create_test_contract_address();
+    fn test_dot_version_manager_basic_operations() {
+        let manager = DotVersionManager::new(10);
+        let dot_addr = create_test_dot_address();
         let mpt_root = create_test_mpt_root();
 
         // Create first version
-        let version_id = manager.create_version(contract_addr, mpt_root, "Initial version".to_string()).unwrap();
+        let version_id = manager.create_version(dot_addr, mpt_root, "Initial version".to_string()).unwrap();
 
         // Get current version
-        let current_version = manager.get_current_version(contract_addr).unwrap();
+        let current_version = manager.get_current_version(dot_addr).unwrap();
         assert_eq!(current_version.version_id, version_id);
         assert_eq!(current_version.mpt_root_hash, mpt_root);
 
         // Get specific version
-        let specific_version = manager.get_version(contract_addr, version_id).unwrap();
+        let specific_version = manager.get_version(dot_addr, version_id).unwrap();
         assert_eq!(specific_version.version_id, version_id);
     }
 
     #[test]
-    fn test_contract_versioning_statistics() {
-        let manager = ContractVersionManager::new(10);
-        let contract_addr = create_test_contract_address();
+    fn test_dot_versioning_statistics() {
+        let manager = DotVersionManager::new(10);
+        let dot_addr = create_test_dot_address();
         let mpt_root = create_test_mpt_root();
 
         // Create multiple versions
-        let v1 = manager.create_version(contract_addr, mpt_root, "Version 1".to_string()).unwrap();
-        let v2 = manager.create_version(contract_addr, mpt_root, "Version 2".to_string()).unwrap();
+        let v1 = manager.create_version(dot_addr, mpt_root, "Version 1".to_string()).unwrap();
+        let v2 = manager.create_version(dot_addr, mpt_root, "Version 2".to_string()).unwrap();
 
         // Finalize first version
-        manager.finalize_version(contract_addr, v1).unwrap();
+        manager.finalize_version(dot_addr, v1).unwrap();
 
-        let stats = manager.get_contract_statistics(contract_addr);
+        let stats = manager.get_dot_statistics(dot_addr);
         assert_eq!(stats.total_versions, 2);
         assert_eq!(stats.finalized_versions, 1);
         assert_eq!(stats.current_version, Some(v2));
@@ -804,36 +791,36 @@ mod tests {
 
     #[test]
     fn test_historical_state_query() {
-        let manager = ContractVersionManager::new(10);
-        let contract_addr = create_test_contract_address();
+        let manager = DotVersionManager::new(10);
+        let dot_addr = create_test_dot_address();
         let mpt_root1 = [1u8; 32];
         let mpt_root2 = [2u8; 32];
 
         // Create versions with different MPT roots
-        manager.create_version(contract_addr, mpt_root1, "Version 1".to_string()).unwrap();
-        manager.create_version(contract_addr, mpt_root2, "Version 2".to_string()).unwrap();
+        manager.create_version(dot_addr, mpt_root1, "Version 1".to_string()).unwrap();
+        manager.create_version(dot_addr, mpt_root2, "Version 2".to_string()).unwrap();
 
         // Query historical state
-        let historical_version = manager.query_historical_state(contract_addr, mpt_root1).unwrap();
+        let historical_version = manager.query_historical_state(dot_addr, mpt_root1).unwrap();
         assert_eq!(historical_version.mpt_root_hash, mpt_root1);
         assert_eq!(historical_version.description, "Version 1");
     }
 
     #[test]
     fn test_version_snapshot_reference_counting() {
-        let manager = ContractVersionManager::new(10);
-        let contract_addr = create_test_contract_address();
+        let manager = DotVersionManager::new(10);
+        let dot_addr = create_test_dot_address();
         let mpt_root = create_test_mpt_root();
 
-        let version_id = manager.create_version(contract_addr, mpt_root, "Test version".to_string()).unwrap();
+        let version_id = manager.create_version(dot_addr, mpt_root, "Test version".to_string()).unwrap();
 
         // Acquire snapshot reference
-        manager.acquire_snapshot(contract_addr, version_id).unwrap();
-        assert!(manager.is_version_active(contract_addr, version_id));
+        manager.acquire_snapshot(dot_addr, version_id).unwrap();
+        assert!(manager.is_version_active(dot_addr, version_id));
 
         // Release snapshot reference
-        manager.release_snapshot(contract_addr, version_id);
-        assert!(!manager.is_version_active(contract_addr, version_id));
+        manager.release_snapshot(dot_addr, version_id);
+        assert!(!manager.is_version_active(dot_addr, version_id));
     }
 
     #[test]
@@ -841,22 +828,22 @@ mod tests {
         let v1 = StateVersionId::new(1, 1000);
         let v2 = StateVersionId::new(2, 2000);
 
-        assert!(contract_version_utils::is_newer(v2, v1));
-        assert_eq!(contract_version_utils::version_time_diff(v1, v2), 1000);
-        assert_eq!(contract_version_utils::compare_versions(v1, v2), std::cmp::Ordering::Less);
+        assert!(dot_version_utils::is_newer(v2, v1));
+        assert_eq!(dot_version_utils::version_time_diff(v1, v2), 1000);
+        assert_eq!(dot_version_utils::compare_versions(v1, v2), std::cmp::Ordering::Less);
     }
 
     #[test]
     fn test_upgrade_compatibility() {
         let version_id = StateVersionId::new(1, 1000);
-        let contract_addr = create_test_contract_address();
+        let dot_addr = create_test_dot_address();
         let mpt_root = create_test_mpt_root();
 
         // Create non-upgrade version
-        let non_upgrade_version = ContractStateVersion::new(version_id, mpt_root, contract_addr, None, "Regular version".to_string());
+        let non_upgrade_version = DotStateVersion::new(version_id, mpt_root, dot_addr, None, "Regular version".to_string());
 
         // Create minor upgrade version
-        let upgrade_info = ContractUpgradeInfo {
+        let upgrade_info = DotUpgradeInfo {
             previous_version: version_id,
             upgrade_type: UpgradeType::Minor,
             migration_description: "Minor upgrade".to_string(),
@@ -864,8 +851,8 @@ mod tests {
             upgrade_timestamp: 2000,
         };
 
-        let upgrade_version = ContractStateVersion::new_upgrade(StateVersionId::new(2, 2000), mpt_root, contract_addr, version_id, upgrade_info, "Minor upgrade".to_string());
+        let upgrade_version = DotStateVersion::new_upgrade(StateVersionId::new(2, 2000), mpt_root, dot_addr, version_id, upgrade_info, "Minor upgrade".to_string());
 
-        assert!(contract_version_utils::is_upgrade_compatible(&non_upgrade_version, &upgrade_version));
+        assert!(dot_version_utils::is_upgrade_compatible(&non_upgrade_version, &upgrade_version));
     }
 }

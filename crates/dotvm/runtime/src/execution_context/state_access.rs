@@ -34,7 +34,7 @@ use std::sync::{Arc, RwLock};
 
 use dotdb_core::state::mpt::trie::NodeStorage;
 use dotdb_core::state::mpt::{Key, Value};
-use dotdb_core::state::{ContractAddress, ContractStorageLayout, MerklePatriciaTrie};
+use dotdb_core::state::{DotAddress, DotStorageLayout, MerklePatriciaTrie};
 use serde::{Deserialize, Serialize};
 
 /// Result type for state access operations
@@ -43,28 +43,28 @@ pub type StateAccessResult<T> = Result<T, StateAccessError>;
 /// Interface for state access operations
 pub trait StateAccessInterface {
     /// Load a value from contract storage
-    fn load_storage(&self, contract: ContractAddress, key: &[u8]) -> StateAccessResult<Option<Vec<u8>>>;
+    fn load_storage(&self, dot: DotAddress, key: &[u8]) -> StateAccessResult<Option<Vec<u8>>>;
 
     /// Store a value to contract storage
-    fn store_storage(&mut self, contract: ContractAddress, key: &[u8], value: &[u8]) -> StateAccessResult<()>;
+    fn store_storage(&mut self, dot: DotAddress, key: &[u8], value: &[u8]) -> StateAccessResult<()>;
 
     /// Check if a storage key exists
-    fn storage_exists(&self, contract: ContractAddress, key: &[u8]) -> StateAccessResult<bool>;
+    fn storage_exists(&self, dot: DotAddress, key: &[u8]) -> StateAccessResult<bool>;
 
     /// Get the size of stored data
-    fn storage_size(&self, contract: ContractAddress, key: &[u8]) -> StateAccessResult<usize>;
+    fn storage_size(&self, dot: DotAddress, key: &[u8]) -> StateAccessResult<usize>;
 
     /// Clear a storage slot
-    fn clear_storage(&mut self, contract: ContractAddress, key: &[u8]) -> StateAccessResult<()>;
+    fn clear_storage(&mut self, dot: DotAddress, key: &[u8]) -> StateAccessResult<()>;
 
     /// Load multiple values efficiently
-    fn multi_load(&self, contract: ContractAddress, keys: &[Vec<u8>]) -> StateAccessResult<Vec<Option<Vec<u8>>>>;
+    fn multi_load(&self, dot: DotAddress, keys: &[Vec<u8>]) -> StateAccessResult<Vec<Option<Vec<u8>>>>;
 
     /// Store multiple values efficiently
-    fn multi_store(&mut self, contract: ContractAddress, entries: &[(Vec<u8>, Vec<u8>)]) -> StateAccessResult<()>;
+    fn multi_store(&mut self, dot: DotAddress, entries: &[(Vec<u8>, Vec<u8>)]) -> StateAccessResult<()>;
 
     /// Get storage keys with pagination
-    fn get_storage_keys(&self, contract: ContractAddress, start_key: Option<&[u8]>, limit: usize) -> StateAccessResult<Vec<Vec<u8>>>;
+    fn get_storage_keys(&self, dot: DotAddress, start_key: Option<&[u8]>, limit: usize) -> StateAccessResult<Vec<Vec<u8>>>;
 }
 
 /// State access manager that implements the storage interface
@@ -72,7 +72,7 @@ pub struct StateAccessManager<S: NodeStorage> {
     /// Underlying Merkle Patricia Trie
     trie: Arc<RwLock<MerklePatriciaTrie<S>>>,
     /// Storage layouts for contracts
-    layouts: Arc<RwLock<HashMap<ContractAddress, ContractStorageLayout>>>,
+    layouts: Arc<RwLock<HashMap<DotAddress, DotStorageLayout>>>,
     /// Cache for frequently accessed storage
     cache: Arc<RwLock<StateCache>>,
     /// Configuration options
@@ -130,7 +130,7 @@ struct StateCache {
 /// Cache key combining contract address and storage key
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct CacheKey {
-    contract: ContractAddress,
+    dot: DotAddress,
     storage_key: Vec<u8>,
 }
 
@@ -152,9 +152,9 @@ pub enum StateAccessError {
     /// Invalid storage value format
     InvalidValue(String),
     /// Contract not found
-    ContractNotFound(ContractAddress),
+    DotNotFound(DotAddress),
     /// Layout not found for contract
-    LayoutNotFound(ContractAddress),
+    LayoutNotFound(DotAddress),
     /// Cache operation failed
     CacheError(String),
     /// Batch operation too large
@@ -177,7 +177,7 @@ impl fmt::Display for StateAccessError {
             StateAccessError::StorageError(msg) => write!(f, "Storage error: {msg}"),
             StateAccessError::InvalidKey(msg) => write!(f, "Invalid key: {msg}"),
             StateAccessError::InvalidValue(msg) => write!(f, "Invalid value: {msg}"),
-            StateAccessError::ContractNotFound(addr) => write!(f, "Contract not found: {addr:?}"),
+            StateAccessError::DotNotFound(addr) => write!(f, "Contract not found: {addr:?}"),
             StateAccessError::LayoutNotFound(addr) => write!(f, "Layout not found for contract: {addr:?}"),
             StateAccessError::CacheError(msg) => write!(f, "Cache error: {msg}"),
             StateAccessError::BatchTooLarge { size, max } => {
@@ -213,23 +213,23 @@ impl<S: NodeStorage> StateAccessManager<S> {
     }
 
     /// Register a storage layout for a contract
-    pub fn register_layout(&self, contract: ContractAddress, layout: ContractStorageLayout) -> StateAccessResult<()> {
+    pub fn register_layout(&self, dot: DotAddress, layout: DotStorageLayout) -> StateAccessResult<()> {
         let mut layouts = self.layouts.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
-        layouts.insert(contract, layout);
+        layouts.insert(dot, layout);
         Ok(())
     }
 
     /// Get the storage layout for a contract
-    pub fn get_layout(&self, contract: ContractAddress) -> StateAccessResult<ContractStorageLayout> {
+    pub fn get_layout(&self, dot: DotAddress) -> StateAccessResult<DotStorageLayout> {
         let layouts = self.layouts.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
-        layouts.get(&contract).cloned().ok_or(StateAccessError::LayoutNotFound(contract))
+        layouts.get(&dot).cloned().ok_or(StateAccessError::LayoutNotFound(dot))
     }
 
     /// Generate MPT key from contract address and storage key
-    fn generate_mpt_key(&self, contract: ContractAddress, storage_key: &[u8]) -> StateAccessResult<Key> {
-        let layout = self.get_layout(contract)?;
+    fn generate_mpt_key(&self, dot: DotAddress, storage_key: &[u8]) -> StateAccessResult<Key> {
+        let layout = self.get_layout(dot)?;
 
         // For now, use simple slot-based key generation
         // In practice, this would use the storage layout to determine the appropriate key generation method
@@ -244,14 +244,14 @@ impl<S: NodeStorage> StateAccessManager<S> {
     }
 
     /// Update cache with a value
-    fn update_cache(&self, contract: ContractAddress, storage_key: &[u8], value: Option<Vec<u8>>) {
+    fn update_cache(&self, dot: DotAddress, storage_key: &[u8], value: Option<Vec<u8>>) {
         if !self.config.enable_cache {
             return;
         }
 
         if let Ok(mut cache) = self.cache.write() {
             let cache_key = CacheKey {
-                contract,
+                dot,
                 storage_key: storage_key.to_vec(),
             };
 
@@ -266,14 +266,14 @@ impl<S: NodeStorage> StateAccessManager<S> {
     }
 
     /// Get value from cache
-    fn get_from_cache(&self, contract: ContractAddress, storage_key: &[u8]) -> Option<Option<Vec<u8>>> {
+    fn get_from_cache(&self, dot: DotAddress, storage_key: &[u8]) -> Option<Option<Vec<u8>>> {
         if !self.config.enable_cache {
             return None;
         }
 
         if let Ok(mut cache) = self.cache.write() {
             let cache_key = CacheKey {
-                contract,
+                dot,
                 storage_key: storage_key.to_vec(),
             };
 
@@ -296,14 +296,14 @@ impl<S: NodeStorage> StateAccessManager<S> {
     }
 
     /// Invalidate cache entry
-    fn invalidate_cache(&self, contract: ContractAddress, storage_key: &[u8]) {
+    fn invalidate_cache(&self, dot: DotAddress, storage_key: &[u8]) {
         if !self.config.enable_cache {
             return;
         }
 
         if let Ok(mut cache) = self.cache.write() {
             let cache_key = CacheKey {
-                contract,
+                dot,
                 storage_key: storage_key.to_vec(),
             };
 
@@ -314,16 +314,16 @@ impl<S: NodeStorage> StateAccessManager<S> {
     }
 
     /// Generate dot prefix for MPT key filtering
-    fn generate_dot_prefix(&self, dot: ContractAddress) -> StateAccessResult<Vec<u8>> {
+    fn generate_dot_prefix(&self, dot: DotAddress) -> StateAccessResult<Vec<u8>> {
         // Create a prefix from dot address for efficient key filtering
         let mut prefix = Vec::new();
-        prefix.extend_from_slice(&dot); // ContractAddress is [u8; 20]
+        prefix.extend_from_slice(&dot); // DotAddress is [u8; 20]
         prefix.push(0xFF); // Separator to avoid key collisions
         Ok(prefix)
     }
 
     /// Extract storage key from MPT key by removing dot prefix
-    fn extract_storage_key_from_mpt(&self, mpt_key: &Key, dot: ContractAddress) -> StateAccessResult<Option<Vec<u8>>> {
+    fn extract_storage_key_from_mpt(&self, mpt_key: &Key, dot: DotAddress) -> StateAccessResult<Option<Vec<u8>>> {
         let dot_prefix = self.generate_dot_prefix(dot)?;
         let key_bytes: &[u8] = mpt_key.as_ref(); // Key implements AsRef<[u8]>
 
@@ -339,14 +339,14 @@ impl<S: NodeStorage> StateAccessManager<S> {
 }
 
 impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
-    fn load_storage(&self, contract: ContractAddress, key: &[u8]) -> StateAccessResult<Option<Vec<u8>>> {
+    fn load_storage(&self, dot: DotAddress, key: &[u8]) -> StateAccessResult<Option<Vec<u8>>> {
         // Check cache first
-        if let Some(cached_value) = self.get_from_cache(contract, key) {
+        if let Some(cached_value) = self.get_from_cache(dot, key) {
             return Ok(cached_value);
         }
 
         // Generate MPT key
-        let mpt_key = self.generate_mpt_key(contract, key)?;
+        let mpt_key = self.generate_mpt_key(dot, key)?;
 
         // Read from trie
         let trie = self.trie.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
@@ -354,14 +354,14 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         let result = trie.get(&mpt_key).map_err(|e| StateAccessError::StorageError(e.to_string()))?.map(|value| value);
 
         // Update cache
-        self.update_cache(contract, key, result.clone());
+        self.update_cache(dot, key, result.clone());
 
         Ok(result)
     }
 
-    fn store_storage(&mut self, contract: ContractAddress, key: &[u8], value: &[u8]) -> StateAccessResult<()> {
+    fn store_storage(&mut self, dot: DotAddress, key: &[u8], value: &[u8]) -> StateAccessResult<()> {
         // Generate MPT key
-        let mpt_key = self.generate_mpt_key(contract, key)?;
+        let mpt_key = self.generate_mpt_key(dot, key)?;
 
         // Store in trie
         let mut trie = self.trie.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
@@ -370,19 +370,19 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         trie.put(mpt_key, mpt_value).map_err(|e| StateAccessError::StorageError(e.to_string()))?;
 
         // Invalidate cache
-        self.invalidate_cache(contract, key);
+        self.invalidate_cache(dot, key);
 
         Ok(())
     }
 
-    fn storage_exists(&self, contract: ContractAddress, key: &[u8]) -> StateAccessResult<bool> {
+    fn storage_exists(&self, dot: DotAddress, key: &[u8]) -> StateAccessResult<bool> {
         // Check cache first
-        if let Some(cached_value) = self.get_from_cache(contract, key) {
+        if let Some(cached_value) = self.get_from_cache(dot, key) {
             return Ok(cached_value.is_some());
         }
 
         // Generate MPT key
-        let mpt_key = self.generate_mpt_key(contract, key)?;
+        let mpt_key = self.generate_mpt_key(dot, key)?;
 
         // Check existence in trie
         let trie = self.trie.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
@@ -392,16 +392,16 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         Ok(exists)
     }
 
-    fn storage_size(&self, contract: ContractAddress, key: &[u8]) -> StateAccessResult<usize> {
-        match self.load_storage(contract, key)? {
+    fn storage_size(&self, dot: DotAddress, key: &[u8]) -> StateAccessResult<usize> {
+        match self.load_storage(dot, key)? {
             Some(value) => Ok(value.len()),
             None => Ok(0),
         }
     }
 
-    fn clear_storage(&mut self, contract: ContractAddress, key: &[u8]) -> StateAccessResult<()> {
+    fn clear_storage(&mut self, dot: DotAddress, key: &[u8]) -> StateAccessResult<()> {
         // Generate MPT key
-        let mpt_key = self.generate_mpt_key(contract, key)?;
+        let mpt_key = self.generate_mpt_key(dot, key)?;
 
         // Remove from trie
         let mut trie = self.trie.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
@@ -409,12 +409,12 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         trie.delete(&mpt_key).map_err(|e| StateAccessError::StorageError(e.to_string()))?;
 
         // Invalidate cache
-        self.invalidate_cache(contract, key);
+        self.invalidate_cache(dot, key);
 
         Ok(())
     }
 
-    fn multi_load(&self, contract: ContractAddress, keys: &[Vec<u8>]) -> StateAccessResult<Vec<Option<Vec<u8>>>> {
+    fn multi_load(&self, dot: DotAddress, keys: &[Vec<u8>]) -> StateAccessResult<Vec<Option<Vec<u8>>>> {
         if keys.len() > self.config.max_batch_size {
             return Err(StateAccessError::BatchTooLarge {
                 size: keys.len(),
@@ -425,14 +425,14 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         let mut results = Vec::with_capacity(keys.len());
 
         for key in keys {
-            let result = self.load_storage(contract, key)?;
+            let result = self.load_storage(dot, key)?;
             results.push(result);
         }
 
         Ok(results)
     }
 
-    fn multi_store(&mut self, contract: ContractAddress, entries: &[(Vec<u8>, Vec<u8>)]) -> StateAccessResult<()> {
+    fn multi_store(&mut self, dot: DotAddress, entries: &[(Vec<u8>, Vec<u8>)]) -> StateAccessResult<()> {
         if entries.len() > self.config.max_batch_size {
             return Err(StateAccessError::BatchTooLarge {
                 size: entries.len(),
@@ -441,13 +441,13 @@ impl<S: NodeStorage> StateAccessInterface for StateAccessManager<S> {
         }
 
         for (key, value) in entries {
-            self.store_storage(contract, key, value)?;
+            self.store_storage(dot, key, value)?;
         }
 
         Ok(())
     }
 
-    fn get_storage_keys(&self, dot: ContractAddress, start_key: Option<&[u8]>, limit: usize) -> StateAccessResult<Vec<Vec<u8>>> {
+    fn get_storage_keys(&self, dot: DotAddress, start_key: Option<&[u8]>, limit: usize) -> StateAccessResult<Vec<Vec<u8>>> {
         // Generate dot prefix for filtering keys
         let dot_prefix = self.generate_dot_prefix(dot)?;
 
@@ -527,16 +527,16 @@ impl StateCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dotdb_core::state::{ContractStorageLayout, StorageVariableType, create_in_memory_mpt};
+    use dotdb_core::state::{DotStorageLayout, StorageVariableType, create_in_memory_mpt};
 
     fn create_test_manager() -> StateAccessManager<dotdb_core::state::db_interface::MptStorageAdapter> {
         let trie = create_in_memory_mpt().unwrap();
         StateAccessManager::new(trie)
     }
 
-    fn create_test_layout() -> ContractStorageLayout {
-        let contract_addr = [1u8; 20];
-        let mut layout = ContractStorageLayout::new(contract_addr);
+    fn create_test_layout() -> DotStorageLayout {
+        let dot_addr = [1u8; 20];
+        let mut layout = DotStorageLayout::new(dot_addr);
         layout.add_variable("balance".to_string(), StorageVariableType::Simple).unwrap();
         layout
     }
@@ -552,62 +552,62 @@ mod tests {
     #[test]
     fn test_layout_registration() {
         let manager = create_test_manager();
-        let contract_addr = [1u8; 20];
+        let dot_addr = [1u8; 20];
         let layout = create_test_layout();
 
-        assert!(manager.register_layout(contract_addr, layout).is_ok());
-        assert!(manager.get_layout(contract_addr).is_ok());
+        assert!(manager.register_layout(dot_addr, layout).is_ok());
+        assert!(manager.get_layout(dot_addr).is_ok());
     }
 
     #[test]
     fn test_layout_not_found() {
         let manager = create_test_manager();
-        let contract_addr = [1u8; 20];
+        let dot_addr = [1u8; 20];
 
-        assert!(matches!(manager.get_layout(contract_addr), Err(StateAccessError::LayoutNotFound(_))));
+        assert!(matches!(manager.get_layout(dot_addr), Err(StateAccessError::LayoutNotFound(_))));
     }
 
     #[test]
     fn test_storage_operations() {
         let mut manager = create_test_manager();
-        let contract_addr = [1u8; 20];
+        let dot_addr = [1u8; 20];
         let layout = create_test_layout();
 
         // Register layout
-        manager.register_layout(contract_addr, layout).unwrap();
+        manager.register_layout(dot_addr, layout).unwrap();
 
         // Test key and value
         let key = vec![0u8; 32];
         let value = b"test_value";
 
         // Initially should not exist
-        assert!(!manager.storage_exists(contract_addr, &key).unwrap());
-        assert_eq!(manager.storage_size(contract_addr, &key).unwrap(), 0);
-        assert!(manager.load_storage(contract_addr, &key).unwrap().is_none());
+        assert!(!manager.storage_exists(dot_addr, &key).unwrap());
+        assert_eq!(manager.storage_size(dot_addr, &key).unwrap(), 0);
+        assert!(manager.load_storage(dot_addr, &key).unwrap().is_none());
 
         // Store value
-        manager.store_storage(contract_addr, &key, value).unwrap();
+        manager.store_storage(dot_addr, &key, value).unwrap();
 
         // Should now exist
-        assert!(manager.storage_exists(contract_addr, &key).unwrap());
-        assert_eq!(manager.storage_size(contract_addr, &key).unwrap(), value.len());
-        assert_eq!(manager.load_storage(contract_addr, &key).unwrap().unwrap(), value);
+        assert!(manager.storage_exists(dot_addr, &key).unwrap());
+        assert_eq!(manager.storage_size(dot_addr, &key).unwrap(), value.len());
+        assert_eq!(manager.load_storage(dot_addr, &key).unwrap().unwrap(), value);
 
         // Clear value
-        manager.clear_storage(contract_addr, &key).unwrap();
+        manager.clear_storage(dot_addr, &key).unwrap();
 
         // Should be gone
-        assert!(!manager.storage_exists(contract_addr, &key).unwrap());
-        assert!(manager.load_storage(contract_addr, &key).unwrap().is_none());
+        assert!(!manager.storage_exists(dot_addr, &key).unwrap());
+        assert!(manager.load_storage(dot_addr, &key).unwrap().is_none());
     }
 
     #[test]
     fn test_multi_operations() {
         let mut manager = create_test_manager();
-        let contract_addr = [1u8; 20];
+        let dot_addr = [1u8; 20];
         let layout = create_test_layout();
 
-        manager.register_layout(contract_addr, layout).unwrap();
+        manager.register_layout(dot_addr, layout).unwrap();
 
         // Prepare test data
         let entries = vec![(vec![0u8; 32], b"value1".to_vec()), (vec![1u8; 32], b"value2".to_vec()), (vec![2u8; 32], b"value3".to_vec())];
@@ -615,10 +615,10 @@ mod tests {
         let keys: Vec<Vec<u8>> = entries.iter().map(|(k, _)| k.clone()).collect();
 
         // Multi store
-        manager.multi_store(contract_addr, &entries).unwrap();
+        manager.multi_store(dot_addr, &entries).unwrap();
 
         // Multi load
-        let results = manager.multi_load(contract_addr, &keys).unwrap();
+        let results = manager.multi_load(dot_addr, &keys).unwrap();
 
         assert_eq!(results.len(), 3);
         for (i, result) in results.iter().enumerate() {
@@ -629,10 +629,10 @@ mod tests {
     #[test]
     fn test_batch_size_limits() {
         let mut manager = create_test_manager();
-        let contract_addr = [1u8; 20];
+        let dot_addr = [1u8; 20];
         let layout = create_test_layout();
 
-        manager.register_layout(contract_addr, layout).unwrap();
+        manager.register_layout(dot_addr, layout).unwrap();
 
         // Create oversized batch
         let large_batch: Vec<(Vec<u8>, Vec<u8>)> = (0..200).map(|i| (vec![i as u8; 32], vec![i as u8])).collect();
@@ -640,45 +640,45 @@ mod tests {
         let large_keys: Vec<Vec<u8>> = (0..200).map(|i| vec![i as u8; 32]).collect();
 
         // Should fail due to batch size
-        assert!(matches!(manager.multi_store(contract_addr, &large_batch), Err(StateAccessError::BatchTooLarge { .. })));
+        assert!(matches!(manager.multi_store(dot_addr, &large_batch), Err(StateAccessError::BatchTooLarge { .. })));
 
-        assert!(matches!(manager.multi_load(contract_addr, &large_keys), Err(StateAccessError::BatchTooLarge { .. })));
+        assert!(matches!(manager.multi_load(dot_addr, &large_keys), Err(StateAccessError::BatchTooLarge { .. })));
     }
 
     #[test]
     fn test_invalid_key_format() {
         let manager = create_test_manager();
-        let contract_addr = [1u8; 20];
+        let dot_addr = [1u8; 20];
         let layout = create_test_layout();
 
-        manager.register_layout(contract_addr, layout).unwrap();
+        manager.register_layout(dot_addr, layout).unwrap();
 
         // Invalid key length
         let invalid_key = vec![0u8; 16]; // Should be 32 bytes
 
-        assert!(matches!(manager.load_storage(contract_addr, &invalid_key), Err(StateAccessError::InvalidKey(_))));
+        assert!(matches!(manager.load_storage(dot_addr, &invalid_key), Err(StateAccessError::InvalidKey(_))));
     }
 
     #[test]
     fn test_cache_functionality() {
         let mut manager = create_test_manager();
-        let contract_addr = [1u8; 20];
+        let dot_addr = [1u8; 20];
         let layout = create_test_layout();
 
-        manager.register_layout(contract_addr, layout).unwrap();
+        manager.register_layout(dot_addr, layout).unwrap();
 
         let key = vec![0u8; 32];
         let value = b"cached_value";
 
         // Store value
-        manager.store_storage(contract_addr, &key, value).unwrap();
+        manager.store_storage(dot_addr, &key, value).unwrap();
 
         // First load should populate cache
-        let result1 = manager.load_storage(contract_addr, &key).unwrap();
+        let result1 = manager.load_storage(dot_addr, &key).unwrap();
         assert_eq!(result1.unwrap(), value);
 
         // Second load should use cache (we can't directly test this without cache statistics)
-        let result2 = manager.load_storage(contract_addr, &key).unwrap();
+        let result2 = manager.load_storage(dot_addr, &key).unwrap();
         assert_eq!(result2.unwrap(), value);
     }
 
@@ -695,17 +695,17 @@ mod tests {
     #[test]
     fn test_cache_key_ordering() {
         let key1 = CacheKey {
-            contract: [1u8; 20],
+            dot: [1u8; 20],
             storage_key: vec![0u8; 32],
         };
 
         let key2 = CacheKey {
-            contract: [1u8; 20],
+            dot: [1u8; 20],
             storage_key: vec![1u8; 32],
         };
 
         let key3 = CacheKey {
-            contract: [2u8; 20],
+            dot: [2u8; 20],
             storage_key: vec![0u8; 32],
         };
 
@@ -716,7 +716,7 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let error = StateAccessError::ContractNotFound([1u8; 20]);
+        let error = StateAccessError::DotNotFound([1u8; 20]);
         assert!(error.to_string().contains("Contract not found"));
 
         let error = StateAccessError::BatchTooLarge { size: 200, max: 100 };
