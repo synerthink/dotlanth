@@ -75,7 +75,7 @@ impl MerkleNode {
 }
 
 /// Merkle proof for a specific key
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MerkleProof {
     /// Key being proven
     pub key: StateKey,
@@ -109,6 +109,7 @@ impl MerkleProof {
 }
 
 /// Merkle tree for state verification
+#[derive(Debug)]
 pub struct MerkleTree {
     /// Root node of the tree
     root: Option<MerkleNode>,

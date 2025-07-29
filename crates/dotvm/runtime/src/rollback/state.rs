@@ -173,14 +173,14 @@ mod tests {
     // Mock implementation of CheckpointManager for testing
     struct MockCheckpointManager {
         checkpoints: HashMap<String, Checkpoint>,
-        applied_checkpoint: Option<String>,
+        applied_checkpoint: Arc<Mutex<Option<String>>>,
     }
 
     impl MockCheckpointManager {
         fn new() -> Self {
             Self {
                 checkpoints: HashMap::new(),
-                applied_checkpoint: None,
+                applied_checkpoint: Arc::new(Mutex::new(None)),
             }
         }
 
@@ -196,7 +196,7 @@ mod tests {
         }
 
         fn get_applied_checkpoint(&self) -> Option<String> {
-            self.applied_checkpoint.clone()
+            self.applied_checkpoint.lock().unwrap().clone()
         }
     }
 
@@ -214,12 +214,7 @@ mod tests {
         }
 
         fn apply_checkpoint(&self, checkpoint: &Checkpoint) -> RollbackResult<()> {
-            // In a real implementation, this would apply the state to the system
-            let manager = self as *const Self as *mut MockCheckpointManager;
-            // This is unsafe but acceptable for test purposes
-            unsafe {
-                (*manager).applied_checkpoint = Some(checkpoint.id.clone());
-            }
+            *self.applied_checkpoint.lock().unwrap() = Some(checkpoint.id.clone());
             Ok(())
         }
 

@@ -24,9 +24,12 @@ use crate::opcode::arithmetic_opcodes::ArithmeticOpcode;
 use crate::opcode::control_flow_opcodes::ControlFlowOpcode;
 use crate::opcode::db_opcodes::DatabaseOpcode;
 use crate::opcode::stack_opcodes::{StackInstruction, StackOpcode};
+use crate::opcode::state_opcodes::StateOpcode;
 use crate::vm::database_bridge::DatabaseBridge;
 use crate::vm::database_executor::DatabaseOpcodeExecutor;
 use crate::vm::stack::{OperandStack, StackError, StackValue};
+use crate::vm::state_executor::{MerkleOperation, SnapshotId, StateOpcodeExecutor};
+use crate::vm::state_management::{StateKey, StateValue};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -105,6 +108,8 @@ pub struct VmExecutor {
     database_bridge: DatabaseBridge,
     /// Database opcode executor for new key-value operations
     database_executor: Option<DatabaseOpcodeExecutor>,
+    /// State opcode executor for advanced state management
+    state_executor: Option<StateOpcodeExecutor>,
 }
 
 impl VmExecutor {
@@ -116,6 +121,7 @@ impl VmExecutor {
             debug_info: DebugInfo::new(),
             database_bridge: DatabaseBridge::new(),
             database_executor: None,
+            state_executor: None,
         }
     }
 
@@ -127,12 +133,19 @@ impl VmExecutor {
             debug_info: DebugInfo::new(),
             database_bridge,
             database_executor: None,
+            state_executor: None,
         }
     }
 
     /// Set the database executor for new key-value operations
     pub fn with_database_executor(mut self, database_executor: DatabaseOpcodeExecutor) -> Self {
         self.database_executor = Some(database_executor);
+        self
+    }
+
+    /// Set the state executor for advanced state management operations
+    pub fn with_state_executor(mut self, state_executor: StateOpcodeExecutor) -> Self {
+        self.state_executor = Some(state_executor);
         self
     }
 
@@ -269,6 +282,10 @@ impl VmExecutor {
             return Ok(Instruction::ControlFlow(cf_opcode));
         }
 
+        if let Ok(state_opcode) = StateOpcode::from_u8(opcode_byte) {
+            return Ok(Instruction::State(state_opcode));
+        }
+
         Err(ExecutorError::UnknownOpcode(opcode_byte))
     }
 
@@ -286,6 +303,9 @@ impl VmExecutor {
             }
             Instruction::ControlFlow(cf_opcode) => {
                 self.execute_control_flow_instruction(*cf_opcode)?;
+            }
+            Instruction::State(state_opcode) => {
+                self.execute_state_instruction(*state_opcode)?;
             }
         }
 
@@ -760,6 +780,120 @@ impl VmExecutor {
         Ok(())
     }
 
+    /// Execute a state management instruction
+    fn execute_state_instruction(&mut self, opcode: StateOpcode) -> Result<(), ExecutorError> {
+        let state_executor = self.state_executor.as_mut().ok_or_else(|| ExecutorError::DatabaseError("State executor not configured".to_string()))?;
+
+        match opcode {
+            StateOpcode::StateRead => {
+                // Stack: [state_key] -> [value] or [null]
+                let key_bytes = self.context.stack.pop()?.as_bytes_value();
+                let state_key = StateKey::new(key_bytes);
+
+                match state_executor.execute_state_read(state_key) {
+                    Ok(Some(value)) => {
+                        self.context.stack.push(StackValue::Bytes(value.as_bytes().to_vec()))?;
+                    }
+                    Ok(None) => {
+                        self.context.stack.push(StackValue::Null)?;
+                    }
+                    Err(e) => {
+                        return Err(ExecutorError::DatabaseError(format!("State read error: {}", e)));
+                    }
+                }
+            }
+
+            StateOpcode::StateWrite => {
+                // Stack: [state_key, value] -> []
+                let value_bytes = self.context.stack.pop()?.as_bytes_value();
+                let key_bytes = self.context.stack.pop()?.as_bytes_value();
+
+                let state_key = StateKey::new(key_bytes);
+                let state_value = StateValue::new(value_bytes);
+
+                if let Err(e) = state_executor.execute_state_write(state_key, state_value) {
+                    return Err(ExecutorError::DatabaseError(format!("State write error: {}", e)));
+                }
+            }
+
+            StateOpcode::StateCommit => {
+                // Stack: [] -> [state_root_hash]
+                match state_executor.execute_state_commit() {
+                    Ok(root_hash) => {
+                        self.context.stack.push(StackValue::Bytes(root_hash))?;
+                    }
+                    Err(e) => {
+                        return Err(ExecutorError::DatabaseError(format!("State commit error: {}", e)));
+                    }
+                }
+            }
+
+            StateOpcode::StateRollback => {
+                // Stack: [] -> []
+                if let Err(e) = state_executor.execute_state_rollback() {
+                    return Err(ExecutorError::DatabaseError(format!("State rollback error: {}", e)));
+                }
+            }
+
+            StateOpcode::StateMerkle => {
+                // Stack: [operation_type, key] -> [proof_data] or [verification_result]
+                let key_bytes = self.context.stack.pop()?.as_bytes_value();
+                let operation_type = self.context.stack.pop()?.as_u32_value();
+
+                let state_key = StateKey::new(key_bytes);
+
+                let operation = match operation_type {
+                    0 => MerkleOperation::GenerateProof { key: state_key },
+                    1 => {
+                        // For verification, we need additional data from the stack
+                        // This is a simplified implementation
+                        return Err(ExecutorError::DatabaseError("Merkle verification not fully implemented".to_string()));
+                    }
+                    _ => {
+                        return Err(ExecutorError::DatabaseError("Invalid Merkle operation type".to_string()));
+                    }
+                };
+
+                match state_executor.execute_state_merkle(operation) {
+                    Ok(result) => {
+                        self.context.stack.push(StackValue::Bytes(result))?;
+                    }
+                    Err(e) => {
+                        return Err(ExecutorError::DatabaseError(format!("Merkle operation error: {}", e)));
+                    }
+                }
+            }
+
+            StateOpcode::StateSnapshot => {
+                // Stack: [snapshot_id] -> []
+                let snapshot_id_bytes = self.context.stack.pop()?.as_bytes_value();
+                let snapshot_id = String::from_utf8(snapshot_id_bytes).map_err(|e| ExecutorError::DatabaseError(format!("Invalid snapshot ID: {}", e)))?;
+
+                if let Err(e) = state_executor.execute_state_snapshot(snapshot_id) {
+                    return Err(ExecutorError::DatabaseError(format!("Snapshot creation error: {}", e)));
+                }
+            }
+
+            StateOpcode::StateRestore => {
+                // Stack: [snapshot_id] -> []
+                let snapshot_id_bytes = self.context.stack.pop()?.as_bytes_value();
+                let snapshot_id = String::from_utf8(snapshot_id_bytes).map_err(|e| ExecutorError::DatabaseError(format!("Invalid snapshot ID: {}", e)))?;
+
+                if let Err(e) = state_executor.execute_state_restore(snapshot_id) {
+                    return Err(ExecutorError::DatabaseError(format!("Snapshot restore error: {}", e)));
+                }
+            }
+
+            // Handle legacy opcodes (these would be implemented separately)
+            _ => {
+                return Err(ExecutorError::DatabaseError(format!("Legacy state opcode not implemented: {:?}", opcode)));
+            }
+        }
+
+        self.context.pc += 1; // State opcodes have no operands
+        Ok(())
+    }
+
     /// Add two stack values
     fn add_values(&self, a: &StackValue, b: &StackValue) -> Result<StackValue, ExecutorError> {
         match (a, b) {
@@ -916,6 +1050,7 @@ pub enum Instruction {
     Arithmetic(ArithmeticOpcode),
     Database(DatabaseOpcode),
     ControlFlow(ControlFlowOpcode),
+    State(StateOpcode),
 }
 
 /// Result of executing bytecode

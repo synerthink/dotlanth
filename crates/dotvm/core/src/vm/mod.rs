@@ -26,6 +26,7 @@ pub mod paradot_executor;
 pub mod paradot_integration;
 pub mod stack;
 pub mod state_access;
+pub mod state_executor;
 pub mod state_management;
 pub mod state_storage;
 pub mod state_transitions;
