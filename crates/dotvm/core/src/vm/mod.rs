@@ -22,6 +22,8 @@ pub mod errors;
 pub mod execution_controller;
 pub mod executor;
 pub mod multi_arch_executor;
+pub mod paradot_executor;
+pub mod paradot_integration;
 pub mod stack;
 pub mod state_access;
 pub mod state_management;
