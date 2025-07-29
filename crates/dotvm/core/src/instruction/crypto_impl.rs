@@ -17,9 +17,9 @@
 //! Concrete implementations of cryptographic providers
 
 use super::crypto_provider::*;
-use aes_gcm::{AeadInPlace, Aes256Gcm, KeyInit, Nonce};
+use aes_gcm::{AeadInOut, Aes256Gcm, KeyInit, Nonce};
 use blake3::Hasher as Blake3Hasher;
-use chacha20poly1305::{ChaCha20Poly1305, KeyInit as ChaChaKeyInit};
+use chacha20poly1305::{AeadInOut as ChaChaAeadInOut, ChaCha20Poly1305, KeyInit as ChaChaKeyInit};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use k256::ecdsa::{Signature as EcdsaSignature, SigningKey as EcdsaSigningKey, VerifyingKey as EcdsaVerifyingKey};
 use plonky2::field::goldilocks_field::GoldilocksField;
