@@ -102,21 +102,19 @@
 //! for different failure scenarios. See individual component
 //! documentation for detailed error handling information.
 
-pub mod dot_storage_layout;
 pub mod db_interface;
 pub mod diff;
+pub mod dot_storage_layout;
 pub mod mpt;
 pub mod pruning;
 pub mod snapshot;
 pub mod versioning;
 
 // Re-export commonly used types
-pub use dot_storage_layout::{DotAddress, DotStorageLayout, StorageLayoutError, StorageValue, StorageVariable, StorageVariableType};
 pub use db_interface::{Database, DbConfig, DbError, MptStorageAdapter, create_in_memory_mpt, create_persistent_mpt};
 pub use diff::StateDiff;
+pub use dot_storage_layout::{DotAddress, DotStorageLayout, StorageLayoutError, StorageValue, StorageVariable, StorageVariableType};
 pub use mpt::{MPTError, MerklePatriciaTrie, StateProof};
 pub use pruning::{PruningPolicy, StatePruner};
 pub use snapshot::{SnapshotManager, StateSnapshot};
-pub use versioning::{
-    DotStateVersion, DotUpgradeInfo, DotVersionManager, DotVersioningError, DotVersioningStatistics, LayoutChange, LayoutChangeType, StateVersionId, UpgradeType,
-};
+pub use versioning::{DotStateVersion, DotUpgradeInfo, DotVersionManager, DotVersioningError, DotVersioningStatistics, LayoutChange, LayoutChangeType, StateVersionId, UpgradeType};

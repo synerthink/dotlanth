@@ -425,14 +425,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     /// # Returns
     ///
     /// A Result containing the created snapshot or an error
-    pub fn create_dot_snapshot(
-        &mut self,
-        id: SnapshotId,
-        dot_address: DotAddress,
-        trie: &MerklePatriciaTrie<S>,
-        height: Option<u64>,
-        description: Option<String>,
-    ) -> SnapshotResult<StateSnapshot> {
+    pub fn create_dot_snapshot(&mut self, id: SnapshotId, dot_address: DotAddress, trie: &MerklePatriciaTrie<S>, height: Option<u64>, description: Option<String>) -> SnapshotResult<StateSnapshot> {
         // Check if snapshot already exists
         if self.snapshots.contains_key(&id) {
             return Err(SnapshotError::AlreadyExists(id));
@@ -485,14 +478,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
             .ok_or_else(|| SnapshotError::VersioningError(format!("Version not found: {version_id:?}")))?;
 
         // Create the snapshot with versioning information
-        let snapshot = StateSnapshot::new_with_version(
-            id.clone(),
-            version_id,
-            Some(dot_address),
-            trie.root_hash(),
-            dot_version.block_height,
-            Some(dot_version.description),
-        );
+        let snapshot = StateSnapshot::new_with_version(id.clone(), version_id, Some(dot_address), trie.root_hash(), dot_version.block_height, Some(dot_version.description));
 
         // Acquire snapshot reference in version manager
         self.version_manager.acquire_snapshot(dot_address, version_id)?;

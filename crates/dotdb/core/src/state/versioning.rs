@@ -210,14 +210,7 @@ impl DotStateVersion {
     }
 
     /// Create a new version for contract upgrade
-    pub fn new_upgrade(
-        version_id: StateVersionId,
-        mpt_root_hash: Hash,
-        dot_address: DotAddress,
-        parent_version: StateVersionId,
-        upgrade_info: DotUpgradeInfo,
-        description: String,
-    ) -> Self {
+    pub fn new_upgrade(version_id: StateVersionId, mpt_root_hash: Hash, dot_address: DotAddress, parent_version: StateVersionId, upgrade_info: DotUpgradeInfo, description: String) -> Self {
         Self {
             version_id,
             mpt_root_hash,
@@ -320,13 +313,7 @@ impl DotVersionManager {
     }
 
     /// Create a new version for contract upgrade
-    pub fn create_upgrade_version(
-        &self,
-        dot_address: DotAddress,
-        mpt_root_hash: Hash,
-        upgrade_info: DotUpgradeInfo,
-        description: String,
-    ) -> Result<StateVersionId, DotVersioningError> {
+    pub fn create_upgrade_version(&self, dot_address: DotAddress, mpt_root_hash: Hash, upgrade_info: DotUpgradeInfo, description: String) -> Result<StateVersionId, DotVersioningError> {
         let current_version = {
             let current_versions = self.current_versions.read().unwrap();
             current_versions.get(&dot_address).copied().ok_or(DotVersioningError::DotNotFound(dot_address))?
