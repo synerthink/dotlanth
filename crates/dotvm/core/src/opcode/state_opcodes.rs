@@ -79,6 +79,42 @@ pub enum StateOpcode {
     /// Stack: [start_key, max_count] -> [key_count, key1, key2, ...]
     /// Gas: BASE_GAS + (result_count * STORAGE_ACCESS_GAS)
     SKEYS = 0x5B,
+
+    // Advanced State Management Opcodes (ACID Operations)
+    /// Read contract state with MVCC isolation
+    /// Stack: [state_key] -> [value] or [null]
+    /// Gas: BASE_GAS + STORAGE_ACCESS_GAS + MVCC_READ_GAS
+    StateRead = 0x5C,
+
+    /// Write contract state with MVCC versioning
+    /// Stack: [state_key, value] -> []
+    /// Gas: BASE_GAS + STORAGE_WRITE_GAS + MVCC_WRITE_GAS
+    StateWrite = 0x5D,
+
+    /// Commit pending state changes atomically
+    /// Stack: [] -> [state_root_hash]
+    /// Gas: BASE_GAS + COMMIT_GAS + (MERKLE_UPDATE_GAS * changed_keys)
+    StateCommit = 0x5E,
+
+    /// Rollback state changes to previous consistent state
+    /// Stack: [] -> []
+    /// Gas: BASE_GAS + ROLLBACK_GAS
+    StateRollback = 0x5F,
+
+    /// Perform Merkle tree operations (proof generation/verification)
+    /// Stack: [operation_type, key] -> [proof_data] or [verification_result]
+    /// Gas: BASE_GAS + MERKLE_OPERATION_GAS
+    StateMerkle = 0x60,
+
+    /// Create a point-in-time state snapshot
+    /// Stack: [snapshot_id] -> []
+    /// Gas: BASE_GAS + SNAPSHOT_CREATE_GAS
+    StateSnapshot = 0x61,
+
+    /// Restore state from a snapshot
+    /// Stack: [snapshot_id] -> []
+    /// Gas: BASE_GAS + SNAPSHOT_RESTORE_GAS
+    StateRestore = 0x62,
 }
 
 /// Gas costs for state operations
@@ -98,6 +134,24 @@ pub struct StateGasCosts {
     pub storage_clear_refund: u64,
     /// Maximum gas for iteration operations
     pub max_iteration_gas: u64,
+
+    // Advanced State Management Gas Costs
+    /// Additional gas cost for MVCC read operations
+    pub mvcc_read_gas: u64,
+    /// Additional gas cost for MVCC write operations
+    pub mvcc_write_gas: u64,
+    /// Gas cost for committing state changes
+    pub commit_gas: u64,
+    /// Gas cost for rolling back state changes
+    pub rollback_gas: u64,
+    /// Gas cost per key for Merkle tree updates during commit
+    pub merkle_update_gas: u64,
+    /// Gas cost for Merkle tree operations (proof generation/verification)
+    pub merkle_operation_gas: u64,
+    /// Gas cost for creating snapshots
+    pub snapshot_create_gas: u64,
+    /// Gas cost for restoring from snapshots
+    pub snapshot_restore_gas: u64,
 }
 
 impl Default for StateGasCosts {
@@ -110,6 +164,16 @@ impl Default for StateGasCosts {
             storage_clear_gas: 5000,
             storage_clear_refund: 15000,
             max_iteration_gas: 100000,
+
+            // Advanced State Management Gas Costs
+            mvcc_read_gas: 100,
+            mvcc_write_gas: 300,
+            commit_gas: 1000,
+            rollback_gas: 500,
+            merkle_update_gas: 150,
+            merkle_operation_gas: 800,
+            snapshot_create_gas: 2000,
+            snapshot_restore_gas: 1500,
         }
     }
 }
@@ -213,6 +277,13 @@ impl StateOpcode {
             0x59 => Ok(StateOpcode::SMULTILOAD),
             0x5A => Ok(StateOpcode::SMULTISTORE),
             0x5B => Ok(StateOpcode::SKEYS),
+            0x5C => Ok(StateOpcode::StateRead),
+            0x5D => Ok(StateOpcode::StateWrite),
+            0x5E => Ok(StateOpcode::StateCommit),
+            0x5F => Ok(StateOpcode::StateRollback),
+            0x60 => Ok(StateOpcode::StateMerkle),
+            0x61 => Ok(StateOpcode::StateSnapshot),
+            0x62 => Ok(StateOpcode::StateRestore),
             _ => Err(StateOpcodeError::InvalidOpcode(byte)),
         }
     }
@@ -233,12 +304,22 @@ impl StateOpcode {
             StateOpcode::SMULTILOAD => "SMULTILOAD",
             StateOpcode::SMULTISTORE => "SMULTISTORE",
             StateOpcode::SKEYS => "SKEYS",
+            StateOpcode::StateRead => "StateRead",
+            StateOpcode::StateWrite => "StateWrite",
+            StateOpcode::StateCommit => "StateCommit",
+            StateOpcode::StateRollback => "StateRollback",
+            StateOpcode::StateMerkle => "StateMerkle",
+            StateOpcode::StateSnapshot => "StateSnapshot",
+            StateOpcode::StateRestore => "StateRestore",
         }
     }
 
     /// Check if the opcode modifies state
     pub fn is_state_modifying(self) -> bool {
-        matches!(self, StateOpcode::SSTORE | StateOpcode::SCLEAR | StateOpcode::SMULTISTORE)
+        matches!(
+            self,
+            StateOpcode::SSTORE | StateOpcode::SCLEAR | StateOpcode::SMULTISTORE | StateOpcode::StateWrite | StateOpcode::StateCommit | StateOpcode::StateRollback | StateOpcode::StateRestore
+        )
     }
 
     /// Get the minimum stack size required for this opcode
@@ -248,6 +329,11 @@ impl StateOpcode {
             StateOpcode::SSTORE => 2,
             StateOpcode::SKEYS => 2,
             StateOpcode::SMULTILOAD | StateOpcode::SMULTISTORE => 1, // At least count
+            StateOpcode::StateRead => 1,
+            StateOpcode::StateWrite => 2,
+            StateOpcode::StateCommit | StateOpcode::StateRollback => 0,
+            StateOpcode::StateMerkle => 2,                               // operation_type + key
+            StateOpcode::StateSnapshot | StateOpcode::StateRestore => 1, // snapshot_id
         }
     }
 
@@ -257,6 +343,12 @@ impl StateOpcode {
             StateOpcode::SLOAD | StateOpcode::SSIZE | StateOpcode::SEXISTS => 1,
             StateOpcode::SSTORE | StateOpcode::SCLEAR => 0,
             StateOpcode::SMULTILOAD | StateOpcode::SMULTISTORE | StateOpcode::SKEYS => 255, // Dynamic
+            StateOpcode::StateRead => 1,                                                    // [value] or [null]
+            StateOpcode::StateWrite => 0,                                                   // []
+            StateOpcode::StateCommit => 1,                                                  // [state_root_hash]
+            StateOpcode::StateRollback => 0,                                                // []
+            StateOpcode::StateMerkle => 1,                                                  // [proof_data] or [verification_result]
+            StateOpcode::StateSnapshot | StateOpcode::StateRestore => 0,                    // []
         }
     }
 
@@ -337,6 +429,19 @@ impl StateOpcode {
                 let max_gas = (max_count * context.gas_costs.storage_access_gas).min(context.gas_costs.max_iteration_gas);
                 Ok(base_cost + max_gas)
             }
+
+            // Advanced State Management Opcodes
+            StateOpcode::StateRead => Ok(base_cost + context.gas_costs.storage_access_gas + context.gas_costs.mvcc_read_gas),
+            StateOpcode::StateWrite => Ok(base_cost + context.gas_costs.storage_write_gas + context.gas_costs.mvcc_write_gas),
+            StateOpcode::StateCommit => {
+                // Gas cost depends on number of pending changes (simplified calculation)
+                let estimated_changes = 1; // In real implementation, this would be actual pending changes count
+                Ok(base_cost + context.gas_costs.commit_gas + (estimated_changes * context.gas_costs.merkle_update_gas))
+            }
+            StateOpcode::StateRollback => Ok(base_cost + context.gas_costs.rollback_gas),
+            StateOpcode::StateMerkle => Ok(base_cost + context.gas_costs.merkle_operation_gas),
+            StateOpcode::StateSnapshot => Ok(base_cost + context.gas_costs.snapshot_create_gas),
+            StateOpcode::StateRestore => Ok(base_cost + context.gas_costs.snapshot_restore_gas),
         }
     }
 }
@@ -493,6 +598,13 @@ mod tests {
         assert_eq!(StateOpcode::from_u8(0x59).unwrap(), StateOpcode::SMULTILOAD);
         assert_eq!(StateOpcode::from_u8(0x5A).unwrap(), StateOpcode::SMULTISTORE);
         assert_eq!(StateOpcode::from_u8(0x5B).unwrap(), StateOpcode::SKEYS);
+        assert_eq!(StateOpcode::from_u8(0x5C).unwrap(), StateOpcode::StateRead);
+        assert_eq!(StateOpcode::from_u8(0x5D).unwrap(), StateOpcode::StateWrite);
+        assert_eq!(StateOpcode::from_u8(0x5E).unwrap(), StateOpcode::StateCommit);
+        assert_eq!(StateOpcode::from_u8(0x5F).unwrap(), StateOpcode::StateRollback);
+        assert_eq!(StateOpcode::from_u8(0x60).unwrap(), StateOpcode::StateMerkle);
+        assert_eq!(StateOpcode::from_u8(0x61).unwrap(), StateOpcode::StateSnapshot);
+        assert_eq!(StateOpcode::from_u8(0x62).unwrap(), StateOpcode::StateRestore);
 
         assert!(StateOpcode::from_u8(0xFF).is_err());
     }
@@ -507,6 +619,13 @@ mod tests {
         assert_eq!(StateOpcode::SMULTILOAD.to_u8(), 0x59);
         assert_eq!(StateOpcode::SMULTISTORE.to_u8(), 0x5A);
         assert_eq!(StateOpcode::SKEYS.to_u8(), 0x5B);
+        assert_eq!(StateOpcode::StateRead.to_u8(), 0x5C);
+        assert_eq!(StateOpcode::StateWrite.to_u8(), 0x5D);
+        assert_eq!(StateOpcode::StateCommit.to_u8(), 0x5E);
+        assert_eq!(StateOpcode::StateRollback.to_u8(), 0x5F);
+        assert_eq!(StateOpcode::StateMerkle.to_u8(), 0x60);
+        assert_eq!(StateOpcode::StateSnapshot.to_u8(), 0x61);
+        assert_eq!(StateOpcode::StateRestore.to_u8(), 0x62);
     }
 
     #[test]
@@ -519,6 +638,13 @@ mod tests {
         assert_eq!(StateOpcode::SMULTILOAD.name(), "SMULTILOAD");
         assert_eq!(StateOpcode::SMULTISTORE.name(), "SMULTISTORE");
         assert_eq!(StateOpcode::SKEYS.name(), "SKEYS");
+        assert_eq!(StateOpcode::StateRead.name(), "StateRead");
+        assert_eq!(StateOpcode::StateWrite.name(), "StateWrite");
+        assert_eq!(StateOpcode::StateCommit.name(), "StateCommit");
+        assert_eq!(StateOpcode::StateRollback.name(), "StateRollback");
+        assert_eq!(StateOpcode::StateMerkle.name(), "StateMerkle");
+        assert_eq!(StateOpcode::StateSnapshot.name(), "StateSnapshot");
+        assert_eq!(StateOpcode::StateRestore.name(), "StateRestore");
     }
 
     #[test]
@@ -526,6 +652,13 @@ mod tests {
         assert!(!StateOpcode::SLOAD.is_state_modifying());
         assert!(StateOpcode::SSTORE.is_state_modifying());
         assert!(!StateOpcode::SSIZE.is_state_modifying());
+        assert!(!StateOpcode::StateRead.is_state_modifying());
+        assert!(StateOpcode::StateWrite.is_state_modifying());
+        assert!(StateOpcode::StateCommit.is_state_modifying());
+        assert!(StateOpcode::StateRollback.is_state_modifying());
+        assert!(!StateOpcode::StateMerkle.is_state_modifying());
+        assert!(!StateOpcode::StateSnapshot.is_state_modifying());
+        assert!(StateOpcode::StateRestore.is_state_modifying());
         assert!(!StateOpcode::SEXISTS.is_state_modifying());
         assert!(StateOpcode::SCLEAR.is_state_modifying());
         assert!(!StateOpcode::SMULTILOAD.is_state_modifying());
