@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pub mod async_runtime;
-pub mod contracts;
+pub mod dots;
 pub mod environment;
 pub mod events;
 pub mod execution_context;
