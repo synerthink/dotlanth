@@ -579,7 +579,20 @@ mod tests {
         assert_eq!(edge.waiter, 1);
         assert_eq!(edge.holder, 2);
         assert_eq!(edge.resource, PageId(100));
-        assert!(edge.wait_duration().as_nanos() > 0);
+
+        // Test that wait_start_time is set to a reasonable value
+        let now = Instant::now();
+        let time_diff = if now > edge.wait_start_time { now - edge.wait_start_time } else { edge.wait_start_time - now };
+
+        // The edge should have been created very recently (within 1 second)
+        assert!(time_diff < Duration::from_secs(1));
+
+        // Add a small but reliable delay to ensure measurable time has passed
+        std::thread::sleep(std::time::Duration::from_millis(1));
+
+        // Now the wait duration should be greater than 0
+        let duration = edge.wait_duration();
+        assert!(duration.as_nanos() > 0, "Wait duration should be > 0, got: {:?}", duration);
     }
 
     #[test]
