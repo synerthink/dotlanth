@@ -114,6 +114,7 @@ impl Snapshot {
 }
 
 /// Manager for creating and handling snapshots
+#[derive(Debug)]
 pub struct SnapshotManager {
     /// MVCC store reference for accessing state
     store: Arc<MVCCStore>,
