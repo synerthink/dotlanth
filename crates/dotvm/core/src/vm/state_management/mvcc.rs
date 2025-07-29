@@ -68,6 +68,7 @@ pub enum WriteOperation {
 }
 
 /// MVCC store implementation for maintaining versioned state data
+#[derive(Debug)]
 pub struct MVCCStore {
     /// The main storage for all versions of all keys
     versions: SharedMap<StateKey, Vec<VersionedValue>>,
