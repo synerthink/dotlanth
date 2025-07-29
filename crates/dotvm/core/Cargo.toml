@@ -13,6 +13,9 @@ thiserror.workspace = true
 tracing.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+bincode.workspace = true
 num-integer = "0.1.46"
 num-traits = "0.2.19"
 parking_lot = "0.12.3"
@@ -24,8 +27,8 @@ sha2 = "0.10.8"
 blake3 = "1.5"
 ring = "0.17"
 ed25519-dalek = { version = "2.1", features = ["rand_core"] }
-aes-gcm = "0.10"
-chacha20poly1305 = "0.10"
+aes-gcm = "=0.11.0-rc.0"
+chacha20poly1305 = "=0.11.0-rc.0"
 k256 = { version = "0.13", features = ["ecdsa", "sha256"] }
 rand_core = { version = "0.6", features = ["std"] }
 zeroize = "1.7"
@@ -37,9 +40,6 @@ sysinfo = "0.34.1"
 tempfile = "3.19.1"
 base64 = "0.22.1"
 hex = "0.4.3"
-serde.workspace = true
-serde_json.workspace = true
-bincode.workspace = true
 
 # ParaDot execution dependencies
 dashmap = "5.5"
