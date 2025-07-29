@@ -31,6 +31,14 @@ pub enum ParallelOpcode {
     Scan = 0x04,   // Parallel scan (prefix sum)
     Sort = 0x05,   // Parallel sort operation
 
+    // ParaDot Operations (New)
+    ParaDotSpawn = 0x08,   // Spawn a new ParaDot for parallel execution
+    ParaDotSync = 0x09,    // Synchronization primitives for ParaDots
+    ParaDotMessage = 0x0A, // Inter-ParaDot message passing
+    ParaDotJoin = 0x0B,    // Wait for ParaDot completion
+    Atomic = 0x0C,         // Atomic operations for lock-free programming
+    Barrier = 0x0D,        // Barrier synchronization for parallel coordination
+
     // Parallel arithmetic
     ParallelAdd = 0x10, // Parallel addition across multiple vectors
     ParallelMul = 0x11, // Parallel multiplication across multiple vectors
@@ -38,10 +46,10 @@ pub enum ParallelOpcode {
     ParallelSum = 0x13, // Parallel summation
 
     // Work distribution
-    Fork = 0x20,    // Fork execution into parallel threads
-    Join = 0x21,    // Join parallel threads
-    Barrier = 0x22, // Synchronization barrier
-    Spawn = 0x23,   // Spawn new parallel task
+    Fork = 0x20,        // Fork execution into parallel threads
+    Join = 0x21,        // Join parallel threads
+    WorkBarrier = 0x22, // Work synchronization barrier
+    Spawn = 0x23,       // Spawn new parallel task
 
     // Memory operations
     ParallelLoad = 0x30,  // Parallel memory load
@@ -140,6 +148,15 @@ impl ParallelOpcode {
 
             // Ternary operations
             ParallelOpcode::AtomicCas => 3,
+
+            // ParaDot Operations
+            ParallelOpcode::ParaDotSpawn => 2,
+            ParallelOpcode::ParaDotSync => 1,
+            ParallelOpcode::ParaDotMessage => 2,
+            ParallelOpcode::ParaDotJoin => 1,
+            ParallelOpcode::Atomic => 1,
+            ParallelOpcode::Barrier => 1,
+            ParallelOpcode::WorkBarrier => 0,
         }
     }
 
@@ -248,13 +265,21 @@ impl fmt::Display for ParallelOpcode {
             ParallelOpcode::Filter => write!(f, "par.filter"),
             ParallelOpcode::Scan => write!(f, "par.scan"),
             ParallelOpcode::Sort => write!(f, "par.sort"),
+
+            // ParaDot Operations
+            ParallelOpcode::ParaDotSpawn => write!(f, "paradot.spawn"),
+            ParallelOpcode::ParaDotSync => write!(f, "paradot.sync"),
+            ParallelOpcode::ParaDotMessage => write!(f, "paradot.message"),
+            ParallelOpcode::ParaDotJoin => write!(f, "paradot.join"),
+            ParallelOpcode::Atomic => write!(f, "paradot.atomic"),
+            ParallelOpcode::Barrier => write!(f, "paradot.barrier"),
             ParallelOpcode::ParallelAdd => write!(f, "par.add"),
             ParallelOpcode::ParallelMul => write!(f, "par.mul"),
             ParallelOpcode::ParallelDot => write!(f, "par.dot"),
             ParallelOpcode::ParallelSum => write!(f, "par.sum"),
             ParallelOpcode::Fork => write!(f, "par.fork"),
             ParallelOpcode::Join => write!(f, "par.join"),
-            ParallelOpcode::Barrier => write!(f, "par.barrier"),
+            ParallelOpcode::WorkBarrier => write!(f, "par.barrier"),
             ParallelOpcode::Spawn => write!(f, "par.spawn"),
             ParallelOpcode::ParallelLoad => write!(f, "par.load"),
             ParallelOpcode::ParallelStore => write!(f, "par.store"),
@@ -297,13 +322,22 @@ impl From<u8> for ParallelOpcode {
             0x03 => ParallelOpcode::Filter,
             0x04 => ParallelOpcode::Scan,
             0x05 => ParallelOpcode::Sort,
+
+            // ParaDot Operations
+            0x08 => ParallelOpcode::ParaDotSpawn,
+            0x09 => ParallelOpcode::ParaDotSync,
+            0x0A => ParallelOpcode::ParaDotMessage,
+            0x0B => ParallelOpcode::ParaDotJoin,
+            0x0C => ParallelOpcode::Atomic,
+            0x0D => ParallelOpcode::Barrier,
+
             0x10 => ParallelOpcode::ParallelAdd,
             0x11 => ParallelOpcode::ParallelMul,
             0x12 => ParallelOpcode::ParallelDot,
             0x13 => ParallelOpcode::ParallelSum,
             0x20 => ParallelOpcode::Fork,
             0x21 => ParallelOpcode::Join,
-            0x22 => ParallelOpcode::Barrier,
+            0x22 => ParallelOpcode::WorkBarrier,
             0x23 => ParallelOpcode::Spawn,
             0x30 => ParallelOpcode::ParallelLoad,
             0x31 => ParallelOpcode::ParallelStore,
