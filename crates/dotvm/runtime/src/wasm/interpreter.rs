@@ -829,7 +829,6 @@ impl WasmInterpreter {
     fn call_host_function(&mut self, host_func: &Box<dyn Fn(&[Value]) -> WasmResult<Vec<Value>> + Send + Sync>, args: &[Value], context: &mut WasmExecutionContext) -> WasmResult<Vec<Value>> {
         context.metrics.host_function_calls += 1;
 
-
         // Call the host function
         host_func(args)
     }

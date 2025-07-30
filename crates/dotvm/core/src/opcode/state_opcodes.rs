@@ -271,7 +271,6 @@ impl StateOpcode {
             StateOpcode::StateSnapshot | StateOpcode::StateRestore => 0,                    // []
         }
     }
-
 }
 
 impl StateOperationContext {
@@ -304,11 +303,7 @@ impl StateOperationContext {
 impl StateOperationResult {
     /// Create a successful result
     pub fn success(output: Vec<u8>) -> Self {
-        Self {
-            output,
-            success: true,
-            error: None,
-        }
+        Self { output, success: true, error: None }
     }
 
     /// Create an error result
@@ -475,7 +470,6 @@ mod tests {
         assert_eq!(StateOpcode::SKEYS.min_stack_size(), 2);
     }
 
-
     #[test]
     fn test_execution_helpers() {
         use execution::*;
@@ -514,7 +508,6 @@ mod tests {
         assert!(validate_stack(StateOpcode::SMULTILOAD, &stack).is_err());
     }
 
-
     #[test]
     fn test_storage_change_types() {
         assert_eq!(StorageChange::Set, StorageChange::Set);
@@ -524,7 +517,6 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-
         let error = StateOpcodeError::InvalidOpcode(0xFF);
         assert_eq!(error.to_string(), "Invalid opcode: 0xff");
 

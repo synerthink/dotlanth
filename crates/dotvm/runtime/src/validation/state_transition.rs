@@ -128,7 +128,6 @@ pub trait TransitionRule: Send + Sync {
     fn is_critical(&self) -> bool {
         true
     }
-
 }
 
 /// Result of applying a single validation rule
@@ -273,7 +272,6 @@ impl StateTransitionValidator {
             warnings: Vec::new(),
         };
 
-
         // Apply each validation rule
         for rule in &self.rules {
             // Apply the rule
@@ -402,7 +400,6 @@ impl TransitionRule for TypeValidationRule {
             warning: None,
         })
     }
-
 }
 
 /// Built-in rule for permission validation
@@ -453,7 +450,6 @@ impl TransitionRule for PermissionValidationRule {
             warning: None,
         })
     }
-
 }
 
 /// Built-in rule for invariant validation
@@ -481,7 +477,6 @@ impl TransitionRule for InvariantValidationRule {
             warning: None,
         })
     }
-
 
     fn is_critical(&self) -> bool {
         true // Invariant violations are always critical
@@ -660,7 +655,6 @@ mod tests {
     }
 
     #[test]
-
     #[test]
     fn test_rule_management() {
         let mut validator = StateTransitionValidator::new();
@@ -744,6 +738,5 @@ mod tests {
             actual: "string".to_string(),
         };
         assert!(error.to_string().contains("Type mismatch"));
-
     }
 }

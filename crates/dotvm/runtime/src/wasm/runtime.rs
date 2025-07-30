@@ -402,11 +402,7 @@ impl DotVMWasmRuntime {
         let start_time = std::time::Instant::now();
 
         // Create execution context
-        let mut context = WasmExecutionContext::new(
-            self.config.execution.max_instructions,
-            self.config.max_call_depth,
-            self.config.max_execution_time,
-        );
+        let mut context = WasmExecutionContext::new(self.config.execution.max_instructions, self.config.max_call_depth, self.config.max_execution_time);
 
         // Execute function directly on instance
         let result = {
@@ -661,7 +657,6 @@ impl WasmRuntimeConfig {
     pub fn max_instructions_per_execution(&self) -> u64 {
         self.execution.max_instructions
     }
-
 }
 
 impl SecurityConfig {

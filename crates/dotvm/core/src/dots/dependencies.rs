@@ -246,13 +246,7 @@ mod tests {
                 "This is article 2, refer to segment-1".to_string(),
                 1,
             ),
-            DotSegment::new(
-                "segment-3".to_string(),
-                "dot-001".to_string(),
-                "CLAUSE".to_string(),
-                "This is clause 3, see segment-2".to_string(),
-                2,
-            ),
+            DotSegment::new("segment-3".to_string(), "dot-001".to_string(), "CLAUSE".to_string(), "This is clause 3, see segment-2".to_string(), 2),
         ];
 
         let resolver = DependencyResolver::new();
@@ -267,13 +261,7 @@ mod tests {
     #[test]
     fn test_circular_dependency() {
         let segments = vec![
-            DotSegment::new(
-                "segment-1".to_string(),
-                "dot-001".to_string(),
-                "SECTION".to_string(),
-                "This is section 1, see segment-3".to_string(),
-                0,
-            ),
+            DotSegment::new("segment-1".to_string(), "dot-001".to_string(), "SECTION".to_string(), "This is section 1, see segment-3".to_string(), 0),
             DotSegment::new(
                 "segment-2".to_string(),
                 "dot-001".to_string(),
@@ -281,13 +269,7 @@ mod tests {
                 "This is article 2, refer to segment-1".to_string(),
                 1,
             ),
-            DotSegment::new(
-                "segment-3".to_string(),
-                "dot-001".to_string(),
-                "CLAUSE".to_string(),
-                "This is clause 3, see segment-2".to_string(),
-                2,
-            ),
+            DotSegment::new("segment-3".to_string(), "dot-001".to_string(), "CLAUSE".to_string(), "This is clause 3, see segment-2".to_string(), 2),
         ];
 
         let mut resolver = DependencyResolver::new();

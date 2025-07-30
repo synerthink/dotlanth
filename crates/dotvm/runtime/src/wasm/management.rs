@@ -61,7 +61,6 @@ impl ResourceLimiter {
         Ok(())
     }
 
-
     /// Check if execution time is within limits
     pub fn check_time(&self, elapsed: Duration) -> WasmResult<()> {
         if elapsed > self.max_time {
@@ -224,7 +223,6 @@ impl WasmMonitor {
 
         if elapsed_secs > 0.0 {
             self.metrics.instructions_per_second = self.resources.instructions_executed as f64 / elapsed_secs;
-
 
             self.metrics.memory_allocation_rate = self.resources.memory_used as f64 / elapsed_secs;
 
@@ -481,7 +479,6 @@ mod tests {
         // Test memory check
         assert!(limiter.check_memory(1024).is_ok());
         assert!(limiter.check_memory(limiter.max_memory + 1).is_err());
-
     }
 
     #[test]

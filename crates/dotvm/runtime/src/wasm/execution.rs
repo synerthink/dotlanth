@@ -374,12 +374,10 @@ impl ExecutionContext {
             if self.wasm.start_time.elapsed() > self.wasm.max_duration {
                 return Err(WasmError::timeout(self.wasm.max_duration.as_millis() as u64));
             }
-
         }
 
         Ok(())
     }
-
 
     /// Check execution timeout
     pub fn check_timeout(&self) -> WasmResult<()> {
@@ -524,7 +522,6 @@ impl ExecutionContext {
         self.wasm.security.security_level = level;
     }
 
-
     /// Get execution duration
     pub fn execution_duration(&self) -> Duration {
         self.wasm.start_time.elapsed()
@@ -567,7 +564,7 @@ impl ExecutionContext {
 impl Default for ExecutionContext {
     fn default() -> Self {
         Self::new(
-            1_000_000, // 1M instruction limit
+            1_000_000,               // 1M instruction limit
             1000,                    // 1000 call depth
             Duration::from_secs(30), // 30 second timeout
         )
@@ -918,7 +915,6 @@ impl CallFrame {
         self.metadata.call_time.elapsed()
     }
 
-
     /// Add instruction count
     pub fn count_instruction(&mut self) {
         self.metadata.instructions_executed += 1;
@@ -944,9 +940,7 @@ mod tests {
         let mut ctx = ExecutionContext::new(1000000, 100, Duration::from_secs(1));
         assert_eq!(ctx.wasm.call_depth, 0);
         assert_eq!(ctx.metrics.instructions_executed, 0);
-
     }
-
 
     #[test]
     fn test_execution_states() {
@@ -1239,7 +1233,6 @@ mod tests {
         let ctx = ExecutionContext::new(1000, 100, Duration::from_secs(10));
         assert_eq!(ctx.metrics.instructions_executed, 0);
     }
-
 
     #[test]
     fn test_call_depth() {

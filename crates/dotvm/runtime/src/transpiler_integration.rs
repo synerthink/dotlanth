@@ -27,8 +27,7 @@ use dotvm_compiler::{
 use dotvm_core::bytecode::VmArchitecture;
 use std::{
     collections::HashMap,
-    fs,
-    io,
+    fs, io,
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
     time::SystemTime,

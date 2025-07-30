@@ -334,7 +334,6 @@ impl WasmModule {
         self.security_metadata.required_permissions.contains(&permission.to_string())
     }
 
-
     /// Get module statistics
     pub fn statistics(&self) -> ModuleStatistics {
         ModuleStatistics {
@@ -403,7 +402,6 @@ impl FunctionMetadata {
         self.local_count = count;
         self
     }
-
 }
 
 impl ExportMetadata {
@@ -569,7 +567,6 @@ mod tests {
         assert!(matches!(module.validation_status, ValidationStatus::Invalid { .. }));
         assert!(!module.is_valid());
     }
-
 
     #[test]
     fn test_permission_checking() {
