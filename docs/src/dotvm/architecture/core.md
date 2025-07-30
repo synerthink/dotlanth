@@ -101,7 +101,7 @@ DotVM supports multiple architectures, each optimized for specific use cases:
 | Arch32 | 32-bit | IoT, embedded systems |
 | Arch64 | 64-bit | General-purpose applications |
 | Arch128 | 128-bit | Scientific computing |
-| Arch256 | 256-bit | Blockchain, cryptocurrency |
+| Arch256 | 256-bit | Cryptography |
 | Arch512 | 512-bit | Advanced cryptography |
 
 ## Database Integration

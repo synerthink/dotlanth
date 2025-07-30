@@ -14,39 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Contract State Versioning System (DOTVM-39)
-//!
-//! This module implements the state versioning system for smart contracts as defined in DOTVM-39.
-//! It leverages the Merkle Patricia Trie (MPT) root hash changes to version contract state,
-//! enabling historical queries, contract upgrades tracking, and data migration support.
-//!
-//! # Key Features
-//!
-//! - **MPT-based versioning**: Each transaction modifying contract state creates a new MPT root
-//! - **Historical state queries**: Query contract state at specific historical state roots
-//! - **Contract upgrade tracking**: Track contract upgrades and data migrations
-//! - **Efficient storage**: Only store incremental changes between versions
-//! - **Atomic operations**: Ensure all state changes are applied atomically
-//!
-//! # Architecture
-//!
-//! The system builds upon the global state tree (MPT from DOTVM-38) to define how individual
-//! contracts store, version, and validate their state. Each contract has its own subtree
-//! within the MPT, derived from its address.
-//!
-//! ## Version Structure
-//!
-//! ```text
-//! Contract State Version = {
-//!     version_id: StateVersionId,
-//!     mpt_root_hash: Hash,
-//!     dot_address: DotAddress,
-//!     parent_version: Option<StateVersionId>,
-//!     transaction_hash: Option<Hash>,
-//!     block_height: Option<u64>,
-//!     upgrade_info: Option<DotUpgradeInfo>
-//! }
-//! ```
+//! Dot State Versioning System
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Mutex, RwLock};
@@ -64,7 +32,7 @@ pub type TransactionHash = Hash;
 /// Block height type
 pub type BlockHeight = u64;
 
-/// Contract state version identifier
+/// Dot state version identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 pub struct StateVersionId {
     /// Logical version number
@@ -101,10 +69,10 @@ impl Default for StateVersionId {
     }
 }
 
-/// Contract upgrade information
+/// Dot upgrade information
 #[derive(Debug, Clone)]
 pub struct DotUpgradeInfo {
-    /// Previous contract version
+    /// Previous dot version
     pub previous_version: StateVersionId,
     /// Upgrade type
     pub upgrade_type: UpgradeType,
@@ -116,7 +84,7 @@ pub struct DotUpgradeInfo {
     pub upgrade_timestamp: Timestamp,
 }
 
-/// Types of contract upgrades
+/// Types of dot upgrades
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UpgradeType {
     /// Minor upgrade with backward compatibility
@@ -127,7 +95,7 @@ pub enum UpgradeType {
     StorageMigration,
     /// Security patch
     SecurityPatch,
-    /// Complete contract replacement
+    /// Complete dot replacement
     Replacement,
 }
 
@@ -161,14 +129,14 @@ pub enum LayoutChangeType {
     Renamed,
 }
 
-/// Contract state version metadata
+/// Dot state version metadata
 #[derive(Debug, Clone)]
 pub struct DotStateVersion {
     /// Version identifier
     pub version_id: StateVersionId,
     /// MPT root hash at this version
     pub mpt_root_hash: Hash,
-    /// Contract address
+    /// Dot address
     pub dot_address: DotAddress,
     /// Parent version (previous state)
     pub parent_version: Option<StateVersionId>,
@@ -176,7 +144,7 @@ pub struct DotStateVersion {
     pub transaction_hash: Option<TransactionHash>,
     /// Block height when version was created
     pub block_height: Option<BlockHeight>,
-    /// Contract upgrade information (if this is an upgrade)
+    /// Dot upgrade information (if this is an upgrade)
     pub upgrade_info: Option<DotUpgradeInfo>,
     /// Creation timestamp
     pub created_at: Timestamp,
@@ -191,7 +159,7 @@ pub struct DotStateVersion {
 }
 
 impl DotStateVersion {
-    /// Create a new contract state version
+    /// Create a new dot state version
     pub fn new(version_id: StateVersionId, mpt_root_hash: Hash, dot_address: DotAddress, parent_version: Option<StateVersionId>, description: String) -> Self {
         Self {
             version_id,
@@ -209,7 +177,7 @@ impl DotStateVersion {
         }
     }
 
-    /// Create a new version for contract upgrade
+    /// Create a new version for dot upgrade
     pub fn new_upgrade(version_id: StateVersionId, mpt_root_hash: Hash, dot_address: DotAddress, parent_version: StateVersionId, upgrade_info: DotUpgradeInfo, description: String) -> Self {
         Self {
             version_id,
@@ -255,22 +223,22 @@ impl DotStateVersion {
     }
 }
 
-/// Contract versioning manager
+/// Dot versioning manager
 pub struct DotVersionManager {
-    /// Contract versions by contract address and version ID
+    /// Dot versions by dot address and version ID
     versions: RwLock<HashMap<DotAddress, BTreeMap<StateVersionId, DotStateVersion>>>,
-    /// Current version for each contract
+    /// Current version for each dot
     current_versions: RwLock<HashMap<DotAddress, StateVersionId>>,
     /// Version counter for generating new version IDs
     version_counter: Mutex<u64>,
-    /// Maximum versions to keep per contract
+    /// Maximum versions to keep per dot
     max_versions_per_dot: usize,
     /// Active snapshots reference counting
     active_snapshots: Mutex<HashMap<(DotAddress, StateVersionId), usize>>,
 }
 
 impl DotVersionManager {
-    /// Create a new contract version manager
+    /// Create a new dot version manager
     pub fn new(max_versions_per_dot: usize) -> Self {
         Self {
             versions: RwLock::new(HashMap::new()),
@@ -281,7 +249,7 @@ impl DotVersionManager {
         }
     }
 
-    /// Create a new version for a contract
+    /// Create a new version for a dot
     pub fn create_version(&self, dot_address: DotAddress, mpt_root_hash: Hash, description: String) -> Result<StateVersionId, DotVersioningError> {
         let mut counter = self.version_counter.lock().unwrap();
         *counter += 1;
@@ -312,7 +280,7 @@ impl DotVersionManager {
         Ok(version_id)
     }
 
-    /// Create a new version for contract upgrade
+    /// Create a new version for  upgrade
     pub fn create_upgrade_version(&self, dot_address: DotAddress, mpt_root_hash: Hash, upgrade_info: DotUpgradeInfo, description: String) -> Result<StateVersionId, DotVersioningError> {
         let current_version = {
             let current_versions = self.current_versions.read().unwrap();
@@ -340,13 +308,13 @@ impl DotVersionManager {
         Ok(version_id)
     }
 
-    /// Get a specific version of a contract
+    /// Get a specific version of a dot
     pub fn get_version(&self, dot_address: DotAddress, version_id: StateVersionId) -> Option<DotStateVersion> {
         let versions = self.versions.read().unwrap();
         versions.get(&dot_address)?.get(&version_id).cloned()
     }
 
-    /// Get the current version of a contract
+    /// Get the current version of a dot
     pub fn get_current_version(&self, dot_address: DotAddress) -> Option<DotStateVersion> {
         let current_versions = self.current_versions.read().unwrap();
         let current_version_id = *current_versions.get(&dot_address)?;
@@ -355,7 +323,7 @@ impl DotVersionManager {
         self.get_version(dot_address, current_version_id)
     }
 
-    /// Get all versions of a contract
+    /// Get all versions of a dot
     pub fn get_all_versions(&self, dot_address: DotAddress) -> Vec<DotStateVersion> {
         let versions = self.versions.read().unwrap();
         if let Some(dot_versions) = versions.get(&dot_address) {
@@ -382,7 +350,7 @@ impl DotVersionManager {
             .max_by_key(|version| version.block_height.unwrap())
     }
 
-    /// Get all upgrade versions for a contract
+    /// Get all upgrade versions for a dot
     pub fn get_upgrade_versions(&self, dot_address: DotAddress) -> Vec<DotStateVersion> {
         self.get_all_versions(dot_address).into_iter().filter(|version| version.is_upgrade()).collect()
     }
@@ -440,7 +408,7 @@ impl DotVersionManager {
         active_snapshots.contains_key(&(dot_address, version_id))
     }
 
-    /// Get contract versioning statistics
+    /// Get dot versioning statistics
     pub fn get_dot_statistics(&self, dot_address: DotAddress) -> DotVersioningStatistics {
         let versions = self.versions.read().unwrap();
         let current_versions = self.current_versions.read().unwrap();
@@ -475,7 +443,7 @@ impl DotVersionManager {
         }
     }
 
-    /// Clean up old versions for a contract
+    /// Clean up old versions for a dot
     fn cleanup_old_versions_for_dot(&self, dot_versions: &mut BTreeMap<StateVersionId, DotStateVersion>) -> Result<(), DotVersioningError> {
         if dot_versions.len() <= self.max_versions_per_dot {
             return Ok(());
@@ -503,14 +471,14 @@ impl DotVersionManager {
 
 impl Default for DotVersionManager {
     fn default() -> Self {
-        Self::new(100) // Default: keep 100 versions per contract
+        Self::new(100) // Default: keep 100 versions per dot
     }
 }
 
-/// Contract versioning statistics
+/// Dot versioning statistics
 #[derive(Debug, Clone)]
 pub struct DotVersioningStatistics {
-    /// Contract address
+    /// Dot address
     pub dot_address: DotAddress,
     /// Total number of versions
     pub total_versions: usize,
@@ -526,10 +494,10 @@ pub struct DotVersioningStatistics {
     pub max_versions_per_dot: usize,
 }
 
-/// Errors that can occur during contract versioning operations
+/// Errors that can occur during dot versioning operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DotVersioningError {
-    /// Contract not found
+    /// Dot not found
     DotNotFound(DotAddress),
     /// Version not found
     VersionNotFound(StateVersionId),
@@ -551,7 +519,7 @@ impl std::fmt::Display for DotVersioningError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DotVersioningError::DotNotFound(addr) => {
-                write!(f, "Contract not found: {addr:?}")
+                write!(f, "Dot not found: {addr:?}")
             }
             DotVersioningError::VersionNotFound(version) => {
                 write!(f, "Version not found: {version:?}")
@@ -592,11 +560,11 @@ impl From<MPTError> for DotVersioningError {
     }
 }
 
-/// Utility functions for contract versioning
+/// Utility functions for dot versioning
 pub mod dot_version_utils {
     use super::*;
 
-    /// Compare two contract state versions
+    /// Compare two dot state versions
     pub fn compare_versions(v1: StateVersionId, v2: StateVersionId) -> std::cmp::Ordering {
         v1.cmp(&v2)
     }

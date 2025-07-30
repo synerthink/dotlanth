@@ -67,8 +67,6 @@ pub struct FunctionMetadata {
     pub local_count: u32,
     /// Estimated instruction count
     pub instruction_count: u64,
-    /// Gas cost estimate
-    pub gas_cost_estimate: u64,
     /// Security level required
     pub security_level: u8,
     /// Performance characteristics
@@ -336,10 +334,6 @@ impl WasmModule {
         self.security_metadata.required_permissions.contains(&permission.to_string())
     }
 
-    /// Get estimated gas cost
-    pub fn estimated_gas_cost(&self) -> u64 {
-        self.functions.values().map(|f| f.gas_cost_estimate).sum()
-    }
 
     /// Get module statistics
     pub fn statistics(&self) -> ModuleStatistics {
@@ -350,7 +344,6 @@ impl WasmModule {
             global_count: self.globals.len(),
             bytecode_size: self.bytecode.len(),
             estimated_memory_usage: self.memory_size_bytes(),
-            estimated_gas_cost: self.estimated_gas_cost(),
         }
     }
 
@@ -359,18 +352,18 @@ impl WasmModule {
         let stats = self.statistics();
 
         // Determine if JIT is recommended
-        self.performance_hints.jit_recommended = stats.function_count > 10 || stats.estimated_gas_cost > 1_000_000;
+        self.performance_hints.jit_recommended = stats.function_count > 10;
+        // Flag CPU-intensive modules when many functions
+        self.performance_hints.cpu_intensive = stats.function_count > 10;
 
         // Set optimization level
         self.performance_hints.optimization_level = if stats.bytecode_size > 1_000_000 { 3 } else { 1 };
 
         // Set resource usage flags
         self.performance_hints.memory_intensive = stats.estimated_memory_usage > 10 * 1024 * 1024; // 10MB
-        self.performance_hints.cpu_intensive = stats.estimated_gas_cost > 10_000_000;
 
         // Set estimates
         self.performance_hints.memory_usage_estimate = stats.estimated_memory_usage as u64;
-        self.performance_hints.execution_time_estimate = stats.estimated_gas_cost / 1000; // Rough estimate
     }
 }
 
@@ -383,7 +376,6 @@ pub struct ModuleStatistics {
     pub global_count: usize,
     pub bytecode_size: usize,
     pub estimated_memory_usage: usize,
-    pub estimated_gas_cost: u64,
 }
 
 impl FunctionMetadata {
@@ -395,7 +387,6 @@ impl FunctionMetadata {
             signature,
             local_count: 0,
             instruction_count: 0,
-            gas_cost_estimate: 0,
             security_level: 0,
             performance_flags: 0,
         }
@@ -413,10 +404,6 @@ impl FunctionMetadata {
         self
     }
 
-    /// Estimate gas cost based on instruction count
-    pub fn estimate_gas_cost(&mut self) {
-        self.gas_cost_estimate = self.instruction_count * 2 + self.local_count as u64 * 10;
-    }
 }
 
 impl ExportMetadata {
@@ -564,7 +551,6 @@ mod tests {
         // Add many functions to trigger JIT recommendation
         for i in 0..15 {
             let mut func_meta = FunctionMetadata::new(i, FunctionSignature::new(vec![], vec![]));
-            func_meta.gas_cost_estimate = 1_000_000; // Higher cost to trigger cpu_intensive
             module.add_function(format!("func{}", i), func_meta);
         }
 
@@ -584,15 +570,6 @@ mod tests {
         assert!(!module.is_valid());
     }
 
-    #[test]
-    fn test_gas_cost_estimation() {
-        let mut func_meta = FunctionMetadata::new(0, FunctionSignature::new(vec![], vec![]));
-        func_meta.instruction_count = 100;
-        func_meta.local_count = 5;
-        func_meta.estimate_gas_cost();
-
-        assert_eq!(func_meta.gas_cost_estimate, 100 * 2 + 5 * 10);
-    }
 
     #[test]
     fn test_permission_checking() {

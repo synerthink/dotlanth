@@ -1,6 +1,6 @@
 # DotVM Overview
 
-DotVM (Dotlanth Virtual Machine) is a high-performance, multi-architecture virtual machine designed for executing smart contracts and general-purpose programs with advanced parallelization capabilities.
+DotVM (Dotlanth Virtual Machine) is a high-performance, multi-architecture virtual machine designed for executing dots and general-purpose programs with advanced parallelization capabilities.
 
 ## What is DotVM?
 
@@ -24,7 +24,7 @@ DotVM supports five different architectures, each optimized for specific use cas
 | Arch32 | 32-bit | IoT, embedded systems |
 | Arch64 | 64-bit | General-purpose applications (default) |
 | Arch128 | 128-bit | Scientific computing, high precision |
-| Arch256 | 256-bit | Blockchain, cryptocurrency applications |
+| Arch256 | 256-bit | Cryptography |
 | Arch512 | 512-bit | Advanced cryptography, research |
 
 ### Comprehensive Instruction Set
@@ -112,12 +112,6 @@ DotVM bytecode files have a structured format:
 
 ## Use Cases
 
-### Smart Contracts
-- Blockchain applications
-- Decentralized finance (DeFi)
-- NFT platforms
-- Governance systems
-
 ### General Computing
 - Web application backends
 - Microservices
@@ -142,7 +136,7 @@ DotVM bytecode files have a structured format:
 - **Optimized instruction dispatch**: Fast instruction decoding and execution
 - **Architecture-specific optimizations**: Tailored performance for each architecture
 - **Minimal overhead**: Efficient stack operations and memory management
-- **Parallel execution**: Support for concurrent operations (ParaContracts)
+- **Parallel execution**: Support for concurrent operations (ParaDots)
 
 ### Memory Efficiency
 - **Compact bytecode**: Efficient instruction encoding

@@ -25,8 +25,6 @@ use std::time::{Duration, Instant};
 pub struct ResourceLimiter {
     /// Maximum memory in bytes
     pub max_memory: u64,
-    /// Maximum gas limit
-    pub max_gas: u64,
     /// Maximum execution time
     pub max_time: Duration,
     /// Maximum call depth
@@ -42,10 +40,9 @@ impl ResourceLimiter {
     }
 
     /// Create resource limiter with custom limits
-    pub fn with_limits(max_memory: u64, max_gas: u64, max_time: Duration, max_call_depth: usize, max_instructions: u64) -> Self {
+    pub fn with_limits(max_memory: u64, max_time: Duration, max_call_depth: usize, max_instructions: u64) -> Self {
         Self {
             max_memory,
-            max_gas,
             max_time,
             max_call_depth,
             max_instructions,
@@ -64,16 +61,6 @@ impl ResourceLimiter {
         Ok(())
     }
 
-    /// Check if gas usage is within limits
-    pub fn check_gas(&self, current: u64) -> WasmResult<()> {
-        if current > self.max_gas {
-            return Err(WasmError::OutOfGas {
-                consumed: current,
-                limit: self.max_gas,
-            });
-        }
-        Ok(())
-    }
 
     /// Check if execution time is within limits
     pub fn check_time(&self, elapsed: Duration) -> WasmResult<()> {
@@ -110,7 +97,6 @@ impl Default for ResourceLimiter {
     fn default() -> Self {
         Self {
             max_memory: 64 * 1024 * 1024, // 64MB
-            max_gas: 10_000_000,
             max_time: Duration::from_secs(30),
             max_call_depth: 1000,
             max_instructions: 100_000_000,
@@ -151,8 +137,6 @@ pub struct PerformanceMetrics {
     pub execution_time: Duration,
     /// Instructions per second
     pub instructions_per_second: f64,
-    /// Gas consumption rate
-    pub gas_consumption_rate: f64,
     /// Memory allocation rate
     pub memory_allocation_rate: f64,
     /// Function call frequency
@@ -168,8 +152,6 @@ pub struct ResourceUsage {
     pub memory_used: u64,
     /// Peak memory usage
     pub peak_memory: u64,
-    /// Current gas consumed
-    pub gas_consumed: u64,
     /// Current call depth
     pub call_depth: usize,
     /// Peak call depth
@@ -243,7 +225,6 @@ impl WasmMonitor {
         if elapsed_secs > 0.0 {
             self.metrics.instructions_per_second = self.resources.instructions_executed as f64 / elapsed_secs;
 
-            self.metrics.gas_consumption_rate = self.resources.gas_consumed as f64 / elapsed_secs;
 
             self.metrics.memory_allocation_rate = self.resources.memory_used as f64 / elapsed_secs;
 
@@ -464,7 +445,6 @@ impl RuntimeManager {
     /// Check all resource limits
     pub fn check_limits(&self, resources: &ResourceUsage) -> WasmResult<()> {
         self.limiter.check_memory(resources.memory_used)?;
-        self.limiter.check_gas(resources.gas_consumed)?;
         self.limiter.check_call_depth(resources.call_depth)?;
         self.limiter.check_instructions(resources.instructions_executed)?;
         Ok(())
@@ -502,9 +482,6 @@ mod tests {
         assert!(limiter.check_memory(1024).is_ok());
         assert!(limiter.check_memory(limiter.max_memory + 1).is_err());
 
-        // Test gas check
-        assert!(limiter.check_gas(1000).is_ok());
-        assert!(limiter.check_gas(limiter.max_gas + 1).is_err());
     }
 
     #[test]
@@ -514,7 +491,6 @@ mod tests {
 
         let resources = ResourceUsage {
             memory_used: 1024,
-            gas_consumed: 500,
             instructions_executed: 1000,
             function_calls: 10,
             ..Default::default()
@@ -551,7 +527,6 @@ mod tests {
 
         let resources = ResourceUsage {
             memory_used: 1024,
-            gas_consumed: 500,
             call_depth: 5,
             instructions_executed: 1000,
             ..Default::default()

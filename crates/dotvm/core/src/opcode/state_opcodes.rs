@@ -16,17 +16,17 @@
 
 //! # State Opcodes
 //!
-//! This module defines opcodes for smart contract state access operations.
-//! These opcodes interact with the contract storage layout and the underlying
+//! This module defines opcodes for dot state access operations.
+//! These opcodes interact with the dot storage layout and the underlying
 //! Merkle Patricia Trie for efficient and secure state management.
 //!
 //! ## Key Opcodes
 //!
-//! - `SLOAD`: Load a value from contract storage
-//! - `SSTORE`: Store a value to contract storage  
+//! - `SLOAD`: Load a value from dot storage
+//! - `SSTORE`: Store a value to dot storage  
 //! - `SSIZE`: Get the size of stored data
 //! - `SEXISTS`: Check if a storage key exists
-//! - `SKEYS`: Iterate over storage keys (with gas limits)
+//! - `SKEYS`: Iterate over storage keys
 //! - `SCLEAR`: Clear a storage slot
 //! - `SMULTILOAD`: Load multiple values efficiently
 //! - `SMULTISTORE`: Store multiple values efficiently
@@ -36,164 +36,93 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-/// State-related opcodes for smart contract execution
+/// State-related opcodes for dot execution
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum StateOpcode {
-    /// Load a value from contract storage
+    /// Load a value from dot storage
     /// Stack: [key] -> [value]
-    /// Gas: BASE_GAS + STORAGE_ACCESS_GAS
     SLOAD = 0x54,
 
-    /// Store a value to contract storage
+    /// Store a value to dot storage
     /// Stack: [key, value] -> []
-    /// Gas: BASE_GAS + STORAGE_WRITE_GAS + (conditional STORAGE_SET_GAS)
     SSTORE = 0x55,
 
     /// Get the size of stored data at key
     /// Stack: [key] -> [size]
-    /// Gas: BASE_GAS + STORAGE_ACCESS_GAS
     SSIZE = 0x56,
 
     /// Check if a storage key exists
     /// Stack: [key] -> [exists]
-    /// Gas: BASE_GAS + STORAGE_ACCESS_GAS
     SEXISTS = 0x57,
 
     /// Clear a storage slot (set to zero)
     /// Stack: [key] -> []
-    /// Gas: BASE_GAS + STORAGE_CLEAR_GAS
     SCLEAR = 0x58,
 
-    /// Load multiple values from contract storage
+    /// Load multiple values from dot storage
     /// Stack: [key_count, key1, key2, ...] -> [value1, value2, ...]
-    /// Gas: BASE_GAS + (key_count * STORAGE_ACCESS_GAS)
     SMULTILOAD = 0x59,
 
-    /// Store multiple values to contract storage
+    /// Store multiple values to dot storage
     /// Stack: [key_count, key1, value1, key2, value2, ...] -> []
-    /// Gas: BASE_GAS + (key_count * STORAGE_WRITE_GAS)
     SMULTISTORE = 0x5A,
 
     /// Get storage keys iterator (for debugging/introspection)
     /// Stack: [start_key, max_count] -> [key_count, key1, key2, ...]
-    /// Gas: BASE_GAS + (result_count * STORAGE_ACCESS_GAS)
     SKEYS = 0x5B,
 
     // Advanced State Management Opcodes (ACID Operations)
-    /// Read contract state with MVCC isolation
+    /// Read dot state with MVCC isolation
     /// Stack: [state_key] -> [value] or [null]
-    /// Gas: BASE_GAS + STORAGE_ACCESS_GAS + MVCC_READ_GAS
     StateRead = 0x5C,
 
-    /// Write contract state with MVCC versioning
+    /// Write dot state with MVCC versioning
     /// Stack: [state_key, value] -> []
-    /// Gas: BASE_GAS + STORAGE_WRITE_GAS + MVCC_WRITE_GAS
     StateWrite = 0x5D,
 
     /// Commit pending state changes atomically
     /// Stack: [] -> [state_root_hash]
-    /// Gas: BASE_GAS + COMMIT_GAS + (MERKLE_UPDATE_GAS * changed_keys)
     StateCommit = 0x5E,
 
     /// Rollback state changes to previous consistent state
     /// Stack: [] -> []
-    /// Gas: BASE_GAS + ROLLBACK_GAS
     StateRollback = 0x5F,
 
     /// Perform Merkle tree operations (proof generation/verification)
     /// Stack: [operation_type, key] -> [proof_data] or [verification_result]
-    /// Gas: BASE_GAS + MERKLE_OPERATION_GAS
     StateMerkle = 0x60,
 
     /// Create a point-in-time state snapshot
     /// Stack: [snapshot_id] -> []
-    /// Gas: BASE_GAS + SNAPSHOT_CREATE_GAS
     StateSnapshot = 0x61,
 
     /// Restore state from a snapshot
     /// Stack: [snapshot_id] -> []
-    /// Gas: BASE_GAS + SNAPSHOT_RESTORE_GAS
     StateRestore = 0x62,
 }
 
-/// Gas costs for state operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StateGasCosts {
-    /// Base gas cost for any state operation
-    pub base_gas: u64,
-    /// Gas cost for reading from storage
-    pub storage_access_gas: u64,
-    /// Gas cost for writing to storage (existing key)
-    pub storage_write_gas: u64,
-    /// Gas cost for setting new storage (new key)
-    pub storage_set_gas: u64,
-    /// Gas cost for clearing storage (refund available)
-    pub storage_clear_gas: u64,
-    /// Gas refund when clearing storage
-    pub storage_clear_refund: u64,
-    /// Maximum gas for iteration operations
-    pub max_iteration_gas: u64,
-
-    // Advanced State Management Gas Costs
-    /// Additional gas cost for MVCC read operations
-    pub mvcc_read_gas: u64,
-    /// Additional gas cost for MVCC write operations
-    pub mvcc_write_gas: u64,
-    /// Gas cost for committing state changes
-    pub commit_gas: u64,
-    /// Gas cost for rolling back state changes
-    pub rollback_gas: u64,
-    /// Gas cost per key for Merkle tree updates during commit
-    pub merkle_update_gas: u64,
-    /// Gas cost for Merkle tree operations (proof generation/verification)
-    pub merkle_operation_gas: u64,
-    /// Gas cost for creating snapshots
-    pub snapshot_create_gas: u64,
-    /// Gas cost for restoring from snapshots
-    pub snapshot_restore_gas: u64,
-}
-
-impl Default for StateGasCosts {
-    fn default() -> Self {
-        Self {
-            base_gas: 3,
-            storage_access_gas: 200,
-            storage_write_gas: 5000,
-            storage_set_gas: 20000,
-            storage_clear_gas: 5000,
-            storage_clear_refund: 15000,
-            max_iteration_gas: 100000,
-
-            // Advanced State Management Gas Costs
-            mvcc_read_gas: 100,
-            mvcc_write_gas: 300,
-            commit_gas: 1000,
-            rollback_gas: 500,
-            merkle_update_gas: 150,
-            merkle_operation_gas: 800,
-            snapshot_create_gas: 2000,
-            snapshot_restore_gas: 1500,
-        }
-    }
+/// Configuration for state operation costs (deprecated)
+#[derive(Debug, Clone, Default)]
+pub struct StateOperationCosts {
+    /// Base cost for operations
+    pub base_cost: u64,
 }
 
 /// State operation context
 #[derive(Debug, Clone)]
 pub struct StateOperationContext {
-    /// Contract address performing the operation
-    pub contract_address: [u8; 20],
-    /// Current gas limit
-    pub gas_limit: u64,
-    /// Gas costs configuration
-    pub gas_costs: StateGasCosts,
+    /// dot address performing the operation
+    pub dot_address: [u8; 20],
+    /// Operation costs configuration
+    pub operation_costs: StateOperationCosts,
     /// Whether the operation is in a static context (read-only)
     pub is_static: bool,
-    /// Transaction-level storage changes for gas calculation
+    /// Transaction-level storage changes
     pub tx_storage_changes: BTreeMap<Vec<u8>, StorageChange>,
 }
 
-/// Storage change type for gas calculation
+/// Storage change type
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorageChange {
     /// Value was set for the first time
@@ -207,10 +136,6 @@ pub enum StorageChange {
 /// Result of a state operation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StateOperationResult {
-    /// Gas consumed by the operation
-    pub gas_used: u64,
-    /// Gas refund (if any)
-    pub gas_refund: u64,
     /// Operation output data
     pub output: Vec<u8>,
     /// Whether the operation succeeded
@@ -222,8 +147,6 @@ pub struct StateOperationResult {
 /// Errors that can occur during state operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StateOpcodeError {
-    /// Insufficient gas for operation
-    InsufficientGas { required: u64, available: u64 },
     /// Invalid opcode
     InvalidOpcode(u8),
     /// Stack underflow
@@ -247,9 +170,6 @@ pub enum StateOpcodeError {
 impl fmt::Display for StateOpcodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StateOpcodeError::InsufficientGas { required, available } => {
-                write!(f, "Insufficient gas: required {required}, available {available}")
-            }
             StateOpcodeError::InvalidOpcode(code) => write!(f, "Invalid opcode: 0x{code:02x}"),
             StateOpcodeError::StackUnderflow => write!(f, "Stack underflow"),
             StateOpcodeError::StackOverflow => write!(f, "Stack overflow"),
@@ -352,135 +272,27 @@ impl StateOpcode {
         }
     }
 
-    /// Calculate the gas cost for this opcode
-    pub fn calculate_gas_cost(self, context: &StateOperationContext, stack_args: &[Vec<u8>]) -> Result<u64, StateOpcodeError> {
-        let base_cost = context.gas_costs.base_gas;
-
-        match self {
-            StateOpcode::SLOAD | StateOpcode::SSIZE | StateOpcode::SEXISTS => Ok(base_cost + context.gas_costs.storage_access_gas),
-            StateOpcode::SSTORE => {
-                let key = &stack_args[0];
-                let value = &stack_args[1];
-
-                let mut cost = base_cost;
-
-                // Check if this is a new storage slot or modification
-                if let Some(change) = context.tx_storage_changes.get(key) {
-                    cost += match change {
-                        StorageChange::Set => context.gas_costs.storage_set_gas,
-                        StorageChange::Update => context.gas_costs.storage_write_gas,
-                        StorageChange::Clear => context.gas_costs.storage_clear_gas,
-                    };
-                } else {
-                    // First time writing to this slot in transaction
-                    if value.iter().all(|&b| b == 0) {
-                        cost += context.gas_costs.storage_clear_gas;
-                    } else {
-                        cost += context.gas_costs.storage_set_gas;
-                    }
-                }
-
-                Ok(cost)
-            }
-            StateOpcode::SCLEAR => Ok(base_cost + context.gas_costs.storage_clear_gas),
-            StateOpcode::SMULTILOAD => {
-                if stack_args.is_empty() {
-                    return Err(StateOpcodeError::StackUnderflow);
-                }
-
-                let count = u64::from_be_bytes(
-                    stack_args[0]
-                        .get(24..32)
-                        .ok_or(StateOpcodeError::InvalidDataFormat("Invalid count".to_string()))?
-                        .try_into()
-                        .map_err(|_| StateOpcodeError::InvalidDataFormat("Invalid count format".to_string()))?,
-                );
-
-                Ok(base_cost + count * context.gas_costs.storage_access_gas)
-            }
-            StateOpcode::SMULTISTORE => {
-                if stack_args.is_empty() {
-                    return Err(StateOpcodeError::StackUnderflow);
-                }
-
-                let count = u64::from_be_bytes(
-                    stack_args[0]
-                        .get(24..32)
-                        .ok_or(StateOpcodeError::InvalidDataFormat("Invalid count".to_string()))?
-                        .try_into()
-                        .map_err(|_| StateOpcodeError::InvalidDataFormat("Invalid count format".to_string()))?,
-                );
-
-                Ok(base_cost + count * context.gas_costs.storage_write_gas)
-            }
-            StateOpcode::SKEYS => {
-                if stack_args.len() < 2 {
-                    return Err(StateOpcodeError::StackUnderflow);
-                }
-
-                let max_count = u64::from_be_bytes(
-                    stack_args[1]
-                        .get(24..32)
-                        .ok_or(StateOpcodeError::InvalidDataFormat("Invalid max_count".to_string()))?
-                        .try_into()
-                        .map_err(|_| StateOpcodeError::InvalidDataFormat("Invalid max_count format".to_string()))?,
-                );
-
-                let max_gas = (max_count * context.gas_costs.storage_access_gas).min(context.gas_costs.max_iteration_gas);
-                Ok(base_cost + max_gas)
-            }
-
-            // Advanced State Management Opcodes
-            StateOpcode::StateRead => Ok(base_cost + context.gas_costs.storage_access_gas + context.gas_costs.mvcc_read_gas),
-            StateOpcode::StateWrite => Ok(base_cost + context.gas_costs.storage_write_gas + context.gas_costs.mvcc_write_gas),
-            StateOpcode::StateCommit => {
-                // Gas cost depends on number of pending changes (simplified calculation)
-                let estimated_changes = 1; // In real implementation, this would be actual pending changes count
-                Ok(base_cost + context.gas_costs.commit_gas + (estimated_changes * context.gas_costs.merkle_update_gas))
-            }
-            StateOpcode::StateRollback => Ok(base_cost + context.gas_costs.rollback_gas),
-            StateOpcode::StateMerkle => Ok(base_cost + context.gas_costs.merkle_operation_gas),
-            StateOpcode::StateSnapshot => Ok(base_cost + context.gas_costs.snapshot_create_gas),
-            StateOpcode::StateRestore => Ok(base_cost + context.gas_costs.snapshot_restore_gas),
-        }
-    }
 }
 
 impl StateOperationContext {
     /// Create a new state operation context
-    pub fn new(contract_address: [u8; 20], gas_limit: u64) -> Self {
+    pub fn new(dot_address: [u8; 20]) -> Self {
         Self {
-            contract_address,
-            gas_limit,
-            gas_costs: StateGasCosts::default(),
+            dot_address,
+            operation_costs: StateOperationCosts::default(),
             is_static: false,
             tx_storage_changes: BTreeMap::new(),
         }
     }
 
     /// Create a static context (read-only)
-    pub fn new_static(contract_address: [u8; 20], gas_limit: u64) -> Self {
+    pub fn new_static(dot_address: [u8; 20]) -> Self {
         Self {
-            contract_address,
-            gas_limit,
-            gas_costs: StateGasCosts::default(),
+            dot_address,
+            operation_costs: StateOperationCosts::default(),
             is_static: true,
             tx_storage_changes: BTreeMap::new(),
         }
-    }
-
-    /// Check if gas is available for an operation
-    pub fn check_gas(&self, required: u64) -> Result<(), StateOpcodeError> {
-        if self.gas_limit < required {
-            Err(StateOpcodeError::InsufficientGas { required, available: self.gas_limit })
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Record a storage change for gas calculation
-    pub fn record_storage_change(&mut self, key: Vec<u8>, change: StorageChange) {
-        self.tx_storage_changes.insert(key, change);
     }
 
     /// Check if state modification is allowed
@@ -491,21 +303,8 @@ impl StateOperationContext {
 
 impl StateOperationResult {
     /// Create a successful result
-    pub fn success(gas_used: u64, output: Vec<u8>) -> Self {
+    pub fn success(output: Vec<u8>) -> Self {
         Self {
-            gas_used,
-            gas_refund: 0,
-            output,
-            success: true,
-            error: None,
-        }
-    }
-
-    /// Create a successful result with gas refund
-    pub fn success_with_refund(gas_used: u64, gas_refund: u64, output: Vec<u8>) -> Self {
-        Self {
-            gas_used,
-            gas_refund,
             output,
             success: true,
             error: None,
@@ -513,10 +312,8 @@ impl StateOperationResult {
     }
 
     /// Create an error result
-    pub fn error(gas_used: u64, error: StateOpcodeError) -> Self {
+    pub fn error(error: StateOpcodeError) -> Self {
         Self {
-            gas_used,
-            gas_refund: 0,
             output: Vec::new(),
             success: false,
             error: Some(error.to_string()),
@@ -678,60 +475,6 @@ mod tests {
         assert_eq!(StateOpcode::SKEYS.min_stack_size(), 2);
     }
 
-    #[test]
-    fn test_gas_cost_calculation() {
-        let context = StateOperationContext::new([1u8; 20], 1000); // Reduced for faster tests
-
-        // SLOAD should cost base + access
-        let args = vec![vec![0u8; 32]];
-        let cost = StateOpcode::SLOAD.calculate_gas_cost(&context, &args).unwrap();
-        assert_eq!(cost, context.gas_costs.base_gas + context.gas_costs.storage_access_gas);
-
-        // SSTORE with new value should cost base + set
-        let args = vec![vec![0u8; 32], vec![1u8; 32]];
-        let cost = StateOpcode::SSTORE.calculate_gas_cost(&context, &args).unwrap();
-        assert_eq!(cost, context.gas_costs.base_gas + context.gas_costs.storage_set_gas);
-    }
-
-    #[test]
-    fn test_state_operation_context() {
-        let mut context = StateOperationContext::new([1u8; 20], 100000);
-        assert!(!context.is_static);
-        assert!(context.can_modify_state());
-
-        // Test gas checking
-        assert!(context.check_gas(50000).is_ok());
-        assert!(context.check_gas(150000).is_err());
-
-        // Test storage change recording
-        context.record_storage_change(vec![1, 2, 3], StorageChange::Set);
-        assert!(context.tx_storage_changes.contains_key(&vec![1, 2, 3]));
-    }
-
-    #[test]
-    fn test_static_context() {
-        let context = StateOperationContext::new_static([1u8; 20], 100000);
-        assert!(context.is_static);
-        assert!(!context.can_modify_state());
-    }
-
-    #[test]
-    fn test_state_operation_result() {
-        let success_result = StateOperationResult::success(1000, vec![1, 2, 3]);
-        assert!(success_result.success);
-        assert_eq!(success_result.gas_used, 1000);
-        assert_eq!(success_result.output, vec![1, 2, 3]);
-        assert!(success_result.error.is_none());
-
-        let refund_result = StateOperationResult::success_with_refund(1000, 500, vec![]);
-        assert!(refund_result.success);
-        assert_eq!(refund_result.gas_refund, 500);
-
-        let error_result = StateOperationResult::error(500, StateOpcodeError::StackUnderflow);
-        assert!(!error_result.success);
-        assert_eq!(error_result.gas_used, 500);
-        assert!(error_result.error.is_some());
-    }
 
     #[test]
     fn test_execution_helpers() {
@@ -771,17 +514,6 @@ mod tests {
         assert!(validate_stack(StateOpcode::SMULTILOAD, &stack).is_err());
     }
 
-    #[test]
-    fn test_gas_costs_configuration() {
-        let gas_costs = StateGasCosts::default();
-        assert_eq!(gas_costs.base_gas, 3);
-        assert_eq!(gas_costs.storage_access_gas, 200);
-        assert_eq!(gas_costs.storage_write_gas, 5000);
-        assert_eq!(gas_costs.storage_set_gas, 20000);
-        assert_eq!(gas_costs.storage_clear_gas, 5000);
-        assert_eq!(gas_costs.storage_clear_refund, 15000);
-        assert_eq!(gas_costs.max_iteration_gas, 100000);
-    }
 
     #[test]
     fn test_storage_change_types() {
@@ -792,8 +524,6 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let error = StateOpcodeError::InsufficientGas { required: 1000, available: 500 };
-        assert_eq!(error.to_string(), "Insufficient gas: required 1000, available 500");
 
         let error = StateOpcodeError::InvalidOpcode(0xFF);
         assert_eq!(error.to_string(), "Invalid opcode: 0xff");

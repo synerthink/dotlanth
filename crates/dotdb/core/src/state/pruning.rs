@@ -17,7 +17,7 @@
 //! State Pruning System
 //!
 //! This module provides a comprehensive state pruning system for managing and
-//! cleaning up old state data in the blockchain. It implements various pruning
+//! cleaning up old state data. It implements various pruning
 //! strategies and policies to optimize storage usage while maintaining data
 //! integrity and availability.
 //!

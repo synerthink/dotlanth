@@ -15,18 +15,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //! # State Access Module
-//!
-//! This module implements the logic for accessing contract state during execution.
-//! It bridges the gap between the contract storage layout and the underlying
-//! Merkle Patricia Trie, providing efficient and secure state access patterns.
-//!
-//! ## Key Features
-//!
-//! - Contract-specific state isolation
-//! - Efficient batch operations
-//! - Gas accounting integration
-//! - Cache layer for frequently accessed data
-//! - Transaction-level state change tracking
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -42,10 +30,10 @@ pub type StateAccessResult<T> = Result<T, StateAccessError>;
 
 /// Interface for state access operations
 pub trait StateAccessInterface {
-    /// Load a value from contract storage
+    /// Load a value from dot storage
     fn load_storage(&self, dot: DotAddress, key: &[u8]) -> StateAccessResult<Option<Vec<u8>>>;
 
-    /// Store a value to contract storage
+    /// Store a value to dot storage
     fn store_storage(&mut self, dot: DotAddress, key: &[u8], value: &[u8]) -> StateAccessResult<()>;
 
     /// Check if a storage key exists
@@ -71,7 +59,7 @@ pub trait StateAccessInterface {
 pub struct StateAccessManager<S: NodeStorage> {
     /// Underlying Merkle Patricia Trie
     trie: Arc<RwLock<MerklePatriciaTrie<S>>>,
-    /// Storage layouts for contracts
+    /// Storage layouts for dots
     layouts: Arc<RwLock<HashMap<DotAddress, DotStorageLayout>>>,
     /// Cache for frequently accessed storage
     cache: Arc<RwLock<StateCache>>,
@@ -127,7 +115,7 @@ struct StateCache {
     max_size: usize,
 }
 
-/// Cache key combining contract address and storage key
+/// Cache key combining dot address and storage key
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct CacheKey {
     dot: DotAddress,
@@ -151,9 +139,9 @@ pub enum StateAccessError {
     InvalidKey(String),
     /// Invalid storage value format
     InvalidValue(String),
-    /// Contract not found
+    /// Dot not found
     DotNotFound(DotAddress),
-    /// Layout not found for contract
+    /// Layout not found for dot
     LayoutNotFound(DotAddress),
     /// Cache operation failed
     CacheError(String),
@@ -177,8 +165,8 @@ impl fmt::Display for StateAccessError {
             StateAccessError::StorageError(msg) => write!(f, "Storage error: {msg}"),
             StateAccessError::InvalidKey(msg) => write!(f, "Invalid key: {msg}"),
             StateAccessError::InvalidValue(msg) => write!(f, "Invalid value: {msg}"),
-            StateAccessError::DotNotFound(addr) => write!(f, "Contract not found: {addr:?}"),
-            StateAccessError::LayoutNotFound(addr) => write!(f, "Layout not found for contract: {addr:?}"),
+            StateAccessError::DotNotFound(addr) => write!(f, "Dot not found: {addr:?}"),
+            StateAccessError::LayoutNotFound(addr) => write!(f, "Layout not found for dot: {addr:?}"),
             StateAccessError::CacheError(msg) => write!(f, "Cache error: {msg}"),
             StateAccessError::BatchTooLarge { size, max } => {
                 write!(f, "Batch too large: {size} entries, max {max}")
@@ -212,7 +200,7 @@ impl<S: NodeStorage> StateAccessManager<S> {
         }
     }
 
-    /// Register a storage layout for a contract
+    /// Register a storage layout for a dot
     pub fn register_layout(&self, dot: DotAddress, layout: DotStorageLayout) -> StateAccessResult<()> {
         let mut layouts = self.layouts.write().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
@@ -220,14 +208,14 @@ impl<S: NodeStorage> StateAccessManager<S> {
         Ok(())
     }
 
-    /// Get the storage layout for a contract
+    /// Get the storage layout for a dot
     pub fn get_layout(&self, dot: DotAddress) -> StateAccessResult<DotStorageLayout> {
         let layouts = self.layouts.read().map_err(|e| StateAccessError::StorageError(format!("Lock error: {e}")))?;
 
         layouts.get(&dot).cloned().ok_or(StateAccessError::LayoutNotFound(dot))
     }
 
-    /// Generate MPT key from contract address and storage key
+    /// Generate MPT key from dot address and storage key
     fn generate_mpt_key(&self, dot: DotAddress, storage_key: &[u8]) -> StateAccessResult<Key> {
         let layout = self.get_layout(dot)?;
 
@@ -717,7 +705,7 @@ mod tests {
     #[test]
     fn test_error_display() {
         let error = StateAccessError::DotNotFound([1u8; 20]);
-        assert!(error.to_string().contains("Contract not found"));
+        assert!(error.to_string().contains("Dot not found"));
 
         let error = StateAccessError::BatchTooLarge { size: 200, max: 100 };
         assert!(error.to_string().contains("Batch too large"));

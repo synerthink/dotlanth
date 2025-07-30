@@ -15,15 +15,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Multi-Version Concurrency Control (MVCC) Implementation
-//!
-//! This module provides a robust MVCC system that enables concurrent transactions
-//! to access different versions of data without blocking each other. It ensures
-//! snapshot isolation and manages version visibility based on transaction timestamps.
-//!
-//! # Integration with Contract State Versioning
-//!
-//! This MVCC system integrates with the contract state versioning system from DOTVM-39
-//! to provide comprehensive version management across both storage engine and contract state levels.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, Mutex, RwLock};
@@ -258,9 +249,9 @@ pub struct MVCCManager {
     timestamp_counter: Mutex<Timestamp>,
     /// Garbage collection threshold
     gc_threshold: usize,
-    /// Contract version manager for contract state versioning integration
+    /// Dot version manager for dot state versioning integration
     dot_version_manager: Arc<DotVersionManager>,
-    /// Transaction to contract state mapping
+    /// Transaction to dot state mapping
     transaction_dot_states: RwLock<HashMap<TransactionId, Vec<(DotAddress, StateVersionId)>>>,
 }
 
@@ -278,7 +269,7 @@ impl MVCCManager {
         }
     }
 
-    /// Create a new MVCC manager with custom contract version manager
+    /// Create a new MVCC manager with custom dot version manager
     pub fn new_with_dot_manager(dot_manager: Arc<DotVersionManager>) -> Self {
         Self {
             version_chains: RwLock::new(HashMap::new()),
@@ -436,12 +427,12 @@ impl MVCCManager {
         Ok(false)
     }
 
-    /// Create contract state version for a transaction
+    /// Create dot state version for a transaction
     pub fn create_dot_state_version(&self, txn_id: TransactionId, dot_address: DotAddress, mpt_root_hash: Hash, description: String) -> StorageResult<StateVersionId> {
         let version_id = self
             .dot_version_manager
             .create_version(dot_address, mpt_root_hash, description)
-            .map_err(|e| StorageError::Corruption(format!("Failed to create contract version: {e:?}")))?;
+            .map_err(|e| StorageError::Corruption(format!("Failed to create dot version: {e:?}")))?;
 
         // Track the dot state for this transaction
         self.transaction_dot_states.write().unwrap().entry(txn_id).or_default().push((dot_address, version_id));
@@ -449,7 +440,7 @@ impl MVCCManager {
         Ok(version_id)
     }
 
-    /// Get contract state version at transaction snapshot
+    /// Get dot state version at transaction snapshot
     pub fn get_dot_state_at_snapshot(&self, txn_id: TransactionId, dot_address: DotAddress) -> StorageResult<Option<DotStateVersion>> {
         let snapshots = self.transaction_snapshots.read().unwrap();
         if let Some(snapshot) = snapshots.get(&txn_id) {
@@ -469,7 +460,7 @@ impl MVCCManager {
         }
     }
 
-    /// Commit contract state changes for a transaction
+    /// Commit dot state changes for a transaction
     pub fn commit_dot_states(&self, txn_id: TransactionId) -> StorageResult<()> {
         let states = {
             let mut dot_states = self.transaction_dot_states.write().unwrap();
@@ -479,20 +470,20 @@ impl MVCCManager {
         for (dot_address, version_id) in states {
             self.dot_version_manager
                 .finalize_version(dot_address, version_id)
-                .map_err(|e| StorageError::Corruption(format!("Failed to finalize contract version: {e:?}")))?;
+                .map_err(|e| StorageError::Corruption(format!("Failed to finalize dot version: {e:?}")))?;
         }
 
         Ok(())
     }
 
-    /// Rollback contract state changes for a transaction
+    /// Rollback dot state changes for a transaction
     pub fn rollback_dot_states(&self, txn_id: TransactionId) -> StorageResult<()> {
         let states = {
             let mut dot_states = self.transaction_dot_states.write().unwrap();
             dot_states.remove(&txn_id).unwrap_or_default()
         };
 
-        // For contract versioning, we don't need to explicitly remove versions
+        // For dot versioning, we don't need to explicitly remove versions
         // since they weren't finalized and will be cleaned up by GC
         Ok(())
     }

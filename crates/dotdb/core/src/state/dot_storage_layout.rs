@@ -14,37 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # Contract Storage Layout
-//!
-//! This module defines a deterministic scheme for mapping a contract's internal storage
-//! variables to keys within the global state tree (Merkle Patricia Trie).
-//!
-//! ## Key Design Principles
-//!
-//! 1. **Deterministic**: The same storage variable always maps to the same key
-//! 2. **Collision-free**: Different storage variables map to different keys
-//! 3. **Efficient**: Common access patterns are optimized
-//! 4. **Extensible**: Can handle various data types and structures
-//!
-//! ## Storage Layout Structure
-//!
-//! Each contract has a dedicated subtree within the MPT, using the contract address
-//! as a prefix. The layout supports:
-//!
-//! - Simple storage slots (256-bit aligned)
-//! - Dynamic arrays with automatic slot allocation
-//! - Mappings with keccak256-based key derivation
-//! - Structs with packed storage optimization
-//!
-//! ## Key Encoding Format
-//!
-//! ```text
-//! Contract Storage Key = dot_address || storage_slot_key
-//!
-//! Where:
-//! - dot_address: 20 bytes (160 bits)
-//! - storage_slot_key: 32 bytes (256 bits)
-//! ```
+//! Dot Storage Layout
 
 use std::collections::HashMap;
 use std::fmt;
@@ -54,7 +24,7 @@ use sha3::{Digest, Keccak256};
 
 use super::mpt::{Key, Value};
 
-/// Contract address type (20 bytes)
+/// Dot address type (20 bytes)
 pub type DotAddress = [u8; 20];
 
 /// Storage slot identifier (32 bytes)
@@ -77,7 +47,7 @@ pub enum StorageValue {
     Mapping(HashMap<String, StorageValue>),
 }
 
-/// Storage variable types supported by the contract storage layout
+/// Storage variable types supported by the dot storage layout
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StorageVariableType {
     /// Simple value stored in a single slot
@@ -99,10 +69,10 @@ pub struct StructField {
     pub size: u32,
 }
 
-/// Contract storage layout definition
+/// Dot storage layout definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DotStorageLayout {
-    /// Contract address this layout belongs to
+    /// Dot address this layout belongs to
     pub dot_address: DotAddress,
     /// Storage variables and their slot assignments
     pub variables: HashMap<String, StorageVariable>,
@@ -128,7 +98,7 @@ pub struct StorageVariable {
 /// Errors that can occur during storage layout operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorageLayoutError {
-    /// Invalid contract address
+    /// Invalid dot address
     InvalidAddress,
     /// Storage slot collision
     SlotCollision,
@@ -145,7 +115,7 @@ pub enum StorageLayoutError {
 impl fmt::Display for StorageLayoutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StorageLayoutError::InvalidAddress => write!(f, "Invalid contract address"),
+            StorageLayoutError::InvalidAddress => write!(f, "Invalid dot address"),
             StorageLayoutError::SlotCollision => write!(f, "Storage slot collision detected"),
             StorageLayoutError::InvalidVariableType => write!(f, "Invalid variable type"),
             StorageLayoutError::EncodingError(msg) => write!(f, "Encoding error: {msg}"),
@@ -158,7 +128,7 @@ impl fmt::Display for StorageLayoutError {
 impl std::error::Error for StorageLayoutError {}
 
 impl DotStorageLayout {
-    /// Create a new storage layout for a contract
+    /// Create a new storage layout for a dot
     pub fn new(dot_address: DotAddress) -> Self {
         Self {
             dot_address,
@@ -190,7 +160,7 @@ impl DotStorageLayout {
     pub fn generate_storage_key(&self, slot: u32) -> Result<Key, StorageLayoutError> {
         let mut key_bytes = Vec::with_capacity(52); // 20 + 32 bytes
 
-        // Add contract address prefix
+        // Add dot address prefix
         key_bytes.extend_from_slice(&self.dot_address);
 
         // Add slot as 32-byte big-endian
@@ -456,7 +426,7 @@ mod tests {
         // Key should be 52 bytes: 20 (address) + 32 (slot)
         assert_eq!(key.len(), 52);
 
-        // First 20 bytes should be the contract address
+        // First 20 bytes should be the dot address
         assert_eq!(&key[0..20], &[1u8; 20]);
 
         // Last 4 bytes should contain the slot number (5)
@@ -472,7 +442,7 @@ mod tests {
         // Key should be 52 bytes: 20 (address) + 32 (hash)
         assert_eq!(key.len(), 52);
 
-        // First 20 bytes should be the contract address
+        // First 20 bytes should be the dot address
         assert_eq!(&key[0..20], &[1u8; 20]);
 
         // Different mapping keys should generate different storage keys
@@ -493,7 +463,7 @@ mod tests {
         assert_eq!(key1.len(), 52);
         assert_eq!(key2.len(), 52);
 
-        // First 20 bytes should be the contract address
+        // First 20 bytes should be the dot address
         assert_eq!(&key1[0..20], &[1u8; 20]);
         assert_eq!(&key2[0..20], &[1u8; 20]);
     }

@@ -125,7 +125,7 @@ impl GrpcEndpointManager {
                 service: "vm_service.VmService".to_string(),
                 method: "DeployDot".to_string(),
                 requires_auth: true,
-                example_request: r#"{"dot_name": "test-dot", "dot_source": "contract TestDot { }", "deployer_id": "test-user"}"#.to_string(),
+                example_request: r#"{"dot_name": "test-dot", "dot_source": "dot TestDot { }", "deployer_id": "test-user"}"#.to_string(),
             },
             GrpcEndpoint {
                 service: "vm_service.VmService".to_string(),

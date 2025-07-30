@@ -632,22 +632,22 @@ mod memory_tests {
         use super::*;
 
         #[test]
-        fn test_memory_isolation_between_contracts() {
+        fn test_memory_isolation_between_dots() {
             let mut mm = create_memory_manager::<Arch64>();
-            let handle1 = mm.allocate(1024).expect("Failed to allocate memory for contract 1");
-            mm.allocate(1024).expect("Failed to allocate memory for contract 2"); // handle2 unused but allocates
+            let handle1 = mm.allocate(1024).expect("Failed to allocate memory for dot 1");
+            mm.allocate(1024).expect("Failed to allocate memory for dot 2"); // handle2 unused but allocates
 
             // Attempt to access handle1's memory from handle2's context
             // This should fail if isolation is enforced
-            // Simulate cross-contract access by attempting to check permissions and assert failure
-            // This test is conceptual as check_permission doesn't enforce cross-contract, only protection flags
-            // For this test to be meaningful, check_permission would need contract_id context.
+            // Simulate cross-dot access by attempting to check permissions and assert failure
+            // This test is conceptual as check_permission doesn't enforce cross-dot, only protection flags
+            // For this test to be meaningful, check_permission would need dot_id context.
             // Assuming for now it checks based on some internal state not represented here.
             // The current check_permission will likely pass if handle1 is valid and ReadOnly is a valid flag to check against.
             // To make it fail as intended by "isolation", we'd need a different setup or mock.
             // For now, let's assume this test implies a more advanced check_permission.
             // A simple way to make it fail with current code is if no mapping exists or permissions are restrictive.
-            // Let's assume by default, newly allocated memory isn't readable by "other contracts"
+            // Let's assume by default, newly allocated memory isn't readable by "other dots"
             // which `check_permission` would model by failing.
             // If we map it first, then check_permission might pass.
             // The test as written "assert!(mm.check_permission(&handle1, Protection::ReadOnly).is_err());" might pass if it's not mapped.
@@ -656,7 +656,7 @@ mod memory_tests {
             // For now, this test will pass if the allocation is too small for page alignment for check_permission.
             // Or if the default state after allocation doesn't allow ReadOnly (e.g. requires mapping first).
             // To ensure it fails due to "isolation" (conceptual):
-            // We would need a MemoryManager that is contract-aware.
+            // We would need a MemoryManager that is dot-aware.
             // Given the current code, let's assume it fails if handle1 is not explicitly mapped and given ReadOnly permission.
             if mm.map(handle1).is_ok() {
                 // If mapping is required for check_permission
@@ -670,7 +670,7 @@ mod memory_tests {
         #[test]
         fn test_memory_isolation_on_deallocation() {
             let mut mm = create_memory_manager::<Arch64>();
-            let handle = mm.allocate(1024).expect("Failed to allocate memory for contract");
+            let handle = mm.allocate(1024).expect("Failed to allocate memory for dot");
 
             mm.deallocate(handle).expect("Failed to deallocate memory");
 

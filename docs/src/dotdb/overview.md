@@ -1,6 +1,6 @@
 # DotDB Overview
 
-DotDB (Dotlanth Database) is a high-performance document database designed to work seamlessly with DotVM. It provides efficient state management, document storage, and query capabilities optimized for blockchain and high-performance applications.
+DotDB (Dotlanth Database) is a high-performance document database designed to work seamlessly with DotVM. It provides efficient state management, document storage, and query capabilities optimized for high-performance applications.
 
 ## What is DotDB?
 
@@ -230,12 +230,12 @@ Optimized for VM workloads:
 
 ## Use Cases
 
-### Blockchain Applications
+### Applications
 
-DotDB is ideal for blockchain state management:
+DotDB is ideal for state management:
 
 - **Account State**: User accounts and balances
-- **Smart Contract State**: Contract storage and execution state
+- **Dot State**: Dot storage and execution state
 - **Transaction History**: Immutable transaction logs
 - **Block Data**: Block headers and transaction data
 

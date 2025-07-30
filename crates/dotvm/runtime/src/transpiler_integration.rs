@@ -28,6 +28,7 @@ use dotvm_core::bytecode::VmArchitecture;
 use std::{
     collections::HashMap,
     fs,
+    io,
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
     time::SystemTime,
@@ -313,9 +314,15 @@ impl HotReloader {
     /// Add a file to watch for changes
     pub fn watch_file<P: AsRef<Path>>(&self, file_path: P) -> Result<(), JitError> {
         let file_path = file_path.as_ref().to_path_buf();
-        let metadata = fs::metadata(&file_path).map_err(|e| JitError::FileSystem(format!("Cannot read file metadata: {e}")))?;
-
-        let modified = metadata.modified().map_err(|e| JitError::FileSystem(format!("Cannot get file modification time: {e}")))?;
+        let modified = match fs::metadata(&file_path) {
+            Ok(meta) => match meta.modified() {
+                Ok(m) => m,
+                Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Ok(()),
+                Err(e) => return Err(JitError::FileSystem(format!("Cannot get file modification time: {e}"))),
+            },
+            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Ok(()),
+            Err(e) => return Err(JitError::FileSystem(format!("Cannot read file metadata: {e}"))),
+        };
 
         if let Ok(mut watched) = self.watched_files.write() {
             watched.insert(file_path, modified);

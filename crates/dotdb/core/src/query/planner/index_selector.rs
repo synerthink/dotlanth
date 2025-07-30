@@ -83,7 +83,7 @@ pub struct IndexSelector {
 }
 
 #[derive(Debug, Clone)]
-struct IndexInfo {
+pub struct IndexInfo {
     index_type: IndexType,
     columns: Vec<String>,
     cardinality: u64,

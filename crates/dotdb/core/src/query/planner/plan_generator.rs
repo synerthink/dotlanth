@@ -156,14 +156,14 @@ pub struct QueryPlanner {
 }
 
 #[derive(Debug, Clone)]
-struct TableMetadata {
+pub struct TableMetadata {
     row_count: u64,
     column_info: HashMap<String, ColumnInfo>,
     available_indexes: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
-struct ColumnInfo {
+pub struct ColumnInfo {
     data_type: String,
     nullable: bool,
     cardinality: u64,

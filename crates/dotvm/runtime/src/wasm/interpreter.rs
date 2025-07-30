@@ -94,8 +94,7 @@ impl WasmInterpreter {
         let mut pc = 0;
 
         while pc < instructions.len() {
-            // Check gas and instruction limits
-            context.consume_gas(1)?;
+            // Check instruction limits
             context.count_instruction()?;
 
             // Execute current instruction
@@ -625,7 +624,6 @@ impl WasmInterpreter {
             if let Some(host_func) = context.wasm.host_functions.get(&host_func_key) {
                 let result = host_func(&args)?;
                 context.metrics.host_function_calls += 1;
-                context.wasm.gas_consumed += 10; // Base cost for host function call
                 return Ok(result);
             }
         }
@@ -655,8 +653,6 @@ impl WasmInterpreter {
             metadata: crate::wasm::execution::FrameMetadata {
                 function_name: format!("func_{}", function_index),
                 call_time: std::time::Instant::now(),
-                gas_at_entry: context.wasm.gas_consumed,
-                gas_consumed: 0,
                 instructions_executed: 0,
                 tags: std::collections::HashMap::new(),
             },
@@ -833,8 +829,6 @@ impl WasmInterpreter {
     fn call_host_function(&mut self, host_func: &Box<dyn Fn(&[Value]) -> WasmResult<Vec<Value>> + Send + Sync>, args: &[Value], context: &mut WasmExecutionContext) -> WasmResult<Vec<Value>> {
         context.metrics.host_function_calls += 1;
 
-        // Consume gas for host function call
-        context.wasm.gas_consumed += 10; // Base cost for host function call
 
         // Call the host function
         host_func(args)

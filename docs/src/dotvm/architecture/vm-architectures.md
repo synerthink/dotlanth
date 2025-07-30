@@ -44,12 +44,12 @@ DotVM supports multiple virtual machine architectures, each optimized for differ
 - **Word Size**: 256 bits (32 bytes)
 - **Address Space**: 2^256 bytes (theoretical)
 - **Register Width**: 256 bits
-- **Use Cases**: Advanced cryptography, blockchain applications, high-performance computing
+- **Use Cases**: Advanced cryptography, high-performance computing
 
 **Characteristics:**
 - Maximum precision for arithmetic operations
 - Native support for 256-bit integers
-- Optimized for blockchain and cryptocurrency operations
+- Optimized for cryptographic operations
 - Excellent for cryptographic hash functions
 
 ### Arch512 (512-bit)
@@ -73,7 +73,7 @@ DotVM supports multiple virtual machine architectures, each optimized for differ
 | Arch32 | IoT, embedded systems | Fast | Low | Standard |
 | Arch64 | General applications | Balanced | Moderate | Good |
 | Arch128 | Scientific computing | Good | Higher | High |
-| Arch256 | Blockchain, crypto | Specialized | High | Very High |
+| Arch256 | Cryptography | Specialized | High | Very High |
 | Arch512 | Research, extreme precision | Specialized | Highest | Maximum |
 
 ### Performance Characteristics
@@ -119,7 +119,6 @@ Each architecture provides native support for operations matching its word size:
 
 **Arch256:**
 - 256-bit integer arithmetic
-- Blockchain-optimized operations
 - SHA-256 native support
 - Elliptic curve cryptography
 

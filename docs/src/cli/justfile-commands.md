@@ -103,7 +103,7 @@ just dotlanth nodes list
 just dotlanth nodes add "192.168.1.100:8080"
 
 # Deploy a dot file
-just dotlanth deploy my-contract.dot
+just dotlanth deploy my-dot.dot
 
 # Show configuration
 just dotlanth config show

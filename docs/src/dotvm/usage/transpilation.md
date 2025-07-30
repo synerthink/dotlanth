@@ -86,15 +86,6 @@ dotvm transpile -i program.rs -o program.dotvm -a arch64
 - **Memory**: Up to 16 EB addressable
 - **Performance**: Balanced
 
-**Arch256 (Blockchain):**
-```bash
-dotvm transpile -i crypto_app.rs -o crypto_app.dotvm -a arch256
-```
-- **Best for**: Cryptocurrency and blockchain applications
-- **Word size**: 256 bits
-- **Features**: Native 256-bit integer support
-- **Use cases**: Smart contracts, cryptographic operations
-
 **Arch128 (Scientific):**
 ```bash
 dotvm transpile -i simulation.rs -o simulation.dotvm -a arch128
@@ -345,7 +336,7 @@ fn main() {
 **Optimize for target architecture:**
 
 ```rust
-// For Arch256 (blockchain applications)
+// For Arch256 (high-security applications)
 fn hash_calculation(data: &[u8]) -> [u8; 32] {
     // Use 256-bit operations
     use sha2::{Sha256, Digest};
@@ -421,7 +412,7 @@ fn calculate_hash(data: &[u8]) -> [u8; 32] {
 }
 ```
 
-**Transpile for blockchain architecture:**
+**Transpile for high-security architecture:**
 ```bash
 dotvm transpile -i crypto_app.rs -o crypto_app.dotvm -a arch256 --opt-level 3
 ```

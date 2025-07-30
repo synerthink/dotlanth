@@ -17,8 +17,8 @@
 //! # State Transition Validation
 //!
 //! This module implements rules and checks to validate state changes proposed
-//! by contract execution. It ensures that state transitions are valid,
-//! atomic, and adhere to contract-defined invariants.
+//! by dot execution. It ensures that state transitions are valid,
+//! atomic, and adhere to dot-defined invariants.
 //!
 //! ## Key Features
 //!
@@ -26,7 +26,6 @@
 //! - Permission checking based on caller identity
 //! - Invariant validation
 //! - Atomic transaction support
-//! - Gas cost accounting for state changes
 //! - Custom validation rules
 
 use std::collections::HashMap;
@@ -45,7 +44,7 @@ pub type ValidationResult = StateTransitionResult<ValidationSummary>;
 /// State transition that needs to be validated
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StateTransition {
-    /// Contract address where the transition occurs
+    /// Dot address where the transition occurs
     pub dot_address: DotAddress,
     /// Storage key being modified
     pub storage_key: Vec<u8>,
@@ -62,14 +61,10 @@ pub struct StateTransition {
 /// Context for validation operations
 #[derive(Debug, Clone)]
 pub struct ValidationContext {
-    /// Address of the contract calling the operation
+    /// Address of the dot calling the operation
     pub caller: DotAddress,
-    /// Address of the contract being executed
+    /// Address of the dot being executed
     pub dot: DotAddress,
-    /// Current gas limit
-    pub gas_limit: u64,
-    /// Gas used so far
-    pub gas_used: u64,
     /// Whether this is a static call (read-only)
     pub is_static_call: bool,
     /// Current block number
@@ -87,8 +82,6 @@ pub struct ValidationContext {
 pub struct ValidationSummary {
     /// Whether all validations passed
     pub is_valid: bool,
-    /// Total gas cost for the transition
-    pub gas_cost: u64,
     /// List of applied rules
     pub applied_rules: Vec<String>,
     /// List of violations (if any)
@@ -136,10 +129,6 @@ pub trait TransitionRule: Send + Sync {
         true
     }
 
-    /// Gas cost of applying this rule
-    fn gas_cost(&self) -> u64 {
-        100 // Default gas cost
-    }
 }
 
 /// Result of applying a single validation rule
@@ -147,8 +136,6 @@ pub trait TransitionRule: Send + Sync {
 pub struct RuleResult {
     /// Whether the rule passed
     pub passed: bool,
-    /// Gas consumed by the rule
-    pub gas_used: u64,
     /// Optional violation details
     pub violation: Option<ValidationViolation>,
     /// Optional warning message
@@ -175,8 +162,6 @@ impl std::fmt::Debug for StateTransitionValidator {
 /// Configuration for the state transition validator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidatorConfig {
-    /// Maximum gas for validation operations
-    pub max_validation_gas: u64,
     /// Whether to stop on first critical error
     pub fail_fast: bool,
     /// Whether to collect warnings
@@ -192,7 +177,6 @@ pub struct ValidatorConfig {
 impl Default for ValidatorConfig {
     fn default() -> Self {
         Self {
-            max_validation_gas: 100000,
             fail_fast: true,
             collect_warnings: true,
             validate_types: true,
@@ -207,8 +191,6 @@ impl Default for ValidatorConfig {
 pub enum StateTransitionError {
     /// Validation rule failed
     ValidationFailed(String),
-    /// Insufficient gas for validation
-    InsufficientGas { required: u64, available: u64 },
     /// Invalid transition format
     InvalidTransition(String),
     /// Invalid validation context
@@ -229,9 +211,6 @@ impl fmt::Display for StateTransitionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StateTransitionError::ValidationFailed(msg) => write!(f, "Validation failed: {msg}"),
-            StateTransitionError::InsufficientGas { required, available } => {
-                write!(f, "Insufficient gas for validation: required {required}, available {available}")
-            }
             StateTransitionError::InvalidTransition(msg) => write!(f, "Invalid transition: {msg}"),
             StateTransitionError::InvalidContext(msg) => write!(f, "Invalid context: {msg}"),
             StateTransitionError::TypeMismatch { expected, actual } => {
@@ -289,39 +268,17 @@ impl StateTransitionValidator {
     pub fn validate_transition(&self, transition: &StateTransition, context: &ValidationContext) -> ValidationResult {
         let mut summary = ValidationSummary {
             is_valid: true,
-            gas_cost: 0,
             applied_rules: Vec::new(),
             violations: Vec::new(),
             warnings: Vec::new(),
         };
 
-        // Check gas limit for validation
-        if context.gas_limit < context.gas_used + self.config.max_validation_gas {
-            return Err(StateTransitionError::InsufficientGas {
-                required: self.config.max_validation_gas,
-                available: context.gas_limit.saturating_sub(context.gas_used),
-            });
-        }
 
         // Apply each validation rule
         for rule in &self.rules {
-            // Check if we have enough gas for this rule
-            if summary.gas_cost + rule.gas_cost() > self.config.max_validation_gas {
-                if rule.is_critical() {
-                    return Err(StateTransitionError::InsufficientGas {
-                        required: rule.gas_cost(),
-                        available: self.config.max_validation_gas - summary.gas_cost,
-                    });
-                } else {
-                    // Skip non-critical rules if out of gas
-                    continue;
-                }
-            }
-
             // Apply the rule
             match rule.validate(transition, context) {
                 Ok(result) => {
-                    summary.gas_cost += result.gas_used;
                     summary.applied_rules.push(rule.name().to_string());
 
                     if !result.passed {
@@ -359,7 +316,6 @@ impl StateTransitionValidator {
     pub fn validate_batch(&self, transitions: &[StateTransition], context: &ValidationContext) -> ValidationResult {
         let mut combined_summary = ValidationSummary {
             is_valid: true,
-            gas_cost: 0,
             applied_rules: Vec::new(),
             violations: Vec::new(),
             warnings: Vec::new(),
@@ -368,7 +324,6 @@ impl StateTransitionValidator {
         for (i, transition) in transitions.iter().enumerate() {
             match self.validate_transition(transition, context) {
                 Ok(summary) => {
-                    combined_summary.gas_cost += summary.gas_cost;
                     combined_summary.applied_rules.extend(summary.applied_rules);
                     combined_summary.violations.extend(summary.violations);
                     combined_summary.warnings.extend(summary.warnings);
@@ -430,7 +385,6 @@ impl TransitionRule for TypeValidationRule {
             if !type_valid {
                 return Ok(RuleResult {
                     passed: false,
-                    gas_used: self.gas_cost(),
                     violation: Some(ValidationViolation {
                         rule_name: self.name().to_string(),
                         severity: ViolationSeverity::Error,
@@ -444,15 +398,11 @@ impl TransitionRule for TypeValidationRule {
 
         Ok(RuleResult {
             passed: true,
-            gas_used: self.gas_cost(),
             violation: None,
             warning: None,
         })
     }
 
-    fn gas_cost(&self) -> u64 {
-        50 // Type validation is relatively cheap
-    }
 }
 
 /// Built-in rule for permission validation
@@ -472,15 +422,14 @@ impl TransitionRule for PermissionValidationRule {
     fn validate(&self, transition: &StateTransition, context: &ValidationContext) -> StateTransitionResult<RuleResult> {
         // Check if the caller has permission to modify this storage
 
-        // Basic rule: only the contract itself can modify its storage
+        // Basic rule: only the dot itself can modify its storage
         if context.caller != transition.dot_address && context.dot == transition.dot_address {
             // External call trying to modify storage - this might be allowed in some cases
             // For now, we'll issue a warning
             return Ok(RuleResult {
                 passed: true,
-                gas_used: self.gas_cost(),
                 violation: None,
-                warning: Some(format!("External caller {:?} modifying contract {:?} storage", context.caller, transition.dot_address)),
+                warning: Some(format!("External caller {:?} modifying dot {:?} storage", context.caller, transition.dot_address)),
             });
         }
 
@@ -488,7 +437,6 @@ impl TransitionRule for PermissionValidationRule {
         if context.is_static_call && transition.new_value.is_some() {
             return Ok(RuleResult {
                 passed: false,
-                gas_used: self.gas_cost(),
                 violation: Some(ValidationViolation {
                     rule_name: self.name().to_string(),
                     severity: ViolationSeverity::Error,
@@ -501,15 +449,11 @@ impl TransitionRule for PermissionValidationRule {
 
         Ok(RuleResult {
             passed: true,
-            gas_used: self.gas_cost(),
             violation: None,
             warning: None,
         })
     }
 
-    fn gas_cost(&self) -> u64 {
-        75 // Permission checks are moderately expensive
-    }
 }
 
 /// Built-in rule for invariant validation
@@ -527,21 +471,17 @@ impl TransitionRule for InvariantValidationRule {
     }
 
     fn validate(&self, _transition: &StateTransition, _context: &ValidationContext) -> StateTransitionResult<RuleResult> {
-        // This is a placeholder for contract-specific invariant validation
-        // In practice, this would check contract-defined invariants
+        // This is a placeholder for dot-specific invariant validation
+        // In practice, this would check dot-defined invariants
 
         // For now, always pass
         Ok(RuleResult {
             passed: true,
-            gas_used: self.gas_cost(),
             violation: None,
             warning: None,
         })
     }
 
-    fn gas_cost(&self) -> u64 {
-        200 // Invariant validation can be expensive
-    }
 
     fn is_critical(&self) -> bool {
         true // Invariant violations are always critical
@@ -556,30 +496,27 @@ impl Default for StateTransitionValidator {
 
 impl RuleResult {
     /// Create a successful rule result
-    pub fn success(gas_used: u64) -> Self {
+    pub fn success() -> Self {
         Self {
             passed: true,
-            gas_used,
             violation: None,
             warning: None,
         }
     }
 
     /// Create a successful rule result with warning
-    pub fn success_with_warning(gas_used: u64, warning: String) -> Self {
+    pub fn success_with_warning(warning: String) -> Self {
         Self {
             passed: true,
-            gas_used,
             violation: None,
             warning: Some(warning),
         }
     }
 
     /// Create a failed rule result
-    pub fn failure(gas_used: u64, violation: ValidationViolation) -> Self {
+    pub fn failure(violation: ValidationViolation) -> Self {
         Self {
             passed: false,
-            gas_used,
             violation: Some(violation),
             warning: None,
         }
@@ -628,8 +565,6 @@ mod tests {
         ValidationContext {
             caller: [1u8; 20],
             dot: [1u8; 20],
-            gas_limit: 1000000,
-            gas_used: 0,
             is_static_call: false,
             block_number: 100,
             timestamp: 1640995200,
@@ -675,7 +610,6 @@ mod tests {
 
         let summary = result.unwrap();
         assert!(summary.is_valid);
-        assert!(summary.gas_cost > 0);
         assert!(!summary.applied_rules.is_empty());
     }
 
@@ -723,20 +657,9 @@ mod tests {
 
         let summary = result.unwrap();
         assert!(summary.is_valid);
-        assert!(summary.gas_cost > 0);
     }
 
     #[test]
-    fn test_insufficient_gas() {
-        let validator = StateTransitionValidator::new();
-        let transition = create_test_transition();
-        let mut context = create_test_context();
-        context.gas_limit = 100; // Very low gas limit
-        context.gas_used = 50;
-
-        let result = validator.validate_transition(&transition, &context);
-        assert!(matches!(result, Err(StateTransitionError::InsufficientGas { .. })));
-    }
 
     #[test]
     fn test_rule_management() {
@@ -754,7 +677,7 @@ mod tests {
                 "custom_rule"
             }
             fn validate(&self, _: &StateTransition, _: &ValidationContext) -> StateTransitionResult<RuleResult> {
-                Ok(RuleResult::success(10))
+                Ok(RuleResult::success())
             }
         }
 
@@ -783,17 +706,16 @@ mod tests {
 
     #[test]
     fn test_rule_result_creation() {
-        let success = RuleResult::success(100);
+        let success = RuleResult::success();
         assert!(success.passed);
-        assert_eq!(success.gas_used, 100);
         assert!(success.violation.is_none());
         assert!(success.warning.is_none());
 
-        let warning = RuleResult::success_with_warning(100, "Test warning".to_string());
+        let warning = RuleResult::success_with_warning("Test warning".to_string());
         assert!(warning.passed);
         assert!(warning.warning.is_some());
 
-        let failure = RuleResult::failure(100, ValidationViolation::new("test".to_string(), ViolationSeverity::Error, "Test error".to_string()));
+        let failure = RuleResult::failure(ValidationViolation::new("test".to_string(), ViolationSeverity::Error, "Test error".to_string()));
         assert!(!failure.passed);
         assert!(failure.violation.is_some());
     }
@@ -808,7 +730,6 @@ mod tests {
     #[test]
     fn test_config_defaults() {
         let config = ValidatorConfig::default();
-        assert_eq!(config.max_validation_gas, 100000);
         assert!(config.fail_fast);
         assert!(config.collect_warnings);
         assert!(config.validate_types);
@@ -824,7 +745,5 @@ mod tests {
         };
         assert!(error.to_string().contains("Type mismatch"));
 
-        let error = StateTransitionError::InsufficientGas { required: 1000, available: 500 };
-        assert!(error.to_string().contains("Insufficient gas"));
     }
 }

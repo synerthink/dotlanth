@@ -1,17 +1,17 @@
 # Welcome to Dotlanth
 
-Welcome to the comprehensive documentation for Dotlanth, a next-generation virtual machine solution designed for high-performance parallel contract execution and state management.
+Welcome to the comprehensive documentation for Dotlanth, a next-generation virtual machine solution designed for high-performance parallel dot execution and state management.
 
 ## Project Overview
 
 Dotlanth consists of two main components that work together to provide a complete virtual machine and database solution:
 
 ### DOTVM (Virtual Machine)
-DOTVM is a highly efficient virtual machine designed to execute smart contracts with advanced parallelization capabilities. It supports multiple architectures (32/64/128/256/512-bit) and provides robust security features.
+DOTVM is a highly efficient virtual machine designed to execute dots with advanced parallelization capabilities. It supports multiple architectures (32/64/128/256/512-bit) and provides robust security features.
 
 **Key Features:**
 - **Multi-architecture support**: 32, 64, 128, 256, and 512-bit architectures
-- **ParaContracts system**: Advanced parallel execution capabilities
+- **Paradots system**: Advanced parallel execution capabilities
 - **Comprehensive instruction set**: Arithmetic, control flow, memory, crypto, SIMD, and more
 - **Rust to DotVM transpilation**: Complete toolchain from Rust source to bytecode
 - **Advanced security and isolation**: Memory protection and secure execution
@@ -23,7 +23,7 @@ DOTVM is a highly efficient virtual machine designed to execute smart contracts 
 - `dotvm run`: Execute DotVM bytecode with debugging capabilities
 
 ### DOTDB (Document Database)
-DOTDB is a custom-built document database designed to work seamlessly with DOTVM. It provides efficient state management and storage capabilities optimized for blockchain and high-performance applications.
+DOTDB is a custom-built document database designed to work seamlessly with DOTVM. It provides efficient state management and storage capabilities optimized for  and high-performance applications.
 
 **Key Features:**
 - **Document-based storage**: JSON document collections with efficient indexing

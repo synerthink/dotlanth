@@ -36,9 +36,9 @@
 //! - **Output**: Data flow information, variable lifetime data
 //!
 //! ### State Access Analysis (`state_access`)
-//! - **Purpose**: Analyzes blockchain state access patterns
+//! - **Purpose**: Analyzes state access patterns
 //! - **Capabilities**: Read/write tracking, conflict detection, optimization hints
-//! - **Use Cases**: Gas optimization, security analysis, reentrancy detection
+//! - **Use Cases**: Security analysis, reentrancy detection
 //! - **Output**: State access patterns, conflict reports, optimization suggestions
 //!
 //! ## Common Analysis Framework

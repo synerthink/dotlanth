@@ -17,7 +17,7 @@
 //! # Validation Module
 //!
 //! This module provides components for validating state transitions
-//! and other operations during smart contract execution.
+//! and other operations during dot execution.
 
 pub mod state_transition;
 

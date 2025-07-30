@@ -17,7 +17,7 @@
 //! State Snapshot System
 //!
 //! This module provides a comprehensive state snapshot system for capturing and
-//! managing point-in-time views of the blockchain state. It enables efficient
+//! managing point-in-time views of the system state. It enables efficient
 //! state reconstruction, rollback capabilities, and state synchronization.
 //!
 //! # Features
@@ -87,7 +87,7 @@ pub struct StateSnapshot {
     pub id: SnapshotId,
     /// Versioning system state version ID
     pub version_id: StateVersionId,
-    /// Optional contract address for contract-specific snapshots
+    /// Optional dot address for dot-specific snapshots
     pub dot_address: Option<DotAddress>,
     /// Root hash of the state tree at snapshot time
     pub root_hash: Hash,
@@ -118,7 +118,7 @@ pub enum SnapshotError {
     MPTError(String),
     /// Versioning operation failed
     VersioningError(String),
-    /// Contract not found
+    /// Dot not found
     DotNotFound(DotAddress),
     /// Serialization/deserialization error
     SerializationError(String),
@@ -184,13 +184,13 @@ impl StateSnapshot {
         }
     }
 
-    /// Create a new snapshot with specific version ID and optional contract address
+    /// Create a new snapshot with specific version ID and optional dot address
     ///
     /// # Arguments
     ///
     /// * `id` - Unique identifier for the snapshot
     /// * `version_id` - State version ID from versioning system
-    /// * `dot_address` - Optional contract address for contract-specific snapshots
+    /// * `dot_address` - Optional dot address for dot-specific snapshots
     /// * `root_hash` - Root hash of the state tree
     /// * `height` - Optional block height
     /// * `description` - Optional description
@@ -282,20 +282,20 @@ impl StateSnapshot {
         current_time.saturating_sub(self.timestamp())
     }
 
-    /// Check if this is a contract-specific snapshot
+    /// Check if this is a dot-specific snapshot
     ///
     /// # Returns
     ///
-    /// True if this snapshot is for a specific contract
+    /// True if this snapshot is for a specific dot
     pub fn is_dot_snapshot(&self) -> bool {
         self.dot_address.is_some()
     }
 
-    /// Get contract address if this is a contract-specific snapshot
+    /// Get dot address if this is a dot-specific snapshot
     ///
     /// # Returns
     ///
-    /// Optional reference to the contract address
+    /// Optional reference to the dot address
     pub fn get_dot_address(&self) -> Option<&DotAddress> {
         self.dot_address.as_ref()
     }
@@ -331,7 +331,7 @@ impl Default for SnapshotConfig {
 /// Snapshot management system with versioning integration
 ///
 /// This manager provides comprehensive snapshot capabilities with integration
-/// to the contract versioning system for unified state management.
+/// to the dot versioning system for unified state management.
 pub struct SnapshotManager<S: NodeStorage> {
     /// Configuration for snapshot management
     config: SnapshotConfig,
@@ -339,7 +339,7 @@ pub struct SnapshotManager<S: NodeStorage> {
     snapshots: HashMap<SnapshotId, StateSnapshot>,
     /// Reference to the underlying MPT for state reconstruction
     current_trie: Option<MerklePatriciaTrie<S>>,
-    /// Contract version manager for versioning integration
+    /// Dot version manager for versioning integration
     version_manager: DotVersionManager,
 }
 
@@ -358,7 +358,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
             config,
             snapshots: HashMap::new(),
             current_trie: None,
-            version_manager: DotVersionManager::new(100), // Default: keep 100 versions per contract
+            version_manager: DotVersionManager::new(100), // Default: keep 100 versions per dot
         }
     }
 
@@ -412,12 +412,12 @@ impl<S: NodeStorage> SnapshotManager<S> {
         Ok(snapshot)
     }
 
-    /// Create a contract-specific snapshot with versioning integration
+    /// Create a dot-specific snapshot with versioning integration
     ///
     /// # Arguments
     ///
     /// * `id` - Unique identifier for the snapshot
-    /// * `dot_address` - Contract address for this snapshot
+    /// * `dot_address` - Dot address for this snapshot
     /// * `trie` - The trie to snapshot
     /// * `height` - Optional block height
     /// * `description` - Optional description
@@ -453,13 +453,13 @@ impl<S: NodeStorage> SnapshotManager<S> {
         Ok(snapshot)
     }
 
-    /// Create a snapshot from an existing contract version
+    /// Create a snapshot from an existing dot version
     ///
     /// # Arguments
     ///
     /// * `id` - Unique identifier for the snapshot
-    /// * `contract_address` - Contract address
-    /// * `version_id` - Existing version ID from contract version manager
+    /// * `dot_address` - Dot address
+    /// * `version_id` - Existing version ID from dot version manager
     /// * `trie` - The trie to snapshot
     ///
     /// # Returns
@@ -471,7 +471,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
             return Err(SnapshotError::AlreadyExists(id));
         }
 
-        // Get the contract version to extract metadata
+        // Get the dot version to extract metadata
         let dot_version = self
             .version_manager
             .get_version(dot_address, version_id)
@@ -534,7 +534,7 @@ impl<S: NodeStorage> SnapshotManager<S> {
     pub fn delete_snapshot(&mut self, id: &SnapshotId) -> SnapshotResult<StateSnapshot> {
         let snapshot = self.snapshots.remove(id).ok_or_else(|| SnapshotError::NotFound(id.clone()))?;
 
-        // If this is a contract snapshot, release the version reference
+        // If this is a dot snapshot, release the version reference
         if let Some(dot_address) = snapshot.dot_address {
             self.version_manager.release_snapshot(dot_address, snapshot.version_id);
         }
@@ -736,20 +736,20 @@ impl<S: NodeStorage> SnapshotManager<S> {
         self.current_trie.as_mut().ok_or_else(|| SnapshotError::InvalidSnapshot("No current trie available".to_string()))
     }
 
-    /// Get snapshots for a specific contract
+    /// Get snapshots for a specific dot
     ///
     /// # Arguments
     ///
-    /// * `dot_address` - Contract address to filter by
+    /// * `dot_address` - Dot address to filter by
     ///
     /// # Returns
     ///
-    /// Vector of snapshots for the specified contract
+    /// Vector of snapshots for the specified dot
     pub fn get_dot_snapshots(&self, dot_address: DotAddress) -> Vec<&StateSnapshot> {
         self.snapshots.values().filter(|snapshot| snapshot.dot_address == Some(dot_address)).collect()
     }
 
-    /// Get global (non-contract-specific) snapshots
+    /// Get global (non-dot-specific) snapshots
     ///
     /// # Returns
     ///

@@ -66,9 +66,6 @@ pub enum WasmError {
     #[error("Timeout: execution exceeded {timeout_ms}ms")]
     Timeout { timeout_ms: u64 },
 
-    #[error("Out of gas: consumed {consumed}, limit {limit}")]
-    OutOfGas { consumed: u64, limit: u64 },
-
     #[error("Import resolution failed: module {module}, name {name}")]
     ImportResolutionError { module: String, name: String },
 
@@ -146,11 +143,6 @@ impl WasmError {
         Self::StackOverflow { current, max }
     }
 
-    /// Create out of gas error
-    pub fn out_of_gas(consumed: u64, limit: u64) -> Self {
-        Self::OutOfGas { consumed, limit }
-    }
-
     /// Create timeout error
     pub fn timeout(timeout_ms: u64) -> Self {
         Self::Timeout { timeout_ms }
@@ -168,7 +160,7 @@ impl WasmError {
 
     /// Check if this error is recoverable
     pub fn is_recoverable(&self) -> bool {
-        matches!(self, Self::Timeout { .. } | Self::OutOfGas { .. } | Self::ResourceLimitExceeded { .. } | Self::StackOverflow { .. })
+        matches!(self, Self::Timeout { .. } | Self::ResourceLimitExceeded { .. } | Self::StackOverflow { .. })
     }
 
     /// Check if this error indicates a security issue
@@ -193,7 +185,6 @@ impl WasmError {
             Self::InvalidInstruction { .. } => "instruction",
             Self::Trap { .. } => "trap",
             Self::Timeout { .. } => "timeout",
-            Self::OutOfGas { .. } => "gas",
             Self::ImportResolutionError { .. } => "import",
             Self::ExportNotFound { .. } => "export",
             Self::InvalidFormat { .. } => "format",

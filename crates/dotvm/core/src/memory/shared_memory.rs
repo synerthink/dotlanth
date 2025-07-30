@@ -21,7 +21,7 @@ use std::collections::HashMap;
 pub struct SharedMemoryRegion {
     pub id: u64,
     pub memory_handle: MemoryHandle,
-    pub access_list: HashMap<u64, Protection>, // Contract ID -> Permissions
+    pub access_list: HashMap<u64, Protection>, // Dot ID -> Permissions
 }
 
 impl SharedMemoryRegion {
@@ -33,16 +33,16 @@ impl SharedMemoryRegion {
         }
     }
 
-    pub fn share(&mut self, contract_id: u64, protection: Protection) {
-        self.access_list.insert(contract_id, protection);
+    pub fn share(&mut self, dot_id: u64, protection: Protection) {
+        self.access_list.insert(dot_id, protection);
     }
 
-    pub fn unshare(&mut self, contract_id: u64) {
-        self.access_list.remove(&contract_id);
+    pub fn unshare(&mut self, dot_id: u64) {
+        self.access_list.remove(&dot_id);
     }
 }
 
-/// Manages shared memory regions and ensures isolation between contracts.
+/// Manages shared memory regions and ensures isolation between dots.
 pub struct SharedMemoryManager<A: Architecture> {
     regions: HashMap<u64, SharedMemoryRegion>,
     allocator: Allocator<A>,
@@ -83,21 +83,21 @@ impl<A: Architecture> SharedMemoryManager<A> {
         }
     }
 
-    /// Shares a memory region with a contract.
-    pub fn share_region(&mut self, region_id: u64, contract_id: u64, protection: Protection) -> Result<(), MemoryError> {
+    /// Shares a memory region with a dot.
+    pub fn share_region(&mut self, region_id: u64, dot_id: u64, protection: Protection) -> Result<(), MemoryError> {
         if let Some(region) = self.regions.get_mut(&region_id) {
-            region.share(contract_id, protection);
+            region.share(dot_id, protection);
             Ok(())
         } else {
             Err(MemoryError::InvalidRegion(format!("Region {region_id} does not exist")))
         }
     }
 
-    /// Unshares a memory region from a contract.
-    pub fn unshare_region(&mut self, region_id: u64, contract_id: u64) -> Result<(), MemoryError> {
+    /// Unshares a memory region from a dot.
+    pub fn unshare_region(&mut self, region_id: u64, dot_id: u64) -> Result<(), MemoryError> {
         self.regions
             .get_mut(&region_id)
-            .map(|region| region.unshare(contract_id))
+            .map(|region| region.unshare(dot_id))
             .ok_or_else(|| MemoryError::InvalidRegion(format!("Region {region_id} not found")))
     }
 

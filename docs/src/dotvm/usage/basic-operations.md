@@ -69,11 +69,6 @@ DotVM supports multiple architectures. Choose based on your needs:
 dotvm transpile -i program.rs -o program.dotvm -a arch64
 ```
 
-**256-bit (Blockchain/Crypto):**
-```bash
-dotvm transpile -i crypto_app.rs -o crypto_app.dotvm -a arch256
-```
-
 **128-bit (Scientific Computing):**
 ```bash
 dotvm transpile -i scientific.rs -o scientific.dotvm -a arch128

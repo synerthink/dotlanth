@@ -126,7 +126,7 @@ impl WorkStealingScheduler {
             }
             // STAGE 1: Acquire locks with minimal scope
             let mut priority_queues = self.priority_queues.lock().await;
-            let workers_guard = self.workers.lock().await; // Renamed to avoid conflict if `workers` is used later
+            let workers_guard = self.workers.lock().await;
 
             // STAGE 2: Priority task processing
             if let Some(task) = priority_queues[worker_id].pop() {

@@ -8,7 +8,7 @@ This Contributor License Agreement ("Agreement") is entered into between Synerth
 
 ### 1. Definitions
 
-- **"Project"** refers to the Dotlanth platform and its associated products, including dotVM, dotDB, contracts, protocols, and related software.
+- **"Project"** refers to the Dotlanth platform and its associated products, including dotVM, dotDB, dots, protocols, and related software.
 - **"Contribution"** means any original work of authorship, including code, documentation, designs, or other materials, that you submit to the Project.
 
 ### 2. Grant of License

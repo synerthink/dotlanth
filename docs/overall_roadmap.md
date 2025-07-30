@@ -14,7 +14,7 @@ Legend:
 
 | # | Deliverable | Why | DoD |
 |---|--------------|-----|-----|
-| 1 🚩 | **Dot Spec v0.1** (grammar, type system, ABI) | Locks contracts across compiler/runtime | mdBook chapter + JSON schema + test suite |
+| 1 🚩 | **Dot Spec v0.1** (grammar, type system, ABI) | Locks dots across compiler/runtime | mdBook chapter + JSON schema + test suite |
 | 2 🚩 | **Single-node Runtime MVP** | Executes sample dots end-to-end | `dot run hello.dot` returns expected output; CI green |
 | 3 🚩 | **CLI v0.1** (new/run/test) | Enables rapid local dev | Packaged on crates.io; smoke tests on Linux/macOS |
 | 4 🚩 | **GitHub CI** (fmt, clippy, tests) | Prevents drift & regressions | PR required status checks passing |
@@ -35,7 +35,7 @@ Legend:
 
 | # | Deliverable | Why | DoD |
 |---|--------------|-----|-----|
-|12 🚩 | **I/O → JSON Schema Generator** | Foundation for UI | Each dot emits machine-readable contract |
+|12 🚩 | **I/O → JSON Schema Generator** | Foundation for UI | Each dot emits machine-readable dot |
 |13 🚩 | **Form Generator v0.1 (React)** | Zero-code UI | Renders inputs/outputs for 80% primitive & complex types |
 |14 🚩 | **Flow Editor (graph UI)** | Compose dots visually | Drag, connect, run preview; saves as YAML |
 |15 🟢 | **Hot-Reload Runtime** | Faster dev loop | < 2 sec turnaround on code change |

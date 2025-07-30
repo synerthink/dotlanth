@@ -112,7 +112,6 @@ impl DotExecutor {
                 context: HashMap::new(),
             }],
             events: vec![],
-            // Removed gas_used - not applicable for general VM
             error_message: String::new(),
             metrics: Some(ExecutionMetrics {
                 instructions_executed: 100,

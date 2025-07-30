@@ -17,7 +17,7 @@
 //! # Execution Context Module
 //!
 //! This module provides components for managing execution context
-//! during smart contract execution, including state access management.
+//! during dot execution, including state access management.
 
 pub mod state_access;
 

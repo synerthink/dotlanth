@@ -135,8 +135,6 @@ pub struct InstanceMetadata {
     pub last_executed: Option<std::time::Instant>,
     /// Total execution count
     pub execution_count: u64,
-    /// Total gas consumed
-    pub total_gas_consumed: u64,
     /// Total execution time
     pub total_execution_time: std::time::Duration,
     /// Peak memory usage
@@ -316,7 +314,6 @@ impl WasmInstance {
             id: self.id,
             state: self.state.clone(),
             execution_count: self.metadata.execution_count,
-            total_gas_consumed: self.metadata.total_gas_consumed,
             total_execution_time: self.metadata.total_execution_time,
             peak_memory_usage: self.metadata.peak_memory_usage,
             error_count: self.metadata.error_count,
@@ -408,8 +405,6 @@ impl WasmInstance {
             metadata: FrameMetadata {
                 function_name: func.name.clone(),
                 call_time: std::time::Instant::now(),
-                gas_at_entry: context.wasm.gas_consumed,
-                gas_consumed: 0,
                 instructions_executed: 0,
                 tags: std::collections::HashMap::new(),
             },
@@ -477,7 +472,6 @@ impl WasmInstance {
     }
 
     fn update_execution_metrics(&mut self, context: &WasmExecutionContext) {
-        self.metadata.total_gas_consumed += context.wasm.gas_consumed;
         self.metadata.total_execution_time += context.wasm.start_time.elapsed();
 
         if let Some(memory) = &self.memory {
@@ -576,7 +570,6 @@ impl InstanceMetadata {
             created_at: std::time::Instant::now(),
             last_executed: None,
             execution_count: 0,
-            total_gas_consumed: 0,
             total_execution_time: std::time::Duration::default(),
             peak_memory_usage: 0,
             error_count: 0,
@@ -615,7 +608,6 @@ pub struct InstanceStatistics {
     pub id: Uuid,
     pub state: InstanceState,
     pub execution_count: u64,
-    pub total_gas_consumed: u64,
     pub total_execution_time: std::time::Duration,
     pub peak_memory_usage: usize,
     pub error_count: u64,
@@ -700,7 +692,7 @@ mod tests {
         let mut instance = WasmInstance::new(module, security).unwrap();
         instance.initialize().unwrap();
 
-        let mut context = WasmExecutionContext::new(1000, 1000000, 100, std::time::Duration::from_secs(10));
+        let mut context = WasmExecutionContext::new(1000000, 100, std::time::Duration::from_secs(10));
         let args = vec![Value::I32(42)];
 
         let result = instance.execute_function("test_func", &args, &mut context);
@@ -731,7 +723,7 @@ mod tests {
         let mut instance = WasmInstance::new(module, security).unwrap();
         instance.initialize().unwrap();
 
-        let mut context = WasmExecutionContext::new(1000, 1000000, 100, std::time::Duration::from_secs(10));
+        let mut context = WasmExecutionContext::new(1000000, 100, std::time::Duration::from_secs(10));
         let args = vec![];
 
         let result = instance.execute_function("nonexistent", &args, &mut context);
@@ -747,7 +739,7 @@ mod tests {
         let mut instance = WasmInstance::new(module, security).unwrap();
         instance.initialize().unwrap();
 
-        let mut context = WasmExecutionContext::new(1000, 1000000, 100, std::time::Duration::from_secs(10));
+        let mut context = WasmExecutionContext::new(1000000, 100, std::time::Duration::from_secs(10));
 
         // Wrong number of arguments
         let args = vec![];
@@ -819,7 +811,6 @@ mod tests {
         let stats = instance.statistics();
 
         assert_eq!(stats.execution_count, 0);
-        assert_eq!(stats.total_gas_consumed, 0);
         assert_eq!(stats.error_count, 0);
     }
 }

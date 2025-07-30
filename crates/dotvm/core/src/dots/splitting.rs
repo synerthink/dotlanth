@@ -22,7 +22,7 @@ use crate::dots::error::ProcessingError;
 use crate::dots::lib::Dot;
 use std::collections::HashMap;
 
-/// Represents a segment of a contract after splitting
+/// Represents a segment of a dot after splitting
 #[derive(Debug, Clone)]
 pub struct DotSegment {
     /// Unique identifier for the segment
@@ -212,13 +212,12 @@ mod tests {
     #[test]
     fn test_extract_segments() {
         let dot = Dot {
-            // Renamed from contract
-            id: "dot-001".to_string(), // Renamed from contract-001
+            id: "dot-001".to_string(),
             content: "SECTION 1\nThis is section 1 content.\n\nARTICLE 2\nThis is article 2 content.\n\nCLAUSE 3\nThis is clause 3 content.".to_string(),
         };
 
         let extractor = SegmentExtractor::new();
-        let segments = extractor.extract_segments(&dot).unwrap(); // Renamed from contract
+        let segments = extractor.extract_segments(&dot).unwrap();
 
         assert_eq!(segments.len(), 3);
         assert_eq!(segments[0].segment_type, "SECTION");
@@ -228,15 +227,13 @@ mod tests {
 
     #[test]
     fn test_empty_dot() {
-        // Renamed from test_empty_contract
         let dot = Dot {
-            // Renamed from contract
-            id: "empty-dot".to_string(), // Renamed from empty-contract
+            id: "empty-dot".to_string(),
             content: "".to_string(),
         };
 
         let extractor = SegmentExtractor::new();
-        let result = extractor.extract_segments(&dot); // Renamed from contract
+        let result = extractor.extract_segments(&dot);
 
         assert!(result.is_err());
     }

@@ -162,8 +162,6 @@ pub struct WasmRuntimeConfig {
     pub max_stack_size: usize,
     /// Maximum execution time
     pub max_execution_time: Duration,
-    /// Maximum gas limit
-    pub max_gas_limit: u64,
     /// Enable JIT compilation
     pub enable_jit: bool,
     /// Enable optimizations
@@ -237,14 +235,6 @@ pub struct MemoryConfig {
 /// Execution Configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionConfig {
-    /// Gas metering enabled
-    pub enable_gas_metering: bool,
-    /// Gas cost per instruction
-    pub gas_cost_per_instruction: u64,
-    /// Gas cost per memory access
-    pub gas_cost_per_memory_access: u64,
-    /// Gas cost per function call
-    pub gas_cost_per_call: u64,
     /// Enable instruction counting
     pub enable_instruction_counting: bool,
     /// Enable execution tracing
@@ -285,8 +275,6 @@ pub struct RuntimeStats {
     pub total_execution_time: std::time::Duration,
     /// Memory usage
     pub memory_usage_bytes: u64,
-    /// Gas consumed
-    pub total_gas_consumed: u64,
 }
 
 /// Store configuration
@@ -415,7 +403,6 @@ impl DotVMWasmRuntime {
 
         // Create execution context
         let mut context = WasmExecutionContext::new(
-            self.config.max_gas_limit,
             self.config.execution.max_instructions,
             self.config.max_call_depth,
             self.config.max_execution_time,
@@ -432,7 +419,6 @@ impl DotVMWasmRuntime {
             let mut stats = self.stats.write().unwrap();
             stats.functions_executed += 1;
             stats.total_execution_time += start_time.elapsed();
-            stats.total_gas_consumed += context.wasm.gas_consumed;
         }
 
         result
@@ -463,7 +449,6 @@ impl DotVMWasmRuntime {
             functions_executed: stats.functions_executed,
             total_execution_time: stats.total_execution_time,
             memory_usage_bytes: stats.memory_usage_bytes,
-            total_gas_consumed: stats.total_gas_consumed,
             cached_modules: cache.len() as u64,
         }
     }
@@ -577,7 +562,6 @@ pub struct RuntimeStatistics {
     pub functions_executed: u64,
     pub total_execution_time: std::time::Duration,
     pub memory_usage_bytes: u64,
-    pub total_gas_consumed: u64,
     pub cached_modules: u64,
 }
 
@@ -602,7 +586,6 @@ impl WasmRuntimeConfig {
         Self {
             max_memory_pages: 256, // 16MB
             max_execution_time: Duration::from_secs(10),
-            max_gas_limit: 100_000_000,
             strict_validation: true,
             enable_debugging: false,
             security: SecurityConfig::strict(),
@@ -617,7 +600,6 @@ impl WasmRuntimeConfig {
         Self {
             max_memory_pages: 2048, // 128MB
             max_execution_time: Duration::from_secs(300),
-            max_gas_limit: 10_000_000_000,
             strict_validation: false,
             enable_debugging: true,
             enable_monitoring: true,
@@ -670,7 +652,6 @@ impl WasmRuntimeConfig {
             "optimizations" => self.enable_optimizations,
             "debugging" => self.enable_debugging,
             "monitoring" => self.enable_monitoring,
-            "gas_metering" => self.execution.enable_gas_metering,
             "sandbox" => self.security.enable_sandbox,
             _ => false,
         }
@@ -678,9 +659,9 @@ impl WasmRuntimeConfig {
 
     /// Get maximum instructions per execution
     pub fn max_instructions_per_execution(&self) -> u64 {
-        // Calculate based on gas limit and execution config
-        self.max_gas_limit / 10 // Simple heuristic
+        self.execution.max_instructions
     }
+
 }
 
 impl SecurityConfig {
@@ -743,10 +724,6 @@ impl ExecutionConfig {
     /// Create a strict execution configuration
     pub fn strict() -> Self {
         Self {
-            enable_gas_metering: true,
-            gas_cost_per_instruction: 2,
-            gas_cost_per_memory_access: 2,
-            gas_cost_per_call: 20,
             enable_instruction_counting: true,
             enable_tracing: false,
             max_instructions: 1_000_000,
@@ -756,10 +733,6 @@ impl ExecutionConfig {
     /// Create a development execution configuration
     pub fn development() -> Self {
         Self {
-            enable_gas_metering: false,
-            gas_cost_per_instruction: 1,
-            gas_cost_per_memory_access: 1,
-            gas_cost_per_call: 5,
             enable_instruction_counting: false,
             enable_tracing: true,
             max_instructions: 100_000_000,
@@ -1039,7 +1012,6 @@ impl Default for WasmRuntimeConfig {
             max_instances: 100,
             max_stack_size: 1024 * 1024, // 1MB
             max_execution_time: Duration::from_secs(30),
-            max_gas_limit: 1_000_000_000,
             enable_jit: true,
             enable_optimizations: true,
             strict_validation: true,
@@ -1090,10 +1062,6 @@ impl Default for MemoryConfig {
 impl Default for ExecutionConfig {
     fn default() -> Self {
         Self {
-            enable_gas_metering: true,
-            gas_cost_per_instruction: 1,
-            gas_cost_per_memory_access: 1,
-            gas_cost_per_call: 10,
             enable_instruction_counting: true,
             enable_tracing: false,
             max_instructions: 10_000_000,
@@ -1143,7 +1111,6 @@ mod tests {
         let stats = runtime.statistics();
 
         assert_eq!(stats.active_instances, 0);
-        assert_eq!(stats.total_gas_consumed, 0);
         assert_eq!(stats.functions_executed, 0);
     }
 
@@ -1178,7 +1145,6 @@ mod tests {
     fn test_config_access() {
         let runtime = create_test_runtime();
         let config = runtime.config();
-        assert!(config.max_gas_limit > 0);
     }
 
     #[test]
@@ -1345,12 +1311,10 @@ mod tests {
     #[test]
     fn test_execution_configs() {
         let strict = ExecutionConfig::strict();
-        assert!(strict.enable_gas_metering);
-        assert_eq!(strict.gas_cost_per_instruction, 2);
+        assert_eq!(strict.max_instructions, 1_000_000);
         assert_eq!(strict.max_instructions, 1_000_000);
 
         let dev = ExecutionConfig::development();
-        assert!(!dev.enable_gas_metering);
         assert!(dev.enable_tracing);
         assert_eq!(dev.max_instructions, 100_000_000);
     }

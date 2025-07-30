@@ -336,7 +336,7 @@ impl Transaction {
         Ok(())
     }
 
-    /// Create a contract state version during this transaction
+    /// Create a dot state version during this transaction
     pub fn create_dot_state_version(
         &mut self,
         dot_address: crate::state::dot_storage_layout::DotAddress,
@@ -344,13 +344,13 @@ impl Transaction {
         description: String,
     ) -> StorageResult<crate::state::versioning::StateVersionId> {
         if self.state != TransactionState::Active {
-            return Err(StorageError::TransactionAborted(format!("Cannot create contract version in transaction state: {:?}", self.state)));
+            return Err(StorageError::TransactionAborted(format!("Cannot create dot version in transaction state: {:?}", self.state)));
         }
 
         self.mvcc_manager.create_dot_state_version(self.id, dot_address, mpt_root_hash, description)
     }
 
-    /// Get contract state at transaction snapshot
+    /// Get dot state at transaction snapshot
     pub fn get_dot_state_at_snapshot(&self, dot_address: crate::state::dot_storage_layout::DotAddress) -> StorageResult<Option<crate::state::versioning::DotStateVersion>> {
         self.mvcc_manager.get_dot_state_at_snapshot(self.id, dot_address)
     }
@@ -389,7 +389,7 @@ impl Transaction {
         // Commit in isolation enforcer (handles MVCC commit and lock release)
         self.isolation_enforcer.handle_commit(self.id)?;
 
-        // Commit contract state changes
+        // Commit dot state changes
         self.mvcc_manager.commit_dot_states(self.id)?;
 
         // Remove from deadlock detector
@@ -438,7 +438,7 @@ impl Transaction {
         // Abort in isolation enforcer (handles MVCC abort and lock release)
         self.isolation_enforcer.handle_abort(self.id)?;
 
-        // Rollback contract state changes
+        // Rollback dot state changes
         self.mvcc_manager.rollback_dot_states(self.id)?;
 
         // Remove from deadlock detector

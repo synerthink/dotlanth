@@ -45,10 +45,6 @@ pub struct FrameMetadata {
     pub function_name: String,
     /// Time when call started
     pub call_time: Instant,
-    /// Gas consumed at entry
-    pub gas_at_entry: u64,
-    /// Gas consumed during execution
-    pub gas_consumed: u64,
     /// Instructions executed in this frame
     pub instructions_executed: u64,
     /// Custom tags for debugging/profiling
@@ -63,10 +59,6 @@ pub struct WasmExecutionExtensions {
     pub start_time: Instant,
     /// Maximum execution duration
     pub max_duration: Duration,
-    /// Gas consumed
-    pub gas_consumed: u64,
-    /// Gas limit
-    pub gas_limit: u64,
     /// Maximum instructions allowed
     pub max_instructions: u64,
     /// Call depth
@@ -107,8 +99,6 @@ impl std::fmt::Debug for WasmExecutionExtensions {
             .field("id", &self.id)
             .field("start_time", &self.start_time)
             .field("max_duration", &self.max_duration)
-            .field("gas_consumed", &self.gas_consumed)
-            .field("gas_limit", &self.gas_limit)
             .field("max_instructions", &self.max_instructions)
             .field("call_depth", &self.call_depth)
             .field("max_call_depth", &self.max_call_depth)
@@ -161,8 +151,6 @@ pub struct ExecutionStatistics {
     pub total_time: Duration,
     /// Average instructions per second
     pub avg_instructions_per_second: f64,
-    /// Gas efficiency
-    pub gas_efficiency: f64,
 }
 
 /// Value type enumeration
@@ -206,8 +194,6 @@ pub struct FunctionSignature {
 /// Execution metrics
 #[derive(Debug, Default)]
 pub struct ExecutionMetrics {
-    /// Total gas consumed
-    pub gas_consumed: u64,
     /// Total instructions executed
     pub instructions_executed: u64,
     /// Total function calls
@@ -272,8 +258,6 @@ pub struct WasmStack {
 pub struct StackFrameMetadata {
     /// Entry timestamp
     pub entry_time: Option<std::time::Instant>,
-    /// Gas consumed in this frame
-    pub gas_consumed: u64,
     /// Instructions executed in this frame
     pub instructions_executed: u64,
     /// Frame tags
@@ -310,8 +294,6 @@ pub struct CallTraceEntry {
     pub function_name: Option<String>,
     /// Call timestamp
     pub timestamp: Instant,
-    /// Gas consumed in this call
-    pub gas_consumed: u64,
 }
 
 impl WasmExecutionExtensions {
@@ -348,15 +330,13 @@ impl WasmExecutionExtensions {
 
 impl ExecutionContext {
     /// Create a new WASM execution context
-    pub fn new(gas_limit: u64, max_instructions: u64, max_call_depth: usize, max_duration: Duration) -> Self {
+    pub fn new(max_instructions: u64, max_call_depth: usize, max_duration: Duration) -> Self {
         Self {
             interpreter: WasmInterpreter::new(),
             wasm: WasmExecutionExtensions {
                 id: Uuid::new_v4(),
                 start_time: Instant::now(),
                 max_duration,
-                gas_consumed: 0,
-                gas_limit,
                 max_instructions,
                 call_depth: 0,
                 max_call_depth,
@@ -381,8 +361,7 @@ impl ExecutionContext {
 
     /// Check if execution should halt (WASM-specific checks)
     pub fn should_halt(&self) -> bool {
-        self.wasm.gas_consumed >= self.wasm.gas_limit
-            || self.wasm.call_depth >= self.wasm.max_call_depth
+        self.wasm.call_depth >= self.wasm.max_call_depth
             || self.wasm.start_time.elapsed() >= self.wasm.max_duration
             || self.metrics.instructions_executed >= self.wasm.max_instructions
             || self.state == ExecutionState::Halted
@@ -396,28 +375,11 @@ impl ExecutionContext {
                 return Err(WasmError::timeout(self.wasm.max_duration.as_millis() as u64));
             }
 
-            // Check gas limit
-            if self.wasm.gas_consumed >= self.wasm.gas_limit {
-                return Err(WasmError::out_of_gas(self.wasm.gas_consumed, self.wasm.gas_limit));
-            }
         }
 
         Ok(())
     }
 
-    /// Consume gas
-    pub fn consume_gas(&mut self, amount: u64) -> WasmResult<()> {
-        if self.wasm.gas_consumed + amount > self.wasm.gas_limit {
-            return Err(WasmError::OutOfGas {
-                consumed: self.wasm.gas_consumed + amount,
-                limit: self.wasm.gas_limit,
-            });
-        }
-        self.wasm.gas_consumed += amount;
-        self.wasm.metrics.gas_consumed = self.wasm.gas_consumed;
-
-        Ok(())
-    }
 
     /// Check execution timeout
     pub fn check_timeout(&self) -> WasmResult<()> {
@@ -562,10 +524,6 @@ impl ExecutionContext {
         self.wasm.security.security_level = level;
     }
 
-    /// Get remaining gas
-    pub fn remaining_gas(&self) -> u64 {
-        self.wasm.gas_limit.saturating_sub(self.wasm.gas_consumed)
-    }
 
     /// Get execution duration
     pub fn execution_duration(&self) -> Duration {
@@ -586,24 +544,16 @@ impl ExecutionContext {
             0.0
         };
 
-        let gas_efficiency = if self.wasm.gas_consumed > 0 {
-            self.metrics.instructions_executed as f64 / self.wasm.gas_consumed as f64
-        } else {
-            0.0
-        };
-
         ExecutionStatistics {
             instructions_executed: self.metrics.instructions_executed,
             total_time: elapsed,
             avg_instructions_per_second: avg_ips,
-            gas_efficiency,
         }
     }
 
     /// Reset the execution context
     pub fn reset(&mut self) {
         self.interpreter = WasmInterpreter::new();
-        self.wasm.gas_consumed = 0;
         self.wasm.call_depth = 0;
         self.wasm.start_time = Instant::now();
         self.wasm.metrics = ExecutionMetrics::default();
@@ -617,8 +567,7 @@ impl ExecutionContext {
 impl Default for ExecutionContext {
     fn default() -> Self {
         Self::new(
-            1_000_000,               // 1M gas limit
-            1_000_000,               // 1M instruction limit
+            1_000_000, // 1M instruction limit
             1000,                    // 1000 call depth
             Duration::from_secs(30), // 30 second timeout
         )
@@ -676,8 +625,6 @@ impl std::fmt::Debug for ExecutionContext {
             .field("id", &self.wasm.id)
             .field("start_time", &self.wasm.start_time)
             .field("max_duration", &self.wasm.max_duration)
-            .field("gas_consumed", &self.wasm.gas_consumed)
-            .field("gas_limit", &self.wasm.gas_limit)
             .field("instructions_executed", &self.metrics.instructions_executed)
             .field("call_depth", &self.wasm.call_depth)
             .field("max_call_depth", &self.wasm.max_call_depth)
@@ -805,8 +752,6 @@ impl WasmStack {
             metadata: FrameMetadata {
                 function_name: function_name.unwrap_or_else(|| format!("func_{}", function_index)),
                 call_time: Instant::now(),
-                gas_at_entry: 0,
-                gas_consumed: 0,
                 instructions_executed: 0,
                 tags: HashMap::new(),
             },
@@ -900,7 +845,6 @@ impl WasmStack {
                 function_index: frame.function_index,
                 function_name: Some(frame.metadata.function_name.clone()),
                 timestamp: frame.metadata.call_time,
-                gas_consumed: frame.metadata.gas_consumed,
             })
             .collect()
     }
@@ -974,10 +918,6 @@ impl CallFrame {
         self.metadata.call_time.elapsed()
     }
 
-    /// Add gas consumption
-    pub fn consume_gas(&mut self, amount: u64) {
-        self.metadata.gas_consumed += amount;
-    }
 
     /// Add instruction count
     pub fn count_instruction(&mut self) {
@@ -1001,22 +941,12 @@ mod tests {
 
     #[test]
     fn test_execution_context() {
-        let mut ctx = ExecutionContext::new(1000, 1000000, 100, Duration::from_secs(1));
-        assert_eq!(ctx.wasm.gas_consumed, 0);
-        assert_eq!(ctx.remaining_gas(), 1000);
+        let mut ctx = ExecutionContext::new(1000000, 100, Duration::from_secs(1));
         assert_eq!(ctx.wasm.call_depth, 0);
         assert_eq!(ctx.metrics.instructions_executed, 0);
 
-        assert!(ctx.consume_gas(100).is_ok());
-        assert_eq!(ctx.wasm.gas_consumed, 100);
-        assert_eq!(ctx.remaining_gas(), 900);
     }
 
-    #[test]
-    fn test_gas_limit() {
-        let mut ctx = ExecutionContext::new(100, 1000000, 100, Duration::from_secs(1));
-        assert!(ctx.consume_gas(150).is_err());
-    }
 
     #[test]
     fn test_execution_states() {
@@ -1187,11 +1117,9 @@ mod tests {
 
         // Test frame metadata operations
         if let Some(frame) = stack.current_frame_mut() {
-            frame.consume_gas(100);
             frame.count_instruction();
             frame.set_tag("test".to_string(), "value".to_string());
 
-            assert_eq!(frame.metadata.gas_consumed, 100);
             assert_eq!(frame.metadata.instructions_executed, 1);
             assert_eq!(frame.get_tag("test"), Some(&"value".to_string()));
         }
@@ -1205,9 +1133,8 @@ mod tests {
 
     #[test]
     fn test_execution_context_with_limits() {
-        let ctx = ExecutionContext::new(1000, 10000, 100, Duration::from_secs(10));
+        let ctx = ExecutionContext::new(10000, 100, Duration::from_secs(10));
 
-        assert_eq!(ctx.wasm.gas_limit, 1000);
         assert_eq!(ctx.wasm.max_call_depth, 100);
         assert_eq!(ctx.wasm.max_instructions, 10000);
         assert!(ctx.interpreter.is_stack_empty());
@@ -1216,7 +1143,7 @@ mod tests {
 
     #[test]
     fn test_call_depth_management() {
-        let mut ctx = ExecutionContext::new(1000, 1000000, 100, Duration::from_secs(1));
+        let mut ctx = ExecutionContext::new(1000000, 100, Duration::from_secs(1));
 
         // Test entering calls
         assert!(ctx.enter_call().is_ok());
@@ -1231,7 +1158,6 @@ mod tests {
     #[test]
     fn test_instruction_counting() {
         let mut ctx = ExecutionContext::new(
-            1000,
             5, // Low instruction limit for testing
             100,
             Duration::from_secs(1),
@@ -1249,7 +1175,7 @@ mod tests {
 
     #[test]
     fn test_host_functions() {
-        let mut ctx = ExecutionContext::new(1000, 1000000, 100, Duration::from_secs(1));
+        let mut ctx = ExecutionContext::new(1000000, 100, Duration::from_secs(1));
 
         // Register a host function
         let test_func: HostFunction = Box::new(|_args| Ok(vec![Value::I32(42)]));
@@ -1261,7 +1187,7 @@ mod tests {
 
     #[test]
     fn test_metadata() {
-        let mut ctx = ExecutionContext::new(1000, 1000000, 100, Duration::from_secs(1));
+        let mut ctx = ExecutionContext::new(1000000, 100, Duration::from_secs(1));
 
         ctx.set_metadata("key1".to_string(), "value1".to_string());
         assert_eq!(ctx.get_metadata("key1"), Some(&"value1".to_string()));
@@ -1270,7 +1196,7 @@ mod tests {
 
     #[test]
     fn test_security_operations() {
-        let mut ctx = ExecutionContext::new(1000, 1000000, 100, Duration::from_secs(1));
+        let mut ctx = ExecutionContext::new(1000000, 100, Duration::from_secs(1));
 
         // Initially all operations allowed
         assert!(ctx.is_operation_allowed("memory.load"));
@@ -1288,10 +1214,9 @@ mod tests {
 
     #[test]
     fn test_context_reset() {
-        let mut ctx = ExecutionContext::new(1000, 1000000, 100, Duration::from_secs(1));
+        let mut ctx = ExecutionContext::new(1000000, 100, Duration::from_secs(1));
 
         // Modify context state
-        ctx.consume_gas(100).unwrap();
         ctx.count_instruction().unwrap();
         ctx.enter_call().unwrap();
         ctx.set_metadata("test".to_string(), "value".to_string());
@@ -1303,7 +1228,6 @@ mod tests {
 
         // Verify reset
         assert_ne!(ctx.wasm.id, original_id); // New ID
-        assert_eq!(ctx.wasm.gas_consumed, 0);
         assert_eq!(ctx.metrics.instructions_executed, 0);
         assert_eq!(ctx.wasm.call_depth, 0);
         assert!(ctx.wasm.metadata.is_empty());
@@ -1312,29 +1236,14 @@ mod tests {
 
     #[test]
     fn test_wasm_execution_context_creation() {
-        let ctx = ExecutionContext::new(1000, 1000, 100, Duration::from_secs(10));
-        assert_eq!(ctx.wasm.gas_limit, 1000);
-        assert_eq!(ctx.wasm.gas_consumed, 0);
+        let ctx = ExecutionContext::new(1000, 100, Duration::from_secs(10));
         assert_eq!(ctx.metrics.instructions_executed, 0);
     }
 
-    #[test]
-    fn test_gas_consumption() {
-        let mut ctx = ExecutionContext::default();
-
-        // Consume some gas
-        ctx.consume_gas(100).unwrap();
-        assert_eq!(ctx.wasm.gas_consumed, 100);
-        assert_eq!(ctx.remaining_gas(), 1_000_000 - 100);
-
-        // Try to consume more than limit
-        let result = ctx.consume_gas(2_000_000);
-        assert!(matches!(result, Err(WasmError::OutOfGas { .. })));
-    }
 
     #[test]
     fn test_call_depth() {
-        let mut ctx = ExecutionContext::new(1000, 1000, 2, Duration::from_secs(10));
+        let mut ctx = ExecutionContext::new(1000, 2, Duration::from_secs(10));
 
         // Enter calls
         ctx.enter_call().unwrap();
@@ -1357,23 +1266,19 @@ mod tests {
 
     #[test]
     fn test_should_halt() {
-        let mut ctx = ExecutionContext::new(100, 100, 10, Duration::from_millis(1));
+        // Use a reasonable timeout to avoid immediate expiration
+        let mut ctx = ExecutionContext::new(100, 10, Duration::from_millis(500));
 
-        // Should not halt initially
+        // Should not halt at start
         assert!(!ctx.should_halt());
 
-        // Should halt when gas limit reached
-        ctx.consume_gas(100).unwrap();
-        assert!(ctx.should_halt());
-
-        // Reset and test instruction limit
-        ctx.reset();
+        // Exceed instruction limit
         ctx.metrics.instructions_executed = 101;
         assert!(ctx.should_halt());
 
         // Reset and test timeout (sleep to exceed duration)
         ctx.reset();
-        std::thread::sleep(Duration::from_millis(2));
+        std::thread::sleep(Duration::from_millis(600));
         assert!(ctx.should_halt());
     }
 }

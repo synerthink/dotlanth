@@ -1,7 +1,7 @@
 # Dotlanth
 
 ## Project Overview
-Dotlanth's Virtual Machine for executing contracts.
+Dotlanth's Virtual Machine for executing dots.
 
 ## Contributing
 

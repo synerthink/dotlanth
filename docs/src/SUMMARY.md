@@ -17,7 +17,7 @@
     - [VM Architectures](dotvm/architecture/vm-architectures.md)
     - [Instruction Set](dotvm/architecture/instruction-set.md)
     - [Bytecode Format](dotvm/architecture/bytecode-format.md)
-    - [ParaContracts](dotvm/architecture/paracontracts.md)
+    - [ParaDots](dotvm/architecture/paradots.md)
 - [Usage](dotvm/usage/basic-operations.md)
     - [Transpilation](dotvm/usage/transpilation.md)
     - [Execution](dotvm/usage/execution.md)
