@@ -16,8 +16,10 @@
 
 //! DotVM WASM Runtime
 
+pub mod async_bridge;
 pub mod error;
 pub mod execution;
+pub mod host_functions;
 pub mod instance;
 pub mod interpreter;
 pub mod management;
@@ -27,18 +29,23 @@ pub mod runtime;
 pub mod transpiler;
 
 // Re-export main types (specific imports to avoid conflicts)
+pub use async_bridge::AsyncWasmBridge;
 pub use error::{WasmError, WasmResult};
 pub use execution::{
     CallFrame, CallTraceEntry, ExecutionContext, ExecutionMetrics, ExecutionState, ExecutionStatistics, FrameMetadata, FunctionSignature, HostFunction, ImportedModule, StackStatistics, ValueType,
     WasmExecutionExtensions, WasmStack,
 };
+pub use host_functions::{
+    AsyncExecutionState, AsyncHostFunction, AsyncHostFunctionInterface, ExecutionError, HostError, ResourceUsage, SecurityContext as HostSecurityContext, SecurityLevel as HostSecurityLevel,
+    ValidationError,
+};
 pub use instance::{InstanceMetadata, InstanceState, WasmInstance};
-pub use management::{MonitorConfig, PerformanceMetrics, ResourceLimiter, ResourceUsage, RuntimeManager, SecurityContext, SecurityLevel, SecurityPolicy, WasmMonitor};
+pub use management::{MonitorConfig, PerformanceMetrics, ResourceLimiter, ResourceUsage as MgmtResourceUsage, RuntimeManager, SecurityContext, SecurityLevel, SecurityPolicy, WasmMonitor};
 pub use memory::{MemoryStats, WasmMemory};
 pub use module::{PerformanceHints, SecurityMetadata, ValidationStatus, WasmModule};
 pub use runtime::{
-    DotVMWasmRuntime, ExecutionConfig, MemoryConfig, RuntimeStatistics, RuntimeStats, SecurityConfig, SecurityIssue, SecuritySeverity, StoreConfig, StoreStatistics, ValidationConfig, ValidationError,
-    ValidationErrorType, ValidationLocation, ValidationResult, ValidationStats, ValidationWarning, WasmRuntimeConfig, WasmValidator,
+    DotVMWasmRuntime, ExecutionConfig, MemoryConfig, RuntimeStatistics, RuntimeStats, SecurityConfig, SecurityIssue, SecuritySeverity, StoreConfig, StoreStatistics, ValidationConfig,
+    ValidationError as RuntimeValidationError, ValidationErrorType, ValidationLocation, ValidationResult, ValidationStats, ValidationWarning, WasmRuntimeConfig, WasmValidator,
 };
 pub use transpiler::{TranspilerConfig, TranspilerStatistics, WasmTranspiler};
 
