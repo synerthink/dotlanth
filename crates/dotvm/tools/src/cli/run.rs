@@ -17,10 +17,14 @@
 //! Run command for executing DotVM bytecode
 
 use clap::Args;
+use dotvm_core::security::capability_manager::{Capability, CapabilityMetadata};
+use dotvm_core::security::resource_limiter::ResourceLimits;
+use dotvm_core::security::types::{OpcodeArchitecture, OpcodeCategory, OpcodeType, SecurityLevel};
 use dotvm_core::vm::database_bridge::DatabaseBridge;
 use dotvm_core::vm::executor::VmExecutor;
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 /// Arguments for the run command
 #[derive(Args, Debug)]
@@ -46,15 +50,105 @@ pub struct RunArgs {
     pub verbose: bool,
 }
 
+/// Helper function to create a VM executor with security capabilities for CLI operations
+fn create_cli_executor() -> VmExecutor {
+    let database_bridge = DatabaseBridge::new();
+    let mut executor = VmExecutor::with_database_bridge(database_bridge);
+
+    // Set the dot ID for security context
+    executor.context_mut().dot_id = "cli_executor".to_string();
+
+    // Initialize security context for this dot
+    if let Err(e) = executor.security_sandbox.initialize_dot_security_context("cli_executor".to_string(), SecurityLevel::Development) {
+        eprintln!("Warning: Failed to initialize CLI security context: {}", e);
+    }
+
+    // Grant all necessary capabilities for CLI execution
+    let capabilities = vec![
+        Capability {
+            id: "cli_stack_cap".to_string(),
+            opcode_type: OpcodeType::Standard {
+                architecture: OpcodeArchitecture::Arch64,
+                category: OpcodeCategory::Stack,
+            },
+            permissions: vec![],
+            resource_limits: ResourceLimits::default(),
+            expiration: None,
+            metadata: CapabilityMetadata {
+                created_at: SystemTime::now(),
+                granted_by: "cli_system".to_string(),
+                purpose: "CLI stack operations".to_string(),
+                usage_count: 0,
+                last_used: None,
+                custom_data: HashMap::new(),
+            },
+            delegatable: false,
+            required_security_level: SecurityLevel::Development,
+        },
+        Capability {
+            id: "cli_arithmetic_cap".to_string(),
+            opcode_type: OpcodeType::Standard {
+                architecture: OpcodeArchitecture::Arch64,
+                category: OpcodeCategory::Arithmetic,
+            },
+            permissions: vec![],
+            resource_limits: ResourceLimits::default(),
+            expiration: None,
+            metadata: CapabilityMetadata {
+                created_at: SystemTime::now(),
+                granted_by: "cli_system".to_string(),
+                purpose: "CLI arithmetic operations".to_string(),
+                usage_count: 0,
+                last_used: None,
+                custom_data: HashMap::new(),
+            },
+            delegatable: false,
+            required_security_level: SecurityLevel::Development,
+        },
+        Capability {
+            id: "cli_control_flow_cap".to_string(),
+            opcode_type: OpcodeType::Standard {
+                architecture: OpcodeArchitecture::Arch64,
+                category: OpcodeCategory::ControlFlow,
+            },
+            permissions: vec![],
+            resource_limits: ResourceLimits::default(),
+            expiration: None,
+            metadata: CapabilityMetadata {
+                created_at: SystemTime::now(),
+                granted_by: "cli_system".to_string(),
+                purpose: "CLI control flow operations".to_string(),
+                usage_count: 0,
+                last_used: None,
+                custom_data: HashMap::new(),
+            },
+            delegatable: false,
+            required_security_level: SecurityLevel::Development,
+        },
+    ];
+
+    // Grant capabilities to the CLI executor
+    for capability in capabilities {
+        if let Err(e) = executor
+            .security_sandbox
+            .capability_manager
+            .grant_capability("cli_executor".to_string(), capability, "cli_system".to_string())
+        {
+            eprintln!("Warning: Failed to grant CLI capability: {}", e);
+        }
+    }
+
+    executor
+}
+
 /// Execute the run command
 pub fn run_bytecode(args: RunArgs) -> Result<(), Box<dyn std::error::Error>> {
     if args.verbose {
         println!("Loading bytecode from: {}", args.bytecode_file.display());
     }
 
-    // Create VM executor with database bridge
-    let database_bridge = DatabaseBridge::new();
-    let mut executor = VmExecutor::with_database_bridge(database_bridge);
+    // Create VM executor with security capabilities
+    let mut executor = create_cli_executor();
 
     // Configure execution flags
     if args.debug {
