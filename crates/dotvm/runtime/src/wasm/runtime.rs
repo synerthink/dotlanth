@@ -16,7 +16,7 @@
 
 //! Main WASM Runtime
 
-use crate::wasm::{TranspilerConfig, WasmError, WasmExecutionContext, WasmInstance, WasmModule, WasmResult, WasmTranspiler};
+use crate::wasm::{PerformanceOptimizer, TranspilerConfig, WasmError, WasmExecutionContext, WasmInstance, WasmModule, WasmResult, WasmTranspiler, wire_instance_batch_with_optimizer};
 use dotvm_compiler::wasm::WasmParser;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -260,6 +260,8 @@ pub struct DotVMWasmRuntime {
     stats: RwLock<RuntimeStats>,
     /// Store configuration
     store_config: StoreConfig,
+    /// Bridge performance optimizer (shared)
+    optimizer: Arc<PerformanceOptimizer>,
 }
 
 /// Runtime statistics
@@ -310,6 +312,7 @@ impl DotVMWasmRuntime {
             instances: RwLock::new(HashMap::new()),
             stats: RwLock::new(RuntimeStats::default()),
             store_config: StoreConfig::default(),
+            optimizer: Arc::new(PerformanceOptimizer::new()),
         }
     }
 
@@ -382,7 +385,11 @@ impl DotVMWasmRuntime {
     /// Instantiate module
     pub fn instantiate(&self, module: &Arc<WasmModule>) -> WasmResult<Arc<RwLock<WasmInstance>>> {
         let security_context = crate::wasm::management::SecurityContext::default();
-        let instance = WasmInstance::new(module.clone(), security_context)?;
+        let mut instance = WasmInstance::new(module.clone(), security_context)?;
+
+        // Bridge: wire optimized batch host function to minimize WASM->host overhead
+        wire_instance_batch_with_optimizer(&mut instance, self.optimizer.clone());
+
         let instance = Arc::new(RwLock::new(instance));
 
         // Store instance using store functionality
