@@ -16,8 +16,11 @@
 
 //! DotVM WASM Runtime
 
+pub mod async_bridge;
+pub mod bridge;
 pub mod error;
 pub mod execution;
+pub mod host_functions;
 pub mod instance;
 pub mod interpreter;
 pub mod management;
@@ -27,6 +30,10 @@ pub mod runtime;
 pub mod transpiler;
 
 // Re-export main types (specific imports to avoid conflicts)
+pub use bridge::{
+    BatchProcessor, CacheManager, CompiledCache, CustomOpcode, HotPathDetector, JITCompiler, MemoryOptimizer, OptimizationSuggestion, OptimizedCall, PerformanceOptimizer, PerformanceProfile,
+    PerformanceProfiler, PerformanceReport, register_default_bridge_host_functions, wire_instance_batch_with_optimizer,
+};
 pub use error::{WasmError, WasmResult};
 pub use execution::{
     CallFrame, CallTraceEntry, ExecutionContext, ExecutionMetrics, ExecutionState, ExecutionStatistics, FrameMetadata, FunctionSignature, HostFunction, ImportedModule, StackStatistics, ValueType,
@@ -41,6 +48,9 @@ pub use runtime::{
     ValidationErrorType, ValidationLocation, ValidationResult, ValidationStats, ValidationWarning, WasmRuntimeConfig, WasmValidator,
 };
 pub use transpiler::{TranspilerConfig, TranspilerStatistics, WasmTranspiler};
+// Async bridge and host function interface exports
+pub use async_bridge::AsyncWasmBridge;
+pub use host_functions::{AsyncHostFunction, AsyncHostFunctionInterface, ExecutionError, HostError, TypeValidator};
 
 // Re-export key types for convenience
 pub use execution::ExecutionContext as WasmExecutionContext;

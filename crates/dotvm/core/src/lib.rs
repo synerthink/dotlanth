@@ -20,4 +20,5 @@ pub mod instruction;
 pub mod memory;
 pub mod opcode;
 pub mod operand;
+pub mod security;
 pub mod vm;

@@ -2,15 +2,82 @@
 use dotvm_core::bytecode::{BytecodeFile, ConstantValue, VmArchitecture};
 use dotvm_core::opcode::arithmetic_opcodes::ArithmeticOpcode;
 use dotvm_core::opcode::stack_opcodes::StackOpcode;
+use dotvm_core::security::capability_manager::{Capability, CapabilityMetadata};
+use dotvm_core::security::resource_limiter::ResourceLimits;
+use dotvm_core::security::types::{OpcodeArchitecture, OpcodeCategory, OpcodeType, SecurityLevel};
 use dotvm_core::vm::executor::VmExecutor;
 use dotvm_core::vm::stack::StackValue;
+use std::collections::HashMap;
+use std::time::SystemTime;
+
+/// Helper function to create a test executor with security capabilities
+fn create_test_executor() -> VmExecutor {
+    let mut executor = VmExecutor::new_with_dot_id("test_dot".to_string());
+
+    // Grant all necessary capabilities for testing
+    let capabilities = vec![
+        Capability {
+            id: "test_stack_cap".to_string(),
+            opcode_type: OpcodeType::Standard {
+                architecture: OpcodeArchitecture::Arch64,
+                category: OpcodeCategory::Stack,
+            },
+            permissions: vec![],
+            resource_limits: ResourceLimits::default(),
+            expiration: None,
+            metadata: CapabilityMetadata {
+                created_at: SystemTime::now(),
+                granted_by: "test_system".to_string(),
+                purpose: "Testing stack operations".to_string(),
+                usage_count: 0,
+                last_used: None,
+                custom_data: HashMap::new(),
+            },
+            delegatable: false,
+            required_security_level: SecurityLevel::Development,
+        },
+        Capability {
+            id: "test_arithmetic_cap".to_string(),
+            opcode_type: OpcodeType::Standard {
+                architecture: OpcodeArchitecture::Arch64,
+                category: OpcodeCategory::Arithmetic,
+            },
+            permissions: vec![],
+            resource_limits: ResourceLimits::default(),
+            expiration: None,
+            metadata: CapabilityMetadata {
+                created_at: SystemTime::now(),
+                granted_by: "test_system".to_string(),
+                purpose: "Testing arithmetic operations".to_string(),
+                usage_count: 0,
+                last_used: None,
+                custom_data: HashMap::new(),
+            },
+            delegatable: false,
+            required_security_level: SecurityLevel::Development,
+        },
+    ];
+
+    // Grant capabilities to the test dot
+    for capability in capabilities {
+        if let Err(e) = executor
+            .security_sandbox
+            .capability_manager
+            .grant_capability("test_dot".to_string(), capability, "test_system".to_string())
+        {
+            eprintln!("Warning: Failed to grant test capability: {}", e);
+        }
+    }
+
+    executor
+}
 
 #[test]
 fn test_week2_core_execution_engine() {
     println!("=== Week 2: Core Execution Engine Integration Test ===");
 
-    // Create a VM executor
-    let mut executor = VmExecutor::new();
+    // Create a VM executor with security capabilities
+    let mut executor = create_test_executor();
 
     // Create a simple program that demonstrates our capabilities
     let mut bytecode = BytecodeFile::new(VmArchitecture::Arch64);
@@ -107,7 +174,7 @@ fn test_week2_core_execution_engine() {
 fn test_step_by_step_execution() {
     println!("=== Step-by-Step Execution Test ===");
 
-    let mut executor = VmExecutor::new();
+    let mut executor = create_test_executor();
     let mut bytecode = BytecodeFile::new(VmArchitecture::Arch64);
 
     // Simple program: PUSH 1, PUSH 2, ADD
@@ -146,7 +213,7 @@ fn test_step_by_step_execution() {
 fn test_error_handling() {
     println!("=== Error Handling Test ===");
 
-    let mut executor = VmExecutor::new();
+    let mut executor = create_test_executor();
     let mut bytecode = BytecodeFile::new(VmArchitecture::Arch64);
 
     // Create a program that will cause division by zero

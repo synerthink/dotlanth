@@ -25,6 +25,8 @@ use crate::opcode::control_flow_opcodes::ControlFlowOpcode;
 use crate::opcode::db_opcodes::DatabaseOpcode;
 use crate::opcode::stack_opcodes::{StackInstruction, StackOpcode};
 use crate::opcode::state_opcodes::StateOpcode;
+use crate::security::types::{CurrentResourceUsage, OpcodeResult, ResourceCost, SecurityMetadata, SideEffect};
+use crate::security::{CustomOpcode, DotVMContext, OpcodeType, SecurityLevel, SecuritySandbox};
 use crate::vm::database_bridge::DatabaseBridge;
 use crate::vm::database_executor::DatabaseOpcodeExecutor;
 use crate::vm::stack::{OperandStack, StackError, StackValue};
@@ -32,6 +34,8 @@ use crate::vm::state_executor::{MerkleOperation, SnapshotId, StateOpcodeExecutor
 use crate::vm::state_management::{StateKey, StateValue};
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::Instant;
+use std::time::{Duration, SystemTime};
 
 /// Maximum number of instructions to execute (to prevent infinite loops)
 pub const MAX_INSTRUCTIONS: usize = 1_000_000;
@@ -49,6 +53,14 @@ pub struct ExecutionContext {
     pub flags: ExecutionFlags,
     /// Instruction count (for debugging and limits)
     pub instruction_count: usize,
+    /// Dot ID for security tracking
+    pub dot_id: String,
+    /// Security level
+    pub security_level: SecurityLevel,
+    /// Resource usage tracking
+    pub resource_usage: CurrentResourceUsage,
+    /// Execution start time for resource tracking
+    pub execution_start: Instant,
 }
 
 impl ExecutionContext {
@@ -60,6 +72,25 @@ impl ExecutionContext {
             locals: HashMap::new(),
             flags: ExecutionFlags::default(),
             instruction_count: 0,
+            dot_id: "default".to_string(),
+            security_level: SecurityLevel::Standard,
+            resource_usage: CurrentResourceUsage::default(),
+            execution_start: Instant::now(),
+        }
+    }
+
+    /// Create a new execution context with a specific dot ID
+    pub fn new_with_dot_id(dot_id: String) -> Self {
+        Self {
+            pc: 0,
+            stack: OperandStack::new(),
+            locals: HashMap::new(),
+            flags: ExecutionFlags::default(),
+            instruction_count: 0,
+            dot_id,
+            security_level: SecurityLevel::Standard,
+            resource_usage: CurrentResourceUsage::default(),
+            execution_start: Instant::now(),
         }
     }
 
@@ -70,6 +101,9 @@ impl ExecutionContext {
         self.locals.clear();
         self.flags = ExecutionFlags::default();
         self.instruction_count = 0;
+        self.resource_usage = CurrentResourceUsage::default();
+        self.execution_start = Instant::now();
+        // Note: dot_id and security_level are preserved during reset
     }
 
     /// Check if execution should halt
@@ -110,6 +144,8 @@ pub struct VmExecutor {
     database_executor: Option<DatabaseOpcodeExecutor>,
     /// State opcode executor for advanced state management
     state_executor: Option<StateOpcodeExecutor>,
+    /// Security sandbox for opcode security checks
+    pub security_sandbox: SecuritySandbox,
 }
 
 impl VmExecutor {
@@ -122,7 +158,29 @@ impl VmExecutor {
             database_bridge: DatabaseBridge::new(),
             database_executor: None,
             state_executor: None,
+            security_sandbox: SecuritySandbox::new(),
         }
+    }
+
+    /// Create a new VM executor with a specific dot ID
+    pub fn new_with_dot_id(dot_id: String) -> Self {
+        let mut executor = Self {
+            bytecode: None,
+            context: ExecutionContext::new_with_dot_id(dot_id.clone()),
+            debug_info: DebugInfo::new(),
+            database_bridge: DatabaseBridge::new(),
+            database_executor: None,
+            state_executor: None,
+            security_sandbox: SecuritySandbox::new(),
+        };
+
+        // Initialize security context for this dot
+        if let Err(e) = executor.security_sandbox.initialize_dot_security_context(dot_id.clone(), SecurityLevel::Standard) {
+            // Log error but continue - security will be disabled for this dot
+            eprintln!("Warning: Failed to initialize security context for dot {}: {}", dot_id, e);
+        }
+
+        executor
     }
 
     /// Create a new VM executor with a custom database bridge
@@ -134,6 +192,7 @@ impl VmExecutor {
             database_bridge,
             database_executor: None,
             state_executor: None,
+            security_sandbox: SecuritySandbox::new(),
         }
     }
 
@@ -147,6 +206,34 @@ impl VmExecutor {
     pub fn with_state_executor(mut self, state_executor: StateOpcodeExecutor) -> Self {
         self.state_executor = Some(state_executor);
         self
+    }
+
+    /// Get reference to the security sandbox
+    pub fn security_sandbox(&self) -> &SecuritySandbox {
+        &self.security_sandbox
+    }
+
+    /// Get mutable reference to the security sandbox
+    pub fn security_sandbox_mut(&mut self) -> &mut SecuritySandbox {
+        &mut self.security_sandbox
+    }
+
+    /// Set security level for the current execution context
+    pub fn set_security_level(&mut self, level: SecurityLevel) {
+        self.context.security_level = level;
+    }
+
+    /// Set dot ID for the current execution context
+    pub fn set_dot_id(&mut self, dot_id: String) -> Result<(), ExecutorError> {
+        // Update context
+        self.context.dot_id = dot_id.clone();
+
+        // Initialize security context for this dot
+        self.security_sandbox
+            .initialize_dot_security_context(dot_id, self.context.security_level.clone())
+            .map_err(|e| ExecutorError::SecurityError(e.to_string()))?;
+
+        Ok(())
     }
 
     /// Load bytecode from a file
@@ -291,23 +378,299 @@ impl VmExecutor {
 
     /// Execute a decoded instruction
     fn execute_instruction(&mut self, instruction: &Instruction) -> Result<(), ExecutorError> {
-        match instruction {
-            Instruction::Stack(stack_instr) => {
-                self.execute_stack_instruction(stack_instr)?;
+        // Convert instruction to CustomOpcode for security checks
+        let custom_opcode = self.instruction_to_custom_opcode(instruction);
+
+        // Update resource usage
+        self.update_resource_usage(instruction)?;
+
+        // Create DotVMContext for security checks
+        let dot_context = self.create_dot_context();
+
+        // Convert resource usage to the format expected by security sandbox
+        let security_resource_usage = crate::security::resource_limiter::ResourceUsage {
+            memory_bytes: self.context.resource_usage.memory_bytes,
+            cpu_time_ms: self.context.resource_usage.cpu_time_ms,
+            instruction_count: self.context.resource_usage.instruction_count,
+            file_descriptors: self.context.resource_usage.file_descriptors,
+            network_bytes: self.context.resource_usage.network_bytes,
+            storage_bytes: self.context.resource_usage.storage_bytes,
+            call_stack_depth: self.context.resource_usage.call_stack_depth,
+            last_updated: Some(SystemTime::now()),
+        };
+
+        // Perform comprehensive security check
+        let required_permissions = vec![]; // No specific permissions required for basic operations
+        match self
+            .security_sandbox
+            .comprehensive_security_check(&dot_context, &custom_opcode, &required_permissions, &security_resource_usage)
+        {
+            Ok(check_result) => {
+                if !check_result.allowed {
+                    let violation_msg = check_result
+                        .violations
+                        .iter()
+                        .map(|v| format!("{}: {}", v.violation_type, v.description))
+                        .collect::<Vec<_>>()
+                        .join("; ");
+                    // Audit the security violation
+                    let failure_result = OpcodeResult {
+                        success: false,
+                        return_value: None,
+                        resource_consumed: ResourceCost {
+                            cpu_cycles: 0,
+                            memory_bytes: 0,
+                            storage_bytes: 0,
+                            network_bytes: 0,
+                            execution_time_ms: 0,
+                        },
+                        execution_time: Duration::from_millis(0),
+                        side_effects: vec![],
+                        errors: vec![violation_msg.clone()],
+                    };
+                    self.security_sandbox.audit_opcode_call(&dot_context, &custom_opcode, &failure_result);
+                    return Err(ExecutorError::SecurityError(violation_msg));
+                }
             }
-            Instruction::Arithmetic(arith_opcode) => {
-                self.execute_arithmetic_instruction(*arith_opcode)?;
-            }
-            Instruction::Database(db_opcode) => {
-                self.execute_database_instruction(*db_opcode)?;
-            }
-            Instruction::ControlFlow(cf_opcode) => {
-                self.execute_control_flow_instruction(*cf_opcode)?;
-            }
-            Instruction::State(state_opcode) => {
-                self.execute_state_instruction(*state_opcode)?;
+            Err(security_error) => {
+                // Audit the security violation
+                let failure_result = OpcodeResult {
+                    success: false,
+                    return_value: None,
+                    resource_consumed: ResourceCost {
+                        cpu_cycles: 0,
+                        memory_bytes: 0,
+                        storage_bytes: 0,
+                        network_bytes: 0,
+                        execution_time_ms: 0,
+                    },
+                    execution_time: Duration::from_millis(0),
+                    side_effects: vec![],
+                    errors: vec![format!("Security check failed: {}", security_error)],
+                };
+                self.security_sandbox.audit_opcode_call(&dot_context, &custom_opcode, &failure_result);
+                return Err(ExecutorError::SecurityError(security_error.to_string()));
             }
         }
+
+        // Execute the instruction
+        let execution_result = match instruction {
+            Instruction::Stack(stack_instr) => self.execute_stack_instruction(stack_instr),
+            Instruction::Arithmetic(arith_opcode) => self.execute_arithmetic_instruction(*arith_opcode),
+            Instruction::Database(db_opcode) => self.execute_database_instruction(*db_opcode),
+            Instruction::ControlFlow(cf_opcode) => self.execute_control_flow_instruction(*cf_opcode),
+            Instruction::State(state_opcode) => self.execute_state_instruction(*state_opcode),
+        };
+
+        // Audit the opcode call (both success and failure)
+        let audit_result = match &execution_result {
+            Ok(()) => OpcodeResult {
+                success: true,
+                return_value: None,
+                resource_consumed: ResourceCost {
+                    cpu_cycles: 1000,
+                    memory_bytes: 64,
+                    storage_bytes: 0,
+                    network_bytes: 0,
+                    execution_time_ms: 1,
+                },
+                execution_time: self.context.execution_start.elapsed(),
+                side_effects: vec![],
+                errors: vec![],
+            },
+            Err(e) => OpcodeResult {
+                success: false,
+                return_value: None,
+                resource_consumed: ResourceCost {
+                    cpu_cycles: 0,
+                    memory_bytes: 0,
+                    storage_bytes: 0,
+                    network_bytes: 0,
+                    execution_time_ms: 0,
+                },
+                execution_time: self.context.execution_start.elapsed(),
+                side_effects: vec![],
+                errors: vec![e.to_string()],
+            },
+        };
+        self.security_sandbox.audit_opcode_call(&dot_context, &custom_opcode, &audit_result);
+
+        execution_result
+    }
+
+    /// Create a DotVMContext from the current execution context
+    fn create_dot_context(&self) -> DotVMContext {
+        // Create a minimal execution context to avoid circular dependency
+        let exec_context = crate::vm::executor::ExecutionContext {
+            pc: self.context.pc,
+            stack: self.context.stack.clone(),
+            locals: HashMap::new(),
+            flags: self.context.flags.clone(),
+            instruction_count: self.context.instruction_count,
+            dot_id: self.context.dot_id.clone(),
+            security_level: self.context.security_level.clone(),
+            resource_usage: self.context.resource_usage.clone(),
+            execution_start: self.context.execution_start,
+        };
+
+        DotVMContext {
+            execution_context: exec_context,
+            dot_id: self.context.dot_id.clone(),
+            session_id: format!("session_{}", self.context.dot_id),
+            security_level: self.context.security_level.clone(),
+            caller_context: None,
+            security_metadata: SecurityMetadata {
+                start_time: SystemTime::now(),
+                permissions_checked: vec![],
+                capabilities_used: vec![],
+                resource_allocations: vec![],
+                audit_trail: vec![],
+            },
+            resource_usage: self.context.resource_usage.clone(),
+        }
+    }
+
+    /// Convert VM instruction to CustomOpcode for security system
+    fn instruction_to_custom_opcode(&self, instruction: &Instruction) -> CustomOpcode {
+        match instruction {
+            Instruction::Stack(stack_instr) => CustomOpcode {
+                opcode_type: OpcodeType::Standard {
+                    architecture: crate::security::types::OpcodeArchitecture::Arch64,
+                    category: crate::security::types::OpcodeCategory::Stack,
+                },
+                parameters: vec![],
+                metadata: crate::security::types::OpcodeMetadata {
+                    source_location: Some(format!("PC:{:04X}", self.context.pc)),
+                    call_stack_depth: 1,
+                    execution_count: 1,
+                    estimated_cost: ResourceCost {
+                        cpu_cycles: 1000,
+                        memory_bytes: 64,
+                        storage_bytes: 0,
+                        network_bytes: 0,
+                        execution_time_ms: 1,
+                    },
+                },
+            },
+            Instruction::Arithmetic(arith_opcode) => CustomOpcode {
+                opcode_type: OpcodeType::Standard {
+                    architecture: crate::security::types::OpcodeArchitecture::Arch64,
+                    category: crate::security::types::OpcodeCategory::Arithmetic,
+                },
+                parameters: vec![],
+                metadata: crate::security::types::OpcodeMetadata {
+                    source_location: Some(format!("PC:{:04X}", self.context.pc)),
+                    call_stack_depth: 1,
+                    execution_count: 1,
+                    estimated_cost: ResourceCost {
+                        cpu_cycles: 2000,
+                        memory_bytes: 64,
+                        storage_bytes: 0,
+                        network_bytes: 0,
+                        execution_time_ms: 2,
+                    },
+                },
+            },
+            Instruction::Database(db_opcode) => CustomOpcode {
+                opcode_type: OpcodeType::Database {
+                    operation: crate::security::types::DatabaseOperation::Read,
+                },
+                parameters: vec![],
+                metadata: crate::security::types::OpcodeMetadata {
+                    source_location: Some(format!("PC:{:04X}", self.context.pc)),
+                    call_stack_depth: 1,
+                    execution_count: 1,
+                    estimated_cost: ResourceCost {
+                        cpu_cycles: 10000,
+                        memory_bytes: 128,
+                        storage_bytes: 100,
+                        network_bytes: 0,
+                        execution_time_ms: 10,
+                    },
+                },
+            },
+            Instruction::ControlFlow(cf_opcode) => CustomOpcode {
+                opcode_type: OpcodeType::Standard {
+                    architecture: crate::security::types::OpcodeArchitecture::Arch64,
+                    category: crate::security::types::OpcodeCategory::ControlFlow,
+                },
+                parameters: vec![],
+                metadata: crate::security::types::OpcodeMetadata {
+                    source_location: Some(format!("PC:{:04X}", self.context.pc)),
+                    call_stack_depth: 1,
+                    execution_count: 1,
+                    estimated_cost: ResourceCost {
+                        cpu_cycles: 3000,
+                        memory_bytes: 64,
+                        storage_bytes: 0,
+                        network_bytes: 0,
+                        execution_time_ms: 3,
+                    },
+                },
+            },
+            Instruction::State(state_opcode) => CustomOpcode {
+                opcode_type: OpcodeType::System {
+                    operation: crate::security::types::SystemOperation::MemoryAllocation,
+                },
+                parameters: vec![],
+                metadata: crate::security::types::OpcodeMetadata {
+                    source_location: Some(format!("PC:{:04X}", self.context.pc)),
+                    call_stack_depth: 1,
+                    execution_count: 1,
+                    estimated_cost: ResourceCost {
+                        cpu_cycles: 20000,
+                        memory_bytes: 256,
+                        storage_bytes: 200,
+                        network_bytes: 0,
+                        execution_time_ms: 20,
+                    },
+                },
+            },
+        }
+    }
+
+    /// Update resource usage for the current instruction
+    fn update_resource_usage(&mut self, instruction: &Instruction) -> Result<(), ExecutorError> {
+        let elapsed = self.context.execution_start.elapsed();
+
+        // Update CPU time
+        self.context.resource_usage.cpu_time_ms = elapsed.as_millis() as u64;
+
+        // Update instruction count
+        self.context.resource_usage.instruction_count = self.context.instruction_count as u64;
+
+        // Update memory usage (simplified calculation based on stack size)
+        self.context.resource_usage.memory_bytes = (self.context.stack.size() * 64) as u64; // Estimate 64 bytes per stack item
+
+        // Update call stack depth
+        self.context.resource_usage.call_stack_depth = 1; // Simplified for now
+
+        // Estimate additional resources based on instruction type
+        match instruction {
+            Instruction::Database(_) => {
+                self.context.resource_usage.storage_bytes += 100; // Estimate
+                self.context.resource_usage.file_descriptors += 1;
+            }
+            Instruction::State(_) => {
+                self.context.resource_usage.storage_bytes += 200; // Estimate
+            }
+            _ => {}
+        }
+
+        // Create resource cost for tracking
+        let resource_cost = ResourceCost {
+            cpu_cycles: 1000, // Per instruction estimate
+            memory_bytes: 64, // Per instruction estimate
+            storage_bytes: 0,
+            network_bytes: 0,
+            execution_time_ms: 1, // Per instruction estimate
+        };
+
+        // Update resource tracking in security sandbox
+        self.security_sandbox
+            .resource_limiter
+            .update_usage(&self.context.dot_id, &resource_cost)
+            .map_err(|e| ExecutorError::SecurityError(format!("Resource tracking failed: {}", e)))?;
 
         Ok(())
     }
@@ -1035,6 +1398,19 @@ impl VmExecutor {
     pub fn halt(&mut self) {
         self.context.flags.halt = true;
     }
+
+    /// Clean shutdown - cleanup security context
+    pub fn shutdown(&mut self) -> Result<(), ExecutorError> {
+        // Clean up security context for this dot
+        self.security_sandbox
+            .cleanup_dot_security_context(&self.context.dot_id)
+            .map_err(|e| ExecutorError::SecurityError(e.to_string()))?;
+
+        // Reset execution context
+        self.context.reset();
+
+        Ok(())
+    }
 }
 
 impl Default for VmExecutor {
@@ -1129,6 +1505,9 @@ pub enum ExecutorError {
 
     #[error("Database error: {0}")]
     DatabaseError(String),
+
+    #[error("Security error: {0}")]
+    SecurityError(String),
 }
 
 /// Type alias for executor operation results
@@ -1155,6 +1534,74 @@ mod tests {
         bytecode
     }
 
+    /// Helper function to create a test executor with security capabilities
+    fn create_test_executor() -> VmExecutor {
+        use crate::security::capability_manager::{Capability, CapabilityMetadata};
+        use crate::security::resource_limiter::ResourceLimits;
+        use crate::security::types::{OpcodeArchitecture, OpcodeCategory, OpcodeType, SecurityLevel};
+        use std::collections::HashMap;
+        use std::time::SystemTime;
+
+        let mut executor = VmExecutor::new_with_dot_id("test_dot".to_string());
+
+        // Grant all necessary capabilities for testing
+        let capabilities = vec![
+            Capability {
+                id: "test_stack_cap".to_string(),
+                opcode_type: OpcodeType::Standard {
+                    architecture: OpcodeArchitecture::Arch64,
+                    category: OpcodeCategory::Stack,
+                },
+                permissions: vec![],
+                resource_limits: ResourceLimits::default(),
+                expiration: None,
+                metadata: CapabilityMetadata {
+                    created_at: SystemTime::now(),
+                    granted_by: "test_system".to_string(),
+                    purpose: "Testing stack operations".to_string(),
+                    usage_count: 0,
+                    last_used: None,
+                    custom_data: HashMap::new(),
+                },
+                delegatable: false,
+                required_security_level: SecurityLevel::Development,
+            },
+            Capability {
+                id: "test_arithmetic_cap".to_string(),
+                opcode_type: OpcodeType::Standard {
+                    architecture: OpcodeArchitecture::Arch64,
+                    category: OpcodeCategory::Arithmetic,
+                },
+                permissions: vec![],
+                resource_limits: ResourceLimits::default(),
+                expiration: None,
+                metadata: CapabilityMetadata {
+                    created_at: SystemTime::now(),
+                    granted_by: "test_system".to_string(),
+                    purpose: "Testing arithmetic operations".to_string(),
+                    usage_count: 0,
+                    last_used: None,
+                    custom_data: HashMap::new(),
+                },
+                delegatable: false,
+                required_security_level: SecurityLevel::Development,
+            },
+        ];
+
+        // Grant capabilities to the test dot
+        for capability in capabilities {
+            if let Err(e) = executor
+                .security_sandbox
+                .capability_manager
+                .grant_capability("test_dot".to_string(), capability, "test_system".to_string())
+            {
+                eprintln!("Warning: Failed to grant test capability: {}", e);
+            }
+        }
+
+        executor
+    }
+
     #[test]
     fn test_executor_creation() {
         let executor = VmExecutor::new();
@@ -1175,7 +1622,7 @@ mod tests {
 
     #[test]
     fn test_execute_stack_operations() {
-        let mut executor = VmExecutor::new();
+        let mut executor = create_test_executor();
         let bytecode = create_test_bytecode();
 
         executor.load_bytecode(bytecode).unwrap();
@@ -1187,7 +1634,7 @@ mod tests {
 
     #[test]
     fn test_arithmetic_operations() {
-        let mut executor = VmExecutor::new();
+        let mut executor = create_test_executor();
         let mut bytecode = BytecodeFile::new(VmArchitecture::Arch64);
 
         // Create program: PUSH 10, PUSH 5, ADD
@@ -1204,7 +1651,7 @@ mod tests {
 
     #[test]
     fn test_step_execution() {
-        let mut executor = VmExecutor::new();
+        let mut executor = create_test_executor();
         let bytecode = create_test_bytecode();
 
         executor.load_bytecode(bytecode).unwrap();
@@ -1233,7 +1680,7 @@ mod tests {
 
     #[test]
     fn test_division_by_zero() {
-        let mut executor = VmExecutor::new();
+        let mut executor = create_test_executor();
         let mut bytecode = BytecodeFile::new(VmArchitecture::Arch64);
 
         // Create program: PUSH 10, PUSH 0, DIV
@@ -1249,7 +1696,7 @@ mod tests {
 
     #[test]
     fn test_type_mismatch() {
-        let mut executor = VmExecutor::new();
+        let mut executor = create_test_executor();
         let mut bytecode = BytecodeFile::new(VmArchitecture::Arch64);
 
         // Add string constant
