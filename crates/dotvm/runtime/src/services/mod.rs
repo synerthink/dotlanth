@@ -18,17 +18,21 @@
 
 // Modular services
 pub mod abi;
+pub mod cluster;
+pub mod database;
 pub mod dots;
 pub mod metrics;
 pub mod vm_management;
 
 // Unified VM service that coordinates all sub-services
-pub mod vm_service;
 pub mod health;
 pub mod streaming;
+pub mod vm_service;
 
 // Re-export main services
 pub use abi::AbiService;
+pub use cluster::ClusterServiceImpl;
+pub use database::DatabaseServiceImpl;
 pub use dots::DotsService;
 pub use metrics::MetricsService;
 pub use vm_management::VmManagementService;
