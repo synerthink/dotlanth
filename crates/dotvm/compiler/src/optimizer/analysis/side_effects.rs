@@ -276,7 +276,7 @@ impl SideEffectAnalyzer {
         }
 
         // Global writes conflict with global operations
-        if (effects1.contains(&SideEffect::GlobalWrite) && effects2.contains(&SideEffect::GlobalWrite)) {
+        if effects1.contains(&SideEffect::GlobalWrite) && effects2.contains(&SideEffect::GlobalWrite) {
             return true;
         }
 
