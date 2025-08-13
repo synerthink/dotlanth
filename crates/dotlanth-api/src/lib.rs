@@ -26,6 +26,8 @@ pub mod error;
 pub mod handlers;
 pub mod middleware;
 pub mod models;
+pub mod rate_limiting;
 pub mod router;
+pub mod security;
 pub mod server;
 pub mod vm;
