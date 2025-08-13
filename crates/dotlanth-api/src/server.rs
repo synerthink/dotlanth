@@ -21,6 +21,7 @@ use crate::config::Config;
 use crate::db::DatabaseClient;
 use crate::error::{ApiError, ApiResult};
 use crate::router::Router;
+use crate::security::{SecurityConfig, SecurityLayer};
 use crate::vm::VmClient;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
@@ -31,6 +32,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
+use tower::ServiceBuilder;
 use tracing::{error, info};
 
 /// API server using Hyper
@@ -88,6 +90,37 @@ impl ApiServer {
         info!("Dotlanth REST API Gateway listening on http://{}", self.bind_address);
         info!("OpenAPI documentation available at http://{}/docs", self.bind_address);
 
+        // Create security configuration
+        //let security_config = SecurityConfig {
+        //    enable_sanitization: true,
+        //    enable_security_headers: true,
+        //    enable_ddos_protection: true,
+        //    enable_api_keys: true,
+        //    enable_request_size_limiting: true,
+        //    max_body_size: self.config.max_body_size,
+        //    rate_limit_config: crate::rate_limiting::RateLimitConfig {
+        //        max_requests: 100,
+        //        window: std::time::Duration::from_secs(60),
+        //        algorithm: crate::rate_limiting::RateLimitAlgorithm::SlidingWindow,
+        //        per_ip: true,
+        //        per_user: false,
+        //        per_api_key: false,
+        //    },
+        //    authenticated_rate_limit_config: crate::rate_limiting::RateLimitConfig {
+        //        max_requests: 1000,
+        //        window: std::time::Duration::from_secs(60),
+        //        algorithm: crate::rate_limiting::RateLimitAlgorithm::SlidingWindow,
+        //        per_ip: false,
+        //        per_user: true,
+        //        per_api_key: true,
+        //    },
+        //    ddos_threshold: 1000,
+        //    ddos_window: std::time::Duration::from_secs(1),
+        //};
+
+        // Create security layer
+        //let security_layer = SecurityLayer::new(security_config, self.auth_service.clone());
+
         // Accept connections
         loop {
             let (stream, remote_addr) = match listener.accept().await {
@@ -100,22 +133,25 @@ impl ApiServer {
 
             let io = TokioIo::new(stream);
             let router = self.router.clone();
+            //let security_layer = security_layer.clone();
 
             // Spawn a task to handle the connection
             tokio::task::spawn(async move {
-                // Create simple service without middleware for now
-                let service = service_fn(move |req: Request<hyper::body::Incoming>| {
-                    let router = router.clone();
-                    async move {
-                        match router.route(req).await {
-                            Ok(response) => Ok::<_, Infallible>(response),
-                            Err(e) => {
-                                error!("Request failed: {}", e);
-                                Ok(Response::from(e))
+                // Create service with middleware
+                let service = ServiceBuilder::new()
+                    //.layer(security_layer)
+                    .service(service_fn(move |req: Request<hyper::body::Incoming>| {
+                        let router = router.clone();
+                        async move {
+                            match router.route(req).await {
+                                Ok(response) => Ok::<_, Infallible>(response),
+                                Err(e) => {
+                                    error!("Request failed: {}", e);
+                                    Ok(Response::from(e))
+                                }
                             }
                         }
-                    }
-                });
+                    }));
 
                 // Serve the connection
                 if let Err(err) = http1::Builder::new().serve_connection(io, service).await {
