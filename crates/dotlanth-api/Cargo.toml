@@ -19,6 +19,12 @@ http-body-util = "0.1"
 tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.5", features = ["full"] }
 
+# WebSocket support
+tokio-tungstenite = "0.21"
+hyper-tungstenite = "0.11"
+tokio-stream = "0.1"
+sha1 = "0.10"
+
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -56,6 +62,9 @@ utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
 # Concurrency and data structures
 dashmap = "5.4"
 parking_lot = "0.12"
+
+# Metrics
+metrics = "0.21"
 
 # Local crates
 dotvm-core = { path = "../dotvm/core" }
