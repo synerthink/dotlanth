@@ -23,6 +23,7 @@ use crate::error::{ApiError, ApiResult};
 use crate::router::Router;
 use crate::security::{SecurityConfig, SecurityLayer};
 use crate::vm::VmClient;
+use hyper::body::Incoming;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
@@ -140,7 +141,7 @@ impl ApiServer {
                 // Create service with middleware
                 let service = ServiceBuilder::new()
                     //.layer(security_layer)
-                    .service(service_fn(move |req: Request<hyper::body::Incoming>| {
+                    .service(service_fn(move |req: Request<Incoming>| {
                         let router = router.clone();
                         async move {
                             match router.route(req).await {
