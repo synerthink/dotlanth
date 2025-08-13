@@ -20,3 +20,4 @@ pub mod auth;
 pub mod db;
 pub mod health;
 pub mod vm;
+pub mod websocket;
