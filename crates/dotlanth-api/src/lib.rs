@@ -31,3 +31,4 @@ pub mod router;
 pub mod security;
 pub mod server;
 pub mod vm;
+pub mod websocket;
