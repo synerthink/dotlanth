@@ -416,3 +416,39 @@ pub struct ApiVersion {
     /// Supported features
     pub features: Vec<String>,
 }
+
+// ====== WebSocket Models ======
+
+/// WebSocket message
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+pub struct WebSocketMessage {
+    /// Event type
+    #[serde(rename = "type")]
+    pub event_type: String,
+
+    /// Message payload
+    pub payload: serde_json::Value,
+
+    /// Timestamp
+    pub timestamp: DateTime<Utc>,
+}
+
+/// Dot event for streaming
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+pub struct DotEvent {
+    /// Event ID
+    pub event_id: String,
+
+    /// Dot ID
+    pub dot_id: String,
+
+    /// Event type
+    #[serde(rename = "type")]
+    pub event_type: String,
+
+    /// Event data
+    pub data: serde_json::Value,
+
+    /// Metadata
+    pub metadata: HashMap<String, String>,
+}
