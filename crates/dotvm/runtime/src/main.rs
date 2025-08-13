@@ -28,11 +28,24 @@ mod proto {
         tonic::include_proto!("vm_service");
     }
 
+    pub mod cluster_service {
+        tonic::include_proto!("cluster_service");
+    }
+
+    pub mod database_service {
+        tonic::include_proto!("database_service");
+    }
+
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("runtime_descriptor");
 }
 
+use proto::cluster_service::cluster_service_server::{ClusterService, ClusterServiceServer};
+use proto::database_service::database_service_server::{DatabaseService, DatabaseServiceServer};
 use proto::runtime_server::{Runtime, RuntimeServer};
 use proto::vm_service::vm_service_server::{VmService, VmServiceServer};
+
+mod services;
+use services::{ClusterServiceImpl, DatabaseServiceImpl};
 
 // Simple working runtime service
 #[derive(Debug, Default)]
@@ -399,6 +412,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = runtime_config.get_bind_address_for_platform();
     let runtime_service = SimpleRuntimeService::default();
     let vm_service = VmServiceImpl::default();
+    let cluster_service = ClusterServiceImpl::default();
+    let database_service = DatabaseServiceImpl::default();
+
+    // Start background tasks for cluster service
+    cluster_service.start_background_tasks().await;
 
     // Set up reflection service
     let reflection_service = tonic_reflection::server::Builder::configure()
@@ -408,6 +426,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Server starting on {}", addr);
     println!("Basic functionality ready");
     println!("VM service enabled");
+    println!("Cluster service enabled (CONN-002 features)");
+    println!("Database service enabled");
     println!("gRPC reflection enabled");
     println!("");
     println!("Test with:");
@@ -416,6 +436,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  grpcurl -plaintext -d '{{}}' {} vm_service.VmService/GetArchitectures", addr);
     println!("  grpcurl -plaintext -d '{{\"client_id\": \"test\", \"timestamp\": 1640995200}}' {} vm_service.VmService/Ping", addr);
     println!("  grpcurl -plaintext -d '{{\"services\": [], \"include_details\": true}}' {} vm_service.VmService/HealthCheck", addr);
+    println!("");
+    println!("CONN-002 Cluster Service features:");
+    println!("  grpcurl -plaintext -d '{{}}' {} cluster_service.ClusterService/ListNodes", addr);
+    println!("  grpcurl -plaintext -d '{{\"include_nodes\": true}}' {} cluster_service.ClusterService/GetClusterStatus", addr);
+    println!("  grpcurl -plaintext -d '{{\"include_details\": true}}' {} cluster_service.ClusterService/GetClusterConfig", addr);
+    println!("");
+    println!("Database Service:");
+    println!("  grpcurl -plaintext -d '{{\"include_details\": true}}' {} database_service.DatabaseService/GetDatabaseStatus", addr);
+    println!("  grpcurl -plaintext -d '{{\"pattern\": \"\"}}' {} database_service.DatabaseService/ListCollections", addr);
     println!("");
     println!("Cross-platform connection tips:");
     println!("  Ubuntu/Linux: Use 127.0.0.1:{} (recommended) or localhost:{}", addr.port(), addr.port());
@@ -432,6 +461,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(reflection_service)
         .add_service(RuntimeServer::new(runtime_service))
         .add_service(VmServiceServer::new(vm_service))
+        .add_service(ClusterServiceServer::new(cluster_service))
+        .add_service(DatabaseServiceServer::new(database_service))
         .serve_with_shutdown(addr, async {
             shutdown_rx.recv().await;
             println!("Shutdown signal received, stopping server...");
