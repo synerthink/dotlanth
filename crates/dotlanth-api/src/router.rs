@@ -21,8 +21,10 @@ use crate::db::DatabaseClient;
 use crate::error::{ApiError, ApiResult};
 use crate::handlers::{auth, db, health, vm};
 use crate::vm::VmClient;
+use crate::websocket::WebSocketManager;
 use http_body_util::Full;
-use hyper::{Method, Request, Response, StatusCode, body::Bytes};
+use hyper::body::Bytes;
+use hyper::{Method, Request, Response, StatusCode};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -37,6 +39,7 @@ pub struct Router {
     pub auth_service: Arc<Mutex<AuthService>>,
     db_client: DatabaseClient,
     vm_client: VmClient,
+    websocket_manager: Arc<WebSocketManager>,
     openapi_spec: String,
 }
 
@@ -46,10 +49,14 @@ impl Router {
         // Generate OpenAPI specification
         let openapi_spec = generate_openapi_spec();
 
+        // Create WebSocket manager
+        let websocket_manager = Arc::new(WebSocketManager::new(vm_client.clone(), auth_service.clone()));
+
         Ok(Self {
             auth_service,
             db_client,
             vm_client,
+            websocket_manager,
             openapi_spec,
         })
     }
@@ -108,6 +115,14 @@ impl Router {
                 return Err(ApiError::Unauthorized {
                     message: "No authentication information found".to_string(),
                 });
+            }
+        }
+
+        // Check for WebSocket upgrade request
+        if method == Method::GET && path.as_str() == "/api/v1/ws" {
+            // Simple check for WebSocket upgrade request
+            if req.headers().get("upgrade").and_then(|h| h.to_str().ok()).map(|h| h.to_lowercase() == "websocket").unwrap_or(false) {
+                return crate::handlers::websocket::websocket_upgrade(self.websocket_manager.clone(), req).await;
             }
         }
 
@@ -305,24 +320,27 @@ fn generate_openapi_spec() -> String {
                 crate::models::SearchResults,
                 crate::models::DeployDotRequest,
                 crate::models::DeployDotResponse,
-                crate::models::DotState,
+                crate::models::DotConfig,
                 crate::models::ExecuteDotRequest,
                 crate::models::ExecuteDotResponse,
+                crate::models::DotState,
+                crate::models::ExecutionContext,
                 crate::models::DotStatus,
                 crate::models::ExecutionStatus,
                 crate::models::ValidationResult,
                 crate::models::HealthResponse,
                 crate::models::ServiceStatus,
                 crate::models::ApiVersion,
-                crate::models::DotConfig,
-                crate::models::ExecutionContext,
+                crate::models::WebSocketMessage,
+                crate::models::DotEvent,
             )
         ),
         tags(
             (name = "Health", description = "Health check and version endpoints"),
             (name = "Authentication", description = "Authentication and authorization endpoints"),
             (name = "Database", description = "Database collection and document management"),
-            (name = "Virtual Machine", description = "VM dot deployment and execution")
+            (name = "Virtual Machine", description = "VM dot deployment and execution"),
+            (name = "WebSocket", description = "WebSocket streaming for real-time events")
         ),
         modifiers(&SecurityAddon)
     )]
