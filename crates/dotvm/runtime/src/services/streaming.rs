@@ -15,20 +15,77 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Advanced gRPC Streaming Service
-//! 
+//!
 //! Implements sophisticated streaming patterns with backpressure, flow control,
 //! and multiplexing capabilities for high-performance real-time communication.
 
+use futures::{Stream, StreamExt};
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use futures::{Stream, StreamExt};
-use tokio::sync::{mpsc, RwLock, Semaphore};
+use tokio::sync::{RwLock, Semaphore, mpsc};
 use tokio::time::{interval, sleep};
 use tonic::{Request, Response, Status, Streaming};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
+
+// Import proto types
+use crate::proto::vm_service::{DotEvent, StreamDotEventsRequest, VmMetric};
+
+// Add missing types for vm_service.rs compatibility
+pub struct DotEventBroadcaster;
+
+impl DotEventBroadcaster {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub async fn subscribe<F>(&self, _subscriber_id: String, _filter: F) -> impl Stream<Item = Result<DotEvent, Status>> + 'static
+    where
+        F: Fn(&DotEvent) -> bool + Send + Sync + 'static,
+    {
+        // Return empty stream for now
+        futures::stream::empty()
+    }
+}
+
+pub struct VmMetricsCollector;
+
+impl VmMetricsCollector {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub async fn start(&self) {
+        // No-op for now
+    }
+
+    pub fn subscribe(&self) -> impl Stream<Item = Result<VmMetric, Status>> + 'static {
+        // Return empty stream for now
+        futures::stream::empty()
+    }
+}
+
+pub mod dot_events {
+    use super::*;
+
+    pub fn create_filter_from_request(req: &StreamDotEventsRequest) -> Box<dyn Fn(&DotEvent) -> bool + Send + Sync> {
+        // Simple filter implementation
+        let dot_ids = req.dot_ids.clone();
+        let event_types = req.event_types.clone();
+
+        Box::new(move |event: &DotEvent| {
+            if !dot_ids.is_empty() && !dot_ids.contains(&event.dot_id) {
+                return false;
+            }
+            if !event_types.is_empty() && !event_types.contains(&event.event_type) {
+                return false;
+            }
+            true
+        })
+    }
+}
 
 /// Stream configuration for advanced features
 #[derive(Debug, Clone)]
@@ -128,7 +185,7 @@ impl AdvancedStreamingService {
     /// Create a new advanced streaming service
     pub fn new(config: StreamConfig) -> Self {
         let stream_semaphore = Arc::new(Semaphore::new(config.max_concurrent_streams));
-        
+
         Self {
             config,
             streams: Arc::new(RwLock::new(HashMap::new())),
@@ -139,12 +196,14 @@ impl AdvancedStreamingService {
     }
 
     /// Create a new managed stream with flow control
-    pub async fn create_managed_stream<T>(&self, client_id: String) -> Result<ManagedStream<T>, Status> 
+    pub async fn create_managed_stream<T>(&self, client_id: String) -> Result<ManagedStream<T>, Status>
     where
         T: Send + 'static,
     {
         // Acquire semaphore permit for concurrent stream limiting
-        let permit = self.stream_semaphore.clone()
+        let permit = self
+            .stream_semaphore
+            .clone()
             .acquire_owned()
             .await
             .map_err(|_| Status::resource_exhausted("Too many concurrent streams"))?;
@@ -166,7 +225,7 @@ impl AdvancedStreamingService {
 
         // Create flow control channel
         let (flow_tx, flow_rx) = mpsc::unbounded_channel();
-        
+
         // Create message channel with backpressure
         let (msg_tx, msg_rx) = mpsc::channel(self.config.buffer_size);
 
@@ -174,10 +233,10 @@ impl AdvancedStreamingService {
         {
             let mut streams = self.streams.write().await;
             streams.insert(stream_id.clone(), metadata);
-            
+
             let mut flow_senders = self.flow_control_senders.write().await;
             flow_senders.insert(stream_id.clone(), flow_tx);
-            
+
             let mut metrics = self.metrics.write().await;
             metrics.total_streams_created += 1;
             metrics.active_streams += 1;
@@ -216,11 +275,7 @@ impl AdvancedStreamingService {
 
     /// Get active streams
     pub async fn get_active_streams(&self) -> Vec<StreamMetadata> {
-        self.streams.read().await
-            .values()
-            .filter(|stream| stream.is_active)
-            .cloned()
-            .collect()
+        self.streams.read().await.values().filter(|stream| stream.is_active).cloned().collect()
     }
 
     /// Cleanup inactive streams
@@ -248,7 +303,7 @@ impl AdvancedStreamingService {
                 flow_senders.remove(&stream_id);
                 metrics.active_streams = metrics.active_streams.saturating_sub(1);
                 metrics.stream_timeouts += 1;
-                
+
                 warn!("Cleaned up inactive stream: {}", stream_id);
             }
         }
@@ -259,7 +314,7 @@ impl AdvancedStreamingService {
         let service = Arc::clone(&self);
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(60)); // Cleanup every minute
-            
+
             loop {
                 interval.tick().await;
                 service.cleanup_inactive_streams().await;
@@ -283,7 +338,7 @@ pub struct ManagedStream<T> {
     last_backpressure_check: Instant,
 }
 
-impl<T> ManagedStream<T> 
+impl<T> ManagedStream<T>
 where
     T: Send + 'static,
 {
@@ -324,8 +379,7 @@ where
         }
 
         // Send message
-        self.sender.send(message).await
-            .map_err(|_| Status::internal("Stream closed"))?;
+        self.sender.send(message).await.map_err(|_| Status::internal("Stream closed"))?;
 
         // Update metrics
         self.update_send_metrics().await;
@@ -336,35 +390,31 @@ where
     /// Receive message
     pub async fn recv(&mut self) -> Option<T> {
         let message = self.receiver.recv().await;
-        
+
         if message.is_some() {
             self.update_recv_metrics().await;
         }
-        
+
         message
     }
 
     /// Check and handle backpressure
     async fn check_backpressure(&mut self) {
         let now = Instant::now();
-        
+
         // Only check backpressure periodically to avoid overhead
         if now.duration_since(self.last_backpressure_check) < Duration::from_millis(100) {
             return;
         }
-        
+
         self.last_backpressure_check = now;
-        
+
         // Calculate buffer usage
         let capacity = self.config.buffer_size as f32;
         let used = (capacity - self.sender.capacity() as f32).max(0.0);
         self.buffer_usage = used / capacity;
 
-        debug!(
-            "Stream {} buffer usage: {:.2}%", 
-            self.stream_id, 
-            self.buffer_usage * 100.0
-        );
+        debug!("Stream {} buffer usage: {:.2}%", self.stream_id, self.buffer_usage * 100.0);
     }
 
     /// Apply flow control based on buffer usage
@@ -373,7 +423,7 @@ where
             // Critical backpressure - pause briefly
             warn!("Critical backpressure on stream {}, pausing", self.stream_id);
             sleep(Duration::from_millis(10)).await;
-            
+
             let mut metrics = self.metrics.write().await;
             metrics.backpressure_events += 1;
         } else if self.buffer_usage > self.config.backpressure_threshold {
@@ -428,18 +478,18 @@ where
 impl<T> Drop for ManagedStream<T> {
     fn drop(&mut self) {
         info!("Dropping managed stream: {}", self.stream_id);
-        
+
         // Mark stream as inactive
         let streams = Arc::clone(&self.streams);
         let stream_id = self.stream_id.clone();
         let metrics = Arc::clone(&self.metrics);
-        
+
         tokio::spawn(async move {
             let mut streams = streams.write().await;
             if let Some(metadata) = streams.get_mut(&stream_id) {
                 metadata.is_active = false;
             }
-            
+
             let mut metrics = metrics.write().await;
             metrics.active_streams = metrics.active_streams.saturating_sub(1);
         });
@@ -454,10 +504,10 @@ mod tests {
     async fn test_managed_stream_creation() {
         let config = StreamConfig::default();
         let service = AdvancedStreamingService::new(config);
-        
+
         let stream = service.create_managed_stream::<String>("test_client".to_string()).await;
         assert!(stream.is_ok());
-        
+
         let metrics = service.get_metrics().await;
         assert_eq!(metrics.total_streams_created, 1);
         assert_eq!(metrics.active_streams, 1);
@@ -467,13 +517,13 @@ mod tests {
     async fn test_stream_send_receive() {
         let config = StreamConfig::default();
         let service = AdvancedStreamingService::new(config);
-        
+
         let mut stream = service.create_managed_stream::<String>("test_client".to_string()).await.unwrap();
-        
+
         // Send a message
         let result = stream.send("test message".to_string()).await;
         assert!(result.is_ok());
-        
+
         // Receive the message
         let received = stream.recv().await;
         assert_eq!(received, Some("test message".to_string()));
