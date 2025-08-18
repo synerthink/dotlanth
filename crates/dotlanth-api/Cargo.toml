@@ -75,5 +75,8 @@ dotvm-common = { path = "../dotvm/common" }
 dotdb-core = { path = "../dotdb/core" }
 dotdb-common = { path = "../dotdb/common" }
 
+# Additional dependencies for versioning
+urlencoding = "2.1"
+
 [build-dependencies]
 tonic-build = "0.11"
