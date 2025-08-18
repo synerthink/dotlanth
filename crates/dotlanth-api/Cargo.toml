@@ -20,8 +20,8 @@ tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.5", features = ["full"] }
 
 # WebSocket support
-tokio-tungstenite = "0.21"
-hyper-tungstenite = "0.11"
+tokio-tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
+hyper-tungstenite = "0.13"
 tokio-stream = "0.1"
 sha1 = "0.10"
 
@@ -58,6 +58,9 @@ percent-encoding = "2.3"
 # OpenAPI
 utoipa = { version = "4.2", features = ["axum_extras", "chrono", "uuid"] }
 utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
+
+# GraphQL
+async-graphql = { version = "7", features = ["chrono", "uuid", "log"] }
 
 # Concurrency and data structures
 dashmap = "5.4"
