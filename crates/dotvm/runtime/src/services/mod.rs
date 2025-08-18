@@ -27,6 +27,7 @@ pub mod vm_management;
 // Unified VM service that coordinates all sub-services
 pub mod health;
 pub mod streaming;
+pub mod versioning;
 pub mod vm_service;
 
 // Re-export main services
