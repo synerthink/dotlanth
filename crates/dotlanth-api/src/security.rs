@@ -36,6 +36,8 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::sync::Mutex as TokioMutex;
+use tokio::sync::Mutex;
 use tower::{Layer, Service};
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::{debug, error, warn};
@@ -141,7 +143,7 @@ pub struct ApiKey {
 pub struct SecurityMiddleware<S> {
     inner: S,
     config: SecurityConfig,
-    auth_service: Arc<std::sync::Mutex<AuthService>>,
+    auth_service: Arc<TokioMutex<AuthService>>,
     rate_limiter_manager: Arc<RateLimiterManager>,
     api_keys: Arc<DashMap<String, ApiKey>>,
     /// DDoS protection tracking
@@ -152,7 +154,7 @@ pub struct SecurityMiddleware<S> {
 
 impl<S> SecurityMiddleware<S> {
     /// Create a new security middleware
-    pub fn new(inner: S, config: SecurityConfig, auth_service: Arc<std::sync::Mutex<AuthService>>) -> Self {
+    pub fn new(inner: S, config: SecurityConfig, auth_service: Arc<TokioMutex<AuthService>>) -> Self {
         let rate_limiter_manager = Arc::new(RateLimiterManager::new(config.rate_limit_config.clone()));
 
         Self {
@@ -521,12 +523,12 @@ where
 #[derive(Clone)]
 pub struct SecurityLayer {
     config: SecurityConfig,
-    auth_service: Arc<std::sync::Mutex<AuthService>>,
+    auth_service: Arc<TokioMutex<AuthService>>,
 }
 
 impl SecurityLayer {
     /// Create a new security layer
-    pub fn new(config: SecurityConfig, auth_service: Arc<std::sync::Mutex<AuthService>>) -> Self {
+    pub fn new(config: SecurityConfig, auth_service: Arc<TokioMutex<AuthService>>) -> Self {
         Self { config, auth_service }
     }
 }
@@ -767,7 +769,7 @@ mod tests {
         use hyper::{HeaderMap, Request};
 
         // Create a mock auth service
-        let auth_service = Arc::new(std::sync::Mutex::new(crate::auth::AuthService::new("test_secret")));
+        let auth_service = Arc::new(TokioMutex::new(crate::auth::AuthService::new("test_secret")));
 
         // Create security config with request size limiting enabled
         let config = SecurityConfig {
