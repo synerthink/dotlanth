@@ -18,10 +18,13 @@
 
 use crate::auth::{AuthService, Claims, extract_token_from_header};
 use crate::error::{ApiError, ApiResult};
+use crate::versioning::{CompatibilityChecker, DeprecationManager, ProtocolType, SchemaEvolutionManager, ServiceType, VersionContext, VersionNegotiator, VersionRegistry};
 use http_body_util::Full;
-use hyper::{Request, Response, body::Bytes};
+use hyper::{HeaderMap, Request, Response, body::Bytes, body::Incoming};
+use serde_json::Value;
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::sync::RwLock;
 use tower::{Layer, Service};
 use tracing::{error, info, warn};
 
@@ -241,4 +244,132 @@ pub fn check_permissions(claims: &Claims, required_permissions: &[&str]) -> ApiR
         }
     }
     Ok(())
+}
+
+/// Versioning middleware for handling API version negotiation and compatibility
+#[derive(Clone)]
+pub struct VersioningMiddleware {
+    negotiator: VersionNegotiator,
+    compatibility_checker: Arc<RwLock<CompatibilityChecker>>,
+    deprecation_manager: Arc<RwLock<DeprecationManager>>,
+    schema_manager: Arc<RwLock<SchemaEvolutionManager>>,
+}
+
+impl VersioningMiddleware {
+    /// Create new versioning middleware
+    pub fn new(registry: VersionRegistry, compatibility_checker: CompatibilityChecker, deprecation_manager: DeprecationManager, schema_manager: SchemaEvolutionManager) -> Self {
+        Self {
+            negotiator: VersionNegotiator::new(registry),
+            compatibility_checker: Arc::new(RwLock::new(compatibility_checker)),
+            deprecation_manager: Arc::new(RwLock::new(deprecation_manager)),
+            schema_manager: Arc::new(RwLock::new(schema_manager)),
+        }
+    }
+
+    /// Process versioning for incoming request
+    pub async fn process_request(&self, mut req: Request<Incoming>, service: ServiceType) -> ApiResult<(Request<Incoming>, VersionContext)> {
+        let headers = req.headers();
+
+        // Negotiate version
+        let negotiation_result = self.negotiator.negotiate_from_headers(headers, ProtocolType::Rest, service.clone()).map_err(|e| ApiError::BadRequest {
+            message: format!("Version negotiation failed: {}", e),
+        })?;
+
+        // Extract client preferences for context
+        let client_prefs = self.extract_client_preferences(headers)?;
+
+        // Create version context
+        let version_context = VersionContext::new(negotiation_result, client_prefs);
+
+        // Check deprecation warnings
+        let deprecation_manager = self.deprecation_manager.read().await;
+        let used_features = self.extract_used_features(&req, &service);
+        let deprecation_warnings = deprecation_manager.generate_warnings(&ProtocolType::Rest, &service, &version_context.negotiated_version, &used_features);
+
+        if !deprecation_warnings.is_empty() {
+            for warning in &deprecation_warnings {
+                warn!("Deprecation warning: {}", warning);
+            }
+        }
+
+        // Add version context to request extensions
+        req.extensions_mut().insert(version_context.clone());
+
+        info!(
+            "Request processed with API version {} for {}/{}",
+            version_context.negotiated_version, version_context.protocol, version_context.service
+        );
+
+        Ok((req, version_context))
+    }
+
+    /// Validate request data against schema
+    pub async fn validate_request_data(&self, version_context: &VersionContext, data: &Value) -> ApiResult<()> {
+        let mut schema_manager = self.schema_manager.write().await;
+
+        schema_manager
+            .validate_data(&version_context.protocol, &version_context.service, &version_context.negotiated_version, data)
+            .map_err(|e| ApiError::BadRequest {
+                message: format!("Schema validation failed: {}", e),
+            })?;
+
+        Ok(())
+    }
+
+    /// Check compatibility for request features
+    pub async fn check_request_compatibility(&self, version_context: &VersionContext, features: &[String]) -> ApiResult<()> {
+        let compatibility_checker = self.compatibility_checker.read().await;
+
+        compatibility_checker
+            .validate_request_compatibility(&version_context.protocol, &version_context.service, &version_context.negotiated_version, features)
+            .map_err(|e| ApiError::BadRequest {
+                message: format!("Compatibility check failed: {}", e),
+            })?;
+
+        Ok(())
+    }
+
+    /// Extract client preferences from headers
+    fn extract_client_preferences(&self, headers: &HeaderMap) -> ApiResult<crate::versioning::ClientVersionPreferences> {
+        // This would typically parse Accept-Version headers or similar
+        // For now, return default preferences
+        Ok(crate::versioning::ClientVersionPreferences::default())
+    }
+
+    /// Extract used features from request
+    fn extract_used_features(&self, _req: &Request<Incoming>, service: &ServiceType) -> Vec<String> {
+        // Extract features based on request path, body, etc.
+        // For now, return common features based on service
+        match service {
+            ServiceType::Vm => vec!["execute_dot".to_string(), "deploy_dot".to_string()],
+            ServiceType::Database => vec!["get".to_string(), "put".to_string()],
+            _ => vec![],
+        }
+    }
+
+    /// Get compatibility checker
+    pub async fn compatibility_checker(&self) -> tokio::sync::RwLockReadGuard<'_, CompatibilityChecker> {
+        self.compatibility_checker.read().await
+    }
+
+    /// Get deprecation manager
+    pub async fn deprecation_manager(&self) -> tokio::sync::RwLockReadGuard<'_, DeprecationManager> {
+        self.deprecation_manager.read().await
+    }
+
+    /// Get schema manager
+    pub async fn schema_manager(&self) -> tokio::sync::RwLockReadGuard<'_, SchemaEvolutionManager> {
+        self.schema_manager.read().await
+    }
+}
+
+/// Extension trait for extracting version context from requests
+pub trait VersionContextExt {
+    fn version_context(&self) -> Option<&VersionContext>;
+}
+
+impl<T> VersionContextExt for Request<T> {
+    fn version_context(&self) -> Option<&VersionContext> {
+        self.extensions().get::<VersionContext>()
+    }
 }
