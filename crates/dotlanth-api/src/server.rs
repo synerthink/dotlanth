@@ -20,8 +20,10 @@ use crate::auth::AuthService;
 use crate::config::Config;
 use crate::db::DatabaseClient;
 use crate::error::{ApiError, ApiResult};
+use crate::middleware::VersioningMiddleware;
 use crate::router::Router;
 use crate::security::{SecurityConfig, SecurityLayer};
+use crate::versioning::{CompatibilityChecker, DeprecationManager, SchemaEvolutionManager, VersionRegistry};
 use crate::vm::VmClient;
 use hyper::body::Incoming;
 use hyper::server::conn::http1;
@@ -44,6 +46,7 @@ pub struct ApiServer {
     auth_service: Arc<Mutex<AuthService>>,
     db_client: DatabaseClient,
     vm_client: VmClient,
+    versioning_middleware: Arc<VersioningMiddleware>,
 }
 
 impl ApiServer {
@@ -63,10 +66,19 @@ impl ApiServer {
         // Create VM client
         let vm_client = VmClient::new(&config.vm_service_address).await?;
 
+        // Initialize versioning components
+        let version_registry = VersionRegistry::new();
+        let compatibility_checker = CompatibilityChecker::new();
+        let deprecation_manager = DeprecationManager::default();
+        let schema_manager = SchemaEvolutionManager::new();
+
+        // Create versioning middleware
+        let versioning_middleware = Arc::new(VersioningMiddleware::new(version_registry, compatibility_checker, deprecation_manager, schema_manager));
+
         // Create router
         let router = Arc::new(Router::new(auth_service.clone(), db_client.clone(), vm_client.clone())?);
 
-        info!("API server created successfully");
+        info!("API server created successfully with versioning support");
 
         Ok(Self {
             config,
@@ -75,6 +87,7 @@ impl ApiServer {
             auth_service,
             db_client,
             vm_client,
+            versioning_middleware,
         })
     }
 
@@ -92,35 +105,35 @@ impl ApiServer {
         info!("OpenAPI documentation available at http://{}/docs", self.bind_address);
 
         // Create security configuration
-        //let security_config = SecurityConfig {
-        //    enable_sanitization: true,
-        //    enable_security_headers: true,
-        //    enable_ddos_protection: true,
-        //    enable_api_keys: true,
-        //    enable_request_size_limiting: true,
-        //    max_body_size: self.config.max_body_size,
-        //    rate_limit_config: crate::rate_limiting::RateLimitConfig {
-        //        max_requests: 100,
-        //        window: std::time::Duration::from_secs(60),
-        //        algorithm: crate::rate_limiting::RateLimitAlgorithm::SlidingWindow,
-        //        per_ip: true,
-        //        per_user: false,
-        //        per_api_key: false,
-        //    },
-        //    authenticated_rate_limit_config: crate::rate_limiting::RateLimitConfig {
-        //        max_requests: 1000,
-        //        window: std::time::Duration::from_secs(60),
-        //        algorithm: crate::rate_limiting::RateLimitAlgorithm::SlidingWindow,
-        //        per_ip: false,
-        //        per_user: true,
-        //        per_api_key: true,
-        //    },
-        //    ddos_threshold: 1000,
-        //    ddos_window: std::time::Duration::from_secs(1),
-        //};
+        let security_config = SecurityConfig {
+            enable_sanitization: true,
+            enable_security_headers: true,
+            enable_ddos_protection: true,
+            enable_api_keys: true,
+            enable_request_size_limiting: true,
+            max_body_size: self.config.max_body_size,
+            rate_limit_config: crate::rate_limiting::RateLimitConfig {
+                max_requests: 100,
+                window: std::time::Duration::from_secs(60),
+                algorithm: crate::rate_limiting::RateLimitAlgorithm::SlidingWindow,
+                per_ip: true,
+                per_user: false,
+                per_api_key: false,
+            },
+            authenticated_rate_limit_config: crate::rate_limiting::RateLimitConfig {
+                max_requests: 1000,
+                window: std::time::Duration::from_secs(60),
+                algorithm: crate::rate_limiting::RateLimitAlgorithm::SlidingWindow,
+                per_ip: false,
+                per_user: true,
+                per_api_key: true,
+            },
+            ddos_threshold: 1000,
+            ddos_window: std::time::Duration::from_secs(1),
+        };
 
         // Create security layer
-        //let security_layer = SecurityLayer::new(security_config, self.auth_service.clone());
+        let security_layer = SecurityLayer::new(security_config, self.auth_service.clone());
 
         // Accept connections
         loop {
