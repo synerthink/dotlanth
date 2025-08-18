@@ -20,6 +20,7 @@
 //! through gRPC services, offering HTTP/REST endpoints for web clients.
 
 pub mod auth;
+pub mod compatibility_testing;
 pub mod config;
 pub mod db;
 pub mod error;
@@ -31,5 +32,6 @@ pub mod rate_limiting;
 pub mod router;
 pub mod security;
 pub mod server;
+pub mod versioning;
 pub mod vm;
 pub mod websocket;
