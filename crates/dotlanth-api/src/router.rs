@@ -16,9 +16,10 @@
 
 //! HTTP routing for the REST API
 
-use crate::auth::{AuthService, extract_token_from_header};
+use crate::auth::{AuthService, Claims, extract_token_from_header};
 use crate::db::DatabaseClient;
 use crate::error::{ApiError, ApiResult};
+use crate::graphql::{AppSchema, build_schema};
 use crate::handlers::{auth, db, health, vm};
 use crate::vm::VmClient;
 use crate::websocket::WebSocketManager;
@@ -40,6 +41,7 @@ pub struct Router {
     db_client: DatabaseClient,
     vm_client: VmClient,
     websocket_manager: Arc<WebSocketManager>,
+    graphql_schema: AppSchema,
     openapi_spec: String,
 }
 
@@ -52,11 +54,15 @@ impl Router {
         // Create WebSocket manager
         let websocket_manager = Arc::new(WebSocketManager::new(vm_client.clone(), auth_service.clone()));
 
+        // Build GraphQL schema
+        let graphql_schema = build_schema(auth_service.clone(), db_client.clone(), vm_client.clone(), websocket_manager.clone());
+
         Ok(Self {
             auth_service,
             db_client,
             vm_client,
             websocket_manager,
+            graphql_schema,
             openapi_spec,
         })
     }
@@ -69,7 +75,17 @@ impl Router {
         info!("Routing request: {} {}", method, path);
 
         // Public paths that don't require authentication
-        let public_paths = ["/api/v1/health", "/api/v1/version", "/api/v1/auth/login", "/docs", "/docs/", "/api-docs", "/openapi.json"];
+        let public_paths = [
+            "/api/v1/health",
+            "/api/v1/version",
+            "/api/v1/auth/login",
+            "/docs",
+            "/docs/",
+            "/api-docs",
+            "/openapi.json",
+            "/graphql",
+            "/playground",
+        ];
 
         // Check if authentication is required
         let requires_auth = !public_paths.iter().any(|public_path| path.as_str() == *public_path || path.starts_with(&format!("{}/", public_path)));
@@ -145,6 +161,10 @@ impl Router {
             (&Method::GET, "/api/v1/vm/status") => vm::get_vm_status(req, self.vm_client.clone()).await,
             (&Method::GET, "/api/v1/vm/architectures") => vm::get_architectures(req, self.vm_client.clone()).await,
 
+            // GraphQL
+            (&Method::GET, "/playground") => self.serve_graphiql().await,
+            (&Method::POST, "/graphql") => self.handle_graphql(req).await,
+
             // Documentation
             (&Method::GET, "/docs") | (&Method::GET, "/docs/") => self.serve_docs().await,
             (&Method::GET, "/openapi.json") => self.serve_openapi_spec().await,
@@ -198,6 +218,103 @@ impl Router {
         }
     }
 
+    /*async fn handle_graphql_ws(&self, mut req: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, ApiError> {
+        // Verify WebSocket upgrade headers
+        let key = match req.headers().get("sec-websocket-key").and_then(|v| v.to_str().ok()) {
+            Some(k) => k.to_string(),
+            None => {
+                return Err(ApiError::BadRequest {
+                    message: "Missing Sec-WebSocket-Key".to_string(),
+                });
+            }
+        };
+        let upgrade = req.headers().get("upgrade").and_then(|v| v.to_str().ok()).map(|v| v.eq_ignore_ascii_case("websocket")).unwrap_or(false);
+        let connection_upgrade = req
+            .headers()
+            .get("connection")
+            .and_then(|v| v.to_str().ok())
+            .map(|v| v.to_ascii_lowercase().contains("upgrade"))
+            .unwrap_or(false);
+        if !upgrade || !connection_upgrade {
+            return Err(ApiError::BadRequest {
+                message: "Expected WebSocket upgrade".to_string(),
+            });
+        }
+
+        // Compute Sec-WebSocket-Accept
+        use base64::{Engine as _, engine::general_purpose};
+        use sha1::{Digest, Sha1};
+        const WS_MAGIC: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+        let mut hasher = Sha1::new();
+        hasher.update(format!("{}{}", key, WS_MAGIC).as_bytes());
+        let accept = general_purpose::STANDARD.encode(hasher.finalize());
+
+        // Build 101 Switching Protocols response
+        let response = Response::builder()
+            .status(StatusCode::SWITCHING_PROTOCOLS)
+            .header("Upgrade", "websocket")
+            .header("Connection", "Upgrade")
+            .header("Sec-WebSocket-Accept", accept)
+            .body(Full::new(Bytes::new()))?;
+
+        // Spawn task to handle upgraded connection
+        let schema = self.graphql_schema.clone();
+        tokio::spawn(async move {
+            match hyper::upgrade::on(&mut req).await {
+                Ok(upgraded) => {
+                    use futures::{SinkExt, StreamExt};
+                    use tokio_tungstenite::WebSocketStream;
+                    use tokio_tungstenite::tungstenite::protocol::Role;
+
+                    let io = hyper_util::rt::TokioIo::new(upgraded);
+                    let mut ws = WebSocketStream::from_raw_socket(io, Role::Server, None).await;
+
+                    // Reader adapter: map Text/Binary messages to Vec<u8>
+                    let (mut sink, mut stream) = ws.split();
+                    let mapped = stream.filter_map(|msg| async move {
+                        match msg {
+                            Ok(m) if m.is_text() => Some(Ok(m.into_data())),
+                            Ok(m) if m.is_binary() => Some(Ok(m.into_data())),
+                            Ok(m) if m.is_close() => None,
+                            Ok(_) => None, // ignore ping/pong
+                            Err(e) => {
+                                tracing::error!("WS read error: {}", e);
+                                None
+                            }
+                        }
+                    });
+
+                    // Build GraphQL WS server
+                    use async_graphql::http::WebSocketProtocols;
+                    let server = async_graphql::http::WebSocket::new(schema, mapped, WebSocketProtocols::GraphQLWS)
+                        .on_connection_init(|_payload| async move { Ok(async_graphql::Data::default()) })
+                        .on_send(|msg| async move {
+                            // Send as Text (GraphQL protocol frames are JSON)
+                            if let Err(e) = sink.send(tokio_tungstenite::tungstenite::Message::Text(String::from_utf8_lossy(&msg).to_string())).await {
+                                tracing::error!("WS write error: {}", e);
+                            }
+                        });
+
+                    if let Err(e) = server.serve().await {
+                        tracing::error!("GraphQL WS serve error: {}", e);
+                    }
+                }
+                Err(e) => tracing::error!("Upgrade error: {}", e),
+            }
+        });
+
+        Ok(response)
+    }*/
+
+    /// Serve GraphiQL
+    async fn serve_graphiql(&self) -> Result<Response<Full<Bytes>>, ApiError> {
+        let html = async_graphql::http::GraphiQLSource::build().endpoint("/graphql").subscription_endpoint("/graphql").finish();
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("content-type", "text/html; charset=utf-8")
+            .body(Full::new(Bytes::from(html)))?)
+    }
+
     /// Serve OpenAPI documentation
     async fn serve_docs(&self) -> Result<Response<Full<Bytes>>, ApiError> {
         let swagger_ui_html = r#"
@@ -241,6 +358,31 @@ impl Router {
             .status(StatusCode::OK)
             .header("content-type", "text/html")
             .body(Full::new(Bytes::from(swagger_ui_html)))?)
+    }
+
+    async fn handle_graphql(&self, req: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, ApiError> {
+        use async_graphql::{
+            Request as GqlRequest,
+            http::{MultipartOptions, receive_body},
+        };
+        use http_body_util::BodyExt;
+        let claims_opt = req.extensions().get::<Claims>().cloned();
+        let body = req.into_body().collect().await?.to_bytes();
+        let content_type: Option<&str> = None;
+        let gql_req: GqlRequest = receive_body(content_type, body.as_ref(), MultipartOptions::default()).await.map_err(|e| ApiError::BadRequest {
+            message: format!("Invalid GraphQL request: {}", e),
+        })?;
+        // Inject claims into GraphQL Data if present
+        let mut gql_req = gql_req;
+        if let Some(claims) = claims_opt {
+            gql_req = gql_req.data(claims);
+        }
+        let resp = self.graphql_schema.execute(gql_req).await;
+        let text = serde_json::to_string(&resp)?;
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("content-type", "application/json")
+            .body(Full::new(Bytes::from(text)))?)
     }
 
     /// Serve OpenAPI specification
