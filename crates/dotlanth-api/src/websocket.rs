@@ -498,6 +498,12 @@ impl WebSocketManager {
         }
     }
 
+    /// Subscribe to an event type broadcaster, creating one if needed
+    pub fn subscribe(&self, event_type: &str) -> tokio::sync::broadcast::Receiver<WebSocketMessage> {
+        let sender = self.event_broadcasters.entry(event_type.to_string()).or_insert_with(|| tokio::sync::broadcast::channel(100).0).clone();
+        sender.subscribe()
+    }
+
     /// Remove a connection
     async fn remove_connection(&self, connection_id: &str) {
         info!("Removing WebSocket connection: {}", connection_id);
