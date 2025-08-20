@@ -19,6 +19,7 @@
 use crate::auth::{AuthService, Claims, extract_token_from_header};
 use crate::db::DatabaseClient;
 use crate::error::{ApiError, ApiResult};
+use crate::gateway::{GatewayBridge, GatewayConfig};
 use crate::graphql::{AppSchema, build_schema};
 use crate::handlers::{auth, db, health, vm};
 use crate::vm::VmClient;
@@ -43,11 +44,12 @@ pub struct Router {
     websocket_manager: Arc<WebSocketManager>,
     graphql_schema: AppSchema,
     openapi_spec: String,
+    gateway_bridge: Arc<GatewayBridge>,
 }
 
 impl Router {
     /// Create a new router
-    pub fn new(auth_service: Arc<Mutex<AuthService>>, db_client: DatabaseClient, vm_client: VmClient) -> ApiResult<Self> {
+    pub async fn new(auth_service: Arc<Mutex<AuthService>>, db_client: DatabaseClient, vm_client: VmClient) -> ApiResult<Self> {
         // Generate OpenAPI specification
         let openapi_spec = generate_openapi_spec();
 
@@ -57,6 +59,10 @@ impl Router {
         // Build GraphQL schema
         let graphql_schema = build_schema(auth_service.clone(), db_client.clone(), vm_client.clone(), websocket_manager.clone());
 
+        // Create gateway bridge
+        let gateway_config = GatewayConfig::default();
+        let gateway_bridge = Arc::new(GatewayBridge::new(gateway_config, auth_service.clone()).await?);
+
         Ok(Self {
             auth_service,
             db_client,
@@ -64,6 +70,7 @@ impl Router {
             websocket_manager,
             graphql_schema,
             openapi_spec,
+            gateway_bridge,
         })
     }
 
@@ -168,6 +175,10 @@ impl Router {
             // Documentation
             (&Method::GET, "/docs") | (&Method::GET, "/docs/") => self.serve_docs().await,
             (&Method::GET, "/openapi.json") => self.serve_openapi_spec().await,
+
+            // Gateway bridge endpoints
+            (&Method::GET, "/api/v1/gateway/health") => self.gateway_health_check().await,
+            (&Method::GET, "/api/v1/gateway/metrics") => self.gateway_metrics().await,
 
             // Dynamic routes with path parameters
             _ => self.handle_dynamic_routes(req).await,
@@ -396,6 +407,75 @@ impl Router {
     /// Get the OpenAPI specification
     pub fn openapi_spec(&self) -> &str {
         &self.openapi_spec
+    }
+
+    /// Gateway health check endpoint
+    async fn gateway_health_check(&self) -> Result<Response<Full<Bytes>>, ApiError> {
+        match self.gateway_bridge.health_check().await {
+            Ok(_) => {
+                let response = serde_json::json!({
+                    "status": "healthy",
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "service": "gateway_bridge"
+                });
+
+                Ok(Response::builder()
+                    .status(StatusCode::OK)
+                    .header("content-type", "application/json")
+                    .body(Full::new(Bytes::from(serde_json::to_string(&response)?)))?)
+            }
+            Err(e) => {
+                let response = serde_json::json!({
+                    "status": "unhealthy",
+                    "error": e.to_string(),
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "service": "gateway_bridge"
+                });
+
+                Ok(Response::builder()
+                    .status(StatusCode::SERVICE_UNAVAILABLE)
+                    .header("content-type", "application/json")
+                    .body(Full::new(Bytes::from(serde_json::to_string(&response)?)))?)
+            }
+        }
+    }
+
+    /// Gateway metrics endpoint
+    async fn gateway_metrics(&self) -> Result<Response<Full<Bytes>>, ApiError> {
+        let metrics = self.gateway_bridge.get_metrics().await;
+
+        let response = serde_json::json!({
+            "metrics": {
+                "total_requests": metrics.total_requests,
+                "successful_requests": metrics.successful_requests,
+                "failed_requests": metrics.failed_requests,
+                "avg_latency_ms": metrics.avg_latency_ms,
+                "active_streaming_connections": metrics.active_streaming_connections,
+                "protocol_conversions": metrics.protocol_conversions,
+                "error_rate": if metrics.total_requests > 0 {
+                    metrics.failed_requests as f64 / metrics.total_requests as f64
+                } else {
+                    0.0
+                },
+                "success_rate": if metrics.total_requests > 0 {
+                    metrics.successful_requests as f64 / metrics.total_requests as f64
+                } else {
+                    0.0
+                }
+            },
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "service": "gateway_bridge"
+        });
+
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("content-type", "application/json")
+            .body(Full::new(Bytes::from(serde_json::to_string(&response)?)))?)
+    }
+
+    /// Get the gateway bridge instance
+    pub fn gateway_bridge(&self) -> Arc<GatewayBridge> {
+        self.gateway_bridge.clone()
     }
 }
 
