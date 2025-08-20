@@ -76,7 +76,7 @@ impl ApiServer {
         let versioning_middleware = Arc::new(VersioningMiddleware::new(version_registry, compatibility_checker, deprecation_manager, schema_manager));
 
         // Create router
-        let router = Arc::new(Router::new(auth_service.clone(), db_client.clone(), vm_client.clone())?);
+        let router = Arc::new(Router::new(auth_service.clone(), db_client.clone(), vm_client.clone()).await?);
 
         info!("API server created successfully with versioning support");
 
