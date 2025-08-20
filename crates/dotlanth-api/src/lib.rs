@@ -24,6 +24,7 @@ pub mod compatibility_testing;
 pub mod config;
 pub mod db;
 pub mod error;
+pub mod gateway;
 pub mod graphql;
 pub mod handlers;
 pub mod middleware;
