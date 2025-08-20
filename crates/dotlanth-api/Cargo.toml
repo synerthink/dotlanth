@@ -78,5 +78,9 @@ dotdb-common = { path = "../dotdb/common" }
 # Additional dependencies for versioning
 urlencoding = "2.1"
 
+# Gateway bridge dependencies
+url = "2.5"
+regex = "1.10"
+
 [build-dependencies]
 tonic-build = "0.11"
