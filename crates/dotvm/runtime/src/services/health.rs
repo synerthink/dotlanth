@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //! gRPC Health Checking Service Implementation
-//! 
+//!
 //! Implements the standard gRPC Health Checking Protocol for service discovery
 //! and load balancer integration.
 
@@ -70,12 +70,12 @@ impl HealthService {
     /// Create a new health service
     pub fn new() -> Self {
         let mut initial_services = HashMap::new();
-        
+
         // Register core services
         initial_services.insert("".to_string(), ServingStatus::Serving); // Overall health
         initial_services.insert("vm_service.VmService".to_string(), ServingStatus::Serving);
         initial_services.insert("runtime.Runtime".to_string(), ServingStatus::Serving);
-        
+
         Self {
             service_status: Arc::new(RwLock::new(initial_services)),
             global_status: Arc::new(RwLock::new(ServingStatus::Serving)),
@@ -86,9 +86,9 @@ impl HealthService {
     pub async fn set_service_status(&self, service: String, status: ServingStatus) {
         let mut services = self.service_status.write().await;
         services.insert(service.clone(), status.clone());
-        
+
         info!("Health status updated: {} -> {:?}", service, status);
-        
+
         // Update global status based on all services
         self.update_global_status(&services).await;
     }
@@ -96,40 +96,35 @@ impl HealthService {
     /// Get the status of a specific service
     pub async fn get_service_status(&self, service: &str) -> ServingStatus {
         let services = self.service_status.read().await;
-        
+
         if service.is_empty() {
             // Return global status for empty service name
             let global_status = self.global_status.read().await;
             return global_status.clone();
         }
-        
-        services.get(service)
-            .cloned()
-            .unwrap_or(ServingStatus::ServiceUnknown)
+
+        services.get(service).cloned().unwrap_or(ServingStatus::ServiceUnknown)
     }
 
     /// Update global status based on individual service statuses
     async fn update_global_status(&self, services: &HashMap<String, ServingStatus>) {
         let mut global_status = self.global_status.write().await;
-        
+
         // Global status is serving only if all services are serving
-        let all_serving = services.values()
+        let all_serving = services
+            .values()
             .filter(|status| **status != ServingStatus::ServiceUnknown)
             .all(|status| *status == ServingStatus::Serving);
-            
-        *global_status = if all_serving {
-            ServingStatus::Serving
-        } else {
-            ServingStatus::NotServing
-        };
+
+        *global_status = if all_serving { ServingStatus::Serving } else { ServingStatus::NotServing };
     }
 
     /// Perform health check
     pub async fn check(&self, request: HealthCheckRequest) -> Result<HealthCheckResponse, Status> {
         debug!("Health check requested for service: {}", request.service);
-        
+
         let status = self.get_service_status(&request.service).await;
-        
+
         match status {
             ServingStatus::ServiceUnknown => {
                 warn!("Health check for unknown service: {}", request.service);
@@ -146,9 +141,9 @@ impl HealthService {
     pub async fn register_service(&self, service: String, initial_status: ServingStatus) {
         let mut services = self.service_status.write().await;
         services.insert(service.clone(), initial_status.clone());
-        
+
         info!("Registered service for health checking: {} -> {:?}", service, initial_status);
-        
+
         self.update_global_status(&services).await;
     }
 
@@ -172,9 +167,9 @@ impl HealthService {
         for status in services.values_mut() {
             *status = ServingStatus::NotServing;
         }
-        
+
         *self.global_status.write().await = ServingStatus::NotServing;
-        
+
         info!("Health service marked all services as not serving for shutdown");
     }
 }
@@ -199,16 +194,13 @@ pub mod utils {
 
     impl PeriodicHealthChecker {
         pub fn new(health_service: Arc<HealthService>, check_interval: Duration) -> Self {
-            Self {
-                health_service,
-                check_interval,
-            }
+            Self { health_service, check_interval }
         }
 
         /// Start periodic health checking
         pub async fn start(&self) {
             let mut interval = interval(self.check_interval);
-            
+
             loop {
                 interval.tick().await;
                 self.perform_health_checks().await;
@@ -218,24 +210,24 @@ pub mod utils {
         /// Perform health checks on all registered services
         async fn perform_health_checks(&self) {
             let services = self.health_service.get_all_services().await;
-            
+
             for (service_name, _) in services {
                 if service_name.is_empty() {
                     continue; // Skip global service
                 }
-                
+
                 // Here you would implement actual health checks
                 // For now, we'll just log that we're checking
                 debug!("Performing health check for service: {}", service_name);
-                
+
                 // Example: Check if service is responsive
                 // let is_healthy = self.check_service_health(&service_name).await;
-                // let new_status = if is_healthy { 
-                //     ServingStatus::Serving 
-                // } else { 
-                //     ServingStatus::NotServing 
+                // let new_status = if is_healthy {
+                //     ServingStatus::Serving
+                // } else {
+                //     ServingStatus::NotServing
                 // };
-                // 
+                //
                 // self.health_service.set_service_status(service_name, new_status).await;
             }
         }
@@ -249,15 +241,15 @@ mod tests {
     #[tokio::test]
     async fn test_health_service_basic() {
         let health_service = HealthService::new();
-        
+
         // Test global health
         let status = health_service.get_service_status("").await;
         assert_eq!(status, ServingStatus::Serving);
-        
+
         // Test specific service
         let status = health_service.get_service_status("vm_service.VmService").await;
         assert_eq!(status, ServingStatus::Serving);
-        
+
         // Test unknown service
         let status = health_service.get_service_status("unknown.Service").await;
         assert_eq!(status, ServingStatus::ServiceUnknown);
@@ -266,22 +258,16 @@ mod tests {
     #[tokio::test]
     async fn test_service_registration() {
         let health_service = HealthService::new();
-        
+
         // Register new service
-        health_service.register_service(
-            "test.Service".to_string(), 
-            ServingStatus::Serving
-        ).await;
-        
+        health_service.register_service("test.Service".to_string(), ServingStatus::Serving).await;
+
         let status = health_service.get_service_status("test.Service").await;
         assert_eq!(status, ServingStatus::Serving);
-        
+
         // Update service status
-        health_service.set_service_status(
-            "test.Service".to_string(), 
-            ServingStatus::NotServing
-        ).await;
-        
+        health_service.set_service_status("test.Service".to_string(), ServingStatus::NotServing).await;
+
         let status = health_service.get_service_status("test.Service").await;
         assert_eq!(status, ServingStatus::NotServing);
     }

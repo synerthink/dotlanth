@@ -24,9 +24,11 @@
 //! - A batch processor to amortize call overhead across multiple ops
 //! - A simple profiler to surface optimization guidance
 
+use crate::wasm::error_handling::{BridgeError, ErrorHandler, ErrorHandlingResult};
 use crate::wasm::{WasmError, WasmInstance, WasmMemory, WasmResult};
 use dotvm_core::bytecode::{BytecodeFile, VmArchitecture};
 use dotvm_core::instruction::registry::Opcode as CoreOpcode;
+use dotvm_core::security::types::DotVMContext;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
@@ -331,6 +333,7 @@ pub struct PerformanceOptimizer {
     pub profiler: PerformanceProfiler,
     pub memory_optimizer: MemoryOptimizer,
     pub batch_processor: BatchProcessor,
+    pub error_handler: ErrorHandler,
 }
 
 impl PerformanceOptimizer {
@@ -341,6 +344,7 @@ impl PerformanceOptimizer {
             profiler: PerformanceProfiler::new(),
             memory_optimizer: MemoryOptimizer::default(),
             batch_processor: BatchProcessor::default(),
+            error_handler: ErrorHandler::new(),
         }
     }
 
@@ -351,6 +355,7 @@ impl PerformanceOptimizer {
             profiler: PerformanceProfiler::new(),
             memory_optimizer: MemoryOptimizer::default(),
             batch_processor: BatchProcessor::default(),
+            error_handler: ErrorHandler::new(),
         }
     }
 
@@ -414,6 +419,51 @@ impl PerformanceOptimizer {
         let mut h = std::collections::hash_map::DefaultHasher::new();
         format!("{:?}", op).hash(&mut h);
         h.finish()
+    }
+
+    /// Handle bridge errors with comprehensive error handling and recovery
+    pub fn handle_bridge_error(&self, error: BridgeError, context: &DotVMContext) -> ErrorHandlingResult {
+        self.error_handler.handle_error(error, context)
+    }
+
+    /// Execute batch operation with error handling
+    pub fn execute_batch_with_error_handling(&self, memory: &WasmMemory, ops_ptr: usize, op_count: usize, context: &DotVMContext) -> Result<Vec<i32>, BridgeError> {
+        // Create checkpoint before operation
+        self.error_handler.create_checkpoint("pre_batch_execution".to_string(), context);
+
+        // Attempt batch execution with error wrapping
+        match self.batch_processor.execute_batch_zero_copy(memory, ops_ptr, op_count) {
+            Ok(results) => Ok(results),
+            Err(wasm_error) => {
+                let bridge_error: BridgeError = wasm_error.into();
+                let mut mutable_context = context.clone();
+
+                // Handle the error
+                match self.error_handler.handle_error(bridge_error.clone(), context) {
+                    ErrorHandlingResult::Handled { recovery_applied: true, .. } => {
+                        // Attempt recovery and retry
+                        match self.error_handler.attempt_recovery(&bridge_error, &mut mutable_context) {
+                            crate::wasm::error_handling::RecoveryResult::Recovered { .. } => {
+                                // Retry the operation after recovery
+                                self.batch_processor.execute_batch_zero_copy(memory, ops_ptr, op_count).map_err(|e| e.into())
+                            }
+                            _ => Err(bridge_error),
+                        }
+                    }
+                    _ => Err(bridge_error),
+                }
+            }
+        }
+    }
+
+    /// Get comprehensive error metrics
+    pub fn get_error_metrics(&self) -> crate::wasm::error_handling::ErrorMetrics {
+        self.error_handler.get_metrics()
+    }
+
+    /// Get recovery statistics
+    pub fn get_recovery_statistics(&self) -> crate::wasm::error_handling::RecoveryStatistics {
+        self.error_handler.get_recovery_statistics()
     }
 }
 

@@ -11,6 +11,7 @@ members = [
     "crates/dotdb/core",
     "crates/dotdb/cli",
     "crates/dotlanth-cli",
+    "crates/dotlanth-api",
 ]
 
 [workspace.package]

@@ -14,21 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{env, error::Error, path::PathBuf};
+//! Dotlanth REST API Gateway
+//!
+//! This crate provides a REST API gateway that integrates with DotVM and DotDB
+//! through gRPC services, offering HTTP/REST endpoints for web clients.
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-
-    tonic_build::configure().file_descriptor_set_path(out_dir.join("runtime_descriptor.bin")).compile(
-        &[
-            "proto/runtime.proto",
-            "proto/vm_service.proto",
-            "proto/database_service.proto",
-            "proto/cluster_service.proto",
-            "proto/common.proto",
-        ],
-        &["proto"],
-    )?;
-
-    Ok(())
-}
+pub mod auth;
+pub mod compatibility_testing;
+pub mod config;
+pub mod db;
+pub mod error;
+pub mod gateway;
+pub mod graphql;
+pub mod handlers;
+pub mod middleware;
+pub mod models;
+pub mod rate_limiting;
+pub mod router;
+pub mod security;
+pub mod server;
+pub mod versioning;
+pub mod vm;
+pub mod websocket;

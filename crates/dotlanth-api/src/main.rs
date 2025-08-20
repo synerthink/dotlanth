@@ -14,21 +14,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{env, error::Error, path::PathBuf};
+use dotlanth_api::{config::Config, server::ApiServer};
+use tracing::{error, info};
+use tracing_subscriber;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing
+    tracing_subscriber::fmt::init();
 
-    tonic_build::configure().file_descriptor_set_path(out_dir.join("runtime_descriptor.bin")).compile(
-        &[
-            "proto/runtime.proto",
-            "proto/vm_service.proto",
-            "proto/database_service.proto",
-            "proto/cluster_service.proto",
-            "proto/common.proto",
-        ],
-        &["proto"],
-    )?;
+    info!("Starting Dotlanth REST API Gateway");
+
+    // Load configuration
+    let config = Config::from_env();
+    info!("Loaded configuration: bind_address={}", config.bind_address);
+
+    // Create and start the API server
+    let server = ApiServer::new(config).await?;
+    info!("REST API Gateway started on http://{}", server.bind_address());
+
+    // Start the server
+    server.run().await?;
 
     Ok(())
 }

@@ -14,21 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{env, error::Error, path::PathBuf};
+//! Comprehensive API versioning and backwards compatibility management
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+pub mod compatibility;
+pub mod deprecation;
+pub mod negotiation;
+pub mod schema;
+pub mod version;
 
-    tonic_build::configure().file_descriptor_set_path(out_dir.join("runtime_descriptor.bin")).compile(
-        &[
-            "proto/runtime.proto",
-            "proto/vm_service.proto",
-            "proto/database_service.proto",
-            "proto/cluster_service.proto",
-            "proto/common.proto",
-        ],
-        &["proto"],
-    )?;
-
-    Ok(())
-}
+pub use compatibility::*;
+pub use deprecation::*;
+pub use negotiation::*;
+pub use schema::*;
+pub use version::*;

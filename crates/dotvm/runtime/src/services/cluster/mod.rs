@@ -14,21 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{env, error::Error, path::PathBuf};
+pub mod circuit_breaker;
+pub mod discovery;
+pub mod load_balancer;
+pub mod metrics;
+pub mod service;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-
-    tonic_build::configure().file_descriptor_set_path(out_dir.join("runtime_descriptor.bin")).compile(
-        &[
-            "proto/runtime.proto",
-            "proto/vm_service.proto",
-            "proto/database_service.proto",
-            "proto/cluster_service.proto",
-            "proto/common.proto",
-        ],
-        &["proto"],
-    )?;
-
-    Ok(())
-}
+pub use circuit_breaker::CircuitBreaker;
+pub use discovery::{ServiceDiscovery, ServiceRegistry};
+pub use load_balancer::{LoadBalancer, LoadBalancingAlgorithm, LoadBalancingStrategy};
+pub use metrics::ClusterMetrics;
+pub use service::ClusterServiceImpl;

@@ -19,6 +19,7 @@
 pub mod async_bridge;
 pub mod bridge;
 pub mod error;
+pub mod error_handling;
 pub mod execution;
 pub mod host_functions;
 pub mod instance;
@@ -35,6 +36,7 @@ pub use bridge::{
     PerformanceProfiler, PerformanceReport, register_default_bridge_host_functions, wire_instance_batch_with_optimizer,
 };
 pub use error::{WasmError, WasmResult};
+pub use error_handling::{BridgeError, DebugInfo, ErrorHandler, ErrorHandlingResult, RecoveryResult};
 pub use execution::{
     CallFrame, CallTraceEntry, ExecutionContext, ExecutionMetrics, ExecutionState, ExecutionStatistics, FrameMetadata, FunctionSignature, HostFunction, ImportedModule, StackStatistics, ValueType,
     WasmExecutionExtensions, WasmStack,
