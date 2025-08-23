@@ -58,7 +58,7 @@ impl ApiServer {
         })?;
 
         // Create authentication service
-        let auth_service = Arc::new(Mutex::new(AuthService::new(&config.jwt_secret)));
+        let auth_service = Arc::new(Mutex::new(AuthService::new(&config.jwt_secret)?));
 
         // Create database client
         let db_client = DatabaseClient::new(&config.db_service_address)?;
