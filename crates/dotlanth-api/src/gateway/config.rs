@@ -142,7 +142,7 @@ mod tests {
     #[tokio::test]
     async fn test_gateway_bridge_creation() {
         let config = GatewayConfig::default();
-        let auth_service = Arc::new(tokio::sync::Mutex::new(crate::auth::AuthService::new("test-secret")));
+        let auth_service = Arc::new(tokio::sync::Mutex::new(crate::auth::AuthService::new("test-secret").unwrap()));
 
         let bridge = GatewayBridge::new(config, auth_service).await;
         assert!(bridge.is_ok());
