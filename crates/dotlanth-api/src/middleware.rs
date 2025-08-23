@@ -16,7 +16,7 @@
 
 //! Middleware for the REST API gateway
 
-use crate::auth::{AuthService, Claims, extract_token_from_header};
+use crate::auth::{AuthService, Claims, JWTAuthSystem, extract_token_from_header};
 use crate::error::{ApiError, ApiResult};
 use crate::versioning::{CompatibilityChecker, DeprecationManager, ProtocolType, SchemaEvolutionManager, ServiceType, VersionContext, VersionNegotiator, VersionRegistry};
 use http_body_util::Full;
@@ -371,5 +371,154 @@ pub trait VersionContextExt {
 impl<T> VersionContextExt for Request<T> {
     fn version_context(&self) -> Option<&VersionContext> {
         self.extensions().get::<VersionContext>()
+    }
+}
+
+/// JWT Authentication middleware for protecting routes
+#[derive(Clone)]
+pub struct JwtMiddleware<S> {
+    inner: S,
+    jwt_auth: Arc<JWTAuthSystem>,
+    public_paths: Vec<String>,
+    required_permissions: Vec<String>,
+}
+
+impl<S> JwtMiddleware<S> {
+    /// Create a new JWT middleware
+    pub fn new(inner: S, jwt_auth: Arc<JWTAuthSystem>) -> Self {
+        let public_paths = vec![
+            "/api/v1/health".to_string(),
+            "/api/v1/version".to_string(),
+            "/api/v1/auth/login".to_string(),
+            "/api/v1/auth/register".to_string(),
+            "/api/v1/auth/refresh".to_string(),
+            "/docs".to_string(),
+            "/docs/".to_string(),
+            "/api-docs".to_string(),
+            "/openapi.json".to_string(),
+        ];
+
+        Self {
+            inner,
+            jwt_auth,
+            public_paths,
+            required_permissions: vec![],
+        }
+    }
+
+    /// Create JWT middleware with required permissions
+    pub fn with_permissions(inner: S, jwt_auth: Arc<JWTAuthSystem>, permissions: Vec<String>) -> Self {
+        let mut middleware = Self::new(inner, jwt_auth);
+        middleware.required_permissions = permissions;
+        middleware
+    }
+
+    /// Check if path is public (doesn't require authentication)
+    fn is_public_path(&self, path: &str) -> bool {
+        self.public_paths.iter().any(|public_path| path == public_path || path.starts_with(&format!("{}/", public_path)))
+    }
+}
+
+impl<S> Service<Request<Incoming>> for JwtMiddleware<S>
+where
+    S: Service<Request<Incoming>, Response = Response<Full<Bytes>>> + Clone + Send + 'static,
+    S::Future: Send + 'static,
+    S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    type Response = Response<Full<Bytes>>;
+    type Error = Box<dyn std::error::Error + Send + Sync>;
+    type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+
+    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx).map_err(Into::into)
+    }
+
+    fn call(&mut self, mut req: Request<Incoming>) -> Self::Future {
+        let jwt_auth = self.jwt_auth.clone();
+        let public_paths = self.public_paths.clone();
+        let required_permissions = self.required_permissions.clone();
+        let mut inner = self.inner.clone();
+
+        Box::pin(async move {
+            let path = req.uri().path();
+
+            // Check if this is a public path
+            let is_public = public_paths.iter().any(|public_path| path == public_path || path.starts_with(&format!("{}/", public_path)));
+
+            if is_public {
+                return inner.call(req).await.map_err(Into::into);
+            }
+
+            // Extract and validate JWT token
+            let auth_header = req.headers().get("authorization").and_then(|h| h.to_str().ok()).ok_or_else(|| ApiError::Unauthorized {
+                message: "Missing authorization header".to_string(),
+            })?;
+
+            let token = extract_token_from_header(auth_header).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+            let claims = jwt_auth.validate_token(token).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+            // Check required permissions
+            for permission in &required_permissions {
+                if !claims.has_permission(permission) {
+                    return Err(Box::new(ApiError::Forbidden {
+                        message: format!("Missing required permission: {}", permission),
+                    }) as Box<dyn std::error::Error + Send + Sync>);
+                }
+            }
+
+            // Add claims to request extensions for use in handlers
+            req.extensions_mut().insert(claims);
+
+            inner.call(req).await.map_err(Into::into)
+        })
+    }
+}
+
+/// JWT middleware layer
+#[derive(Clone)]
+pub struct JwtMiddlewareLayer {
+    jwt_auth: Arc<JWTAuthSystem>,
+    required_permissions: Vec<String>,
+}
+
+impl JwtMiddlewareLayer {
+    /// Create a new JWT middleware layer
+    pub fn new(jwt_auth: Arc<JWTAuthSystem>) -> Self {
+        Self {
+            jwt_auth,
+            required_permissions: vec![],
+        }
+    }
+
+    /// Create JWT middleware layer with required permissions
+    pub fn with_permissions(jwt_auth: Arc<JWTAuthSystem>, permissions: Vec<String>) -> Self {
+        Self {
+            jwt_auth,
+            required_permissions: permissions,
+        }
+    }
+}
+
+impl<S> Layer<S> for JwtMiddlewareLayer {
+    type Service = JwtMiddleware<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        if self.required_permissions.is_empty() {
+            JwtMiddleware::new(inner, self.jwt_auth.clone())
+        } else {
+            JwtMiddleware::with_permissions(inner, self.jwt_auth.clone(), self.required_permissions.clone())
+        }
+    }
+}
+
+/// Extension trait for extracting JWT claims from requests
+pub trait JwtClaimsExt {
+    fn jwt_claims(&self) -> Option<&Claims>;
+}
+
+impl<T> JwtClaimsExt for Request<T> {
+    fn jwt_claims(&self) -> Option<&Claims> {
+        self.extensions().get::<Claims>()
     }
 }
