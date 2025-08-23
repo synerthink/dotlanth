@@ -41,6 +41,7 @@ prost = "0.12"
 jsonwebtoken = "9.2"
 ring = "0.17"
 base64 = "0.22"
+argon2 = "0.5"
 
 # URL routing
 matchit = "0.8"
