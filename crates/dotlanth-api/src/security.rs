@@ -769,7 +769,7 @@ mod tests {
         use hyper::{HeaderMap, Request};
 
         // Create a mock auth service
-        let auth_service = Arc::new(TokioMutex::new(crate::auth::AuthService::new("test_secret")));
+        let auth_service = Arc::new(TokioMutex::new(crate::auth::AuthService::new("test_secret").unwrap()));
 
         // Create security config with request size limiting enabled
         let config = SecurityConfig {
