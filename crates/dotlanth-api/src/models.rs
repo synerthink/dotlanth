@@ -37,11 +37,40 @@ pub struct TokenResponse {
     pub expires_in: u64,
 }
 
+/// Token pair containing access and refresh tokens
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct TokenPair {
+    /// JWT access token
+    pub access_token: String,
+
+    /// Refresh token
+    pub refresh_token: String,
+
+    /// Token type (always "Bearer")
+    pub token_type: String,
+
+    /// Access token expiration time in seconds
+    pub expires_in: u64,
+}
+
 /// Login request
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct LoginRequest {
     /// Username or email
     pub username: String,
+
+    /// Password
+    pub password: String,
+}
+
+/// User registration request
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct RegisterRequest {
+    /// Username
+    pub username: String,
+
+    /// Email address
+    pub email: String,
 
     /// Password
     pub password: String,
