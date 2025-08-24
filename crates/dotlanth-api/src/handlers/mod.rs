@@ -18,6 +18,7 @@
 
 pub mod auth;
 pub mod db;
+pub mod dot_permissions;
 pub mod health;
 pub mod versioning;
 pub mod vm;
