@@ -287,7 +287,7 @@ mod tests {
         let merkle_tree = Arc::new(MerkleTree::new());
 
         // Create a temporary directory for snapshots in tests
-        let temp_dir = std::env::temp_dir().join("dotvm_test_snapshots");
+        let temp_dir = std::env::temp_dir().join("dotlanth/dotvm/test/snapshots");
         std::fs::create_dir_all(&temp_dir).unwrap();
 
         let snapshot_manager = Arc::new(SnapshotManager::new(mvcc_store.clone(), &temp_dir).unwrap());
