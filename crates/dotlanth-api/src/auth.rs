@@ -18,6 +18,7 @@
 
 use crate::error::{ApiError, ApiResult};
 use crate::models::{LoginRequest, RegisterRequest, TokenResponse, UserProfile};
+use crate::rbac::system::RBACSystem;
 use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
@@ -339,6 +340,8 @@ pub struct AuthService {
     // In a real implementation, this would connect to a user database
     // For now, we'll use a simple in-memory store
     users: std::collections::HashMap<String, User>,
+    // RBAC system integration
+    rbac_system: Option<std::sync::Arc<RBACSystem>>,
 }
 
 impl AuthService {
@@ -399,7 +402,7 @@ impl AuthService {
             },
         );
 
-        Ok(Self { jwt_auth, users })
+        Ok(Self { jwt_auth, users, rbac_system: None })
     }
 
     /// Register a new user
@@ -538,6 +541,66 @@ impl AuthService {
     /// Clean up expired tokens
     pub fn cleanup_expired_tokens(&self) {
         self.jwt_auth.cleanup_expired_tokens();
+    }
+
+    /// Set RBAC system for integration
+    pub fn set_rbac_system(&mut self, rbac_system: std::sync::Arc<RBACSystem>) {
+        self.rbac_system = Some(rbac_system);
+    }
+
+    /// Get RBAC system
+    pub fn rbac_system(&self) -> Option<&std::sync::Arc<RBACSystem>> {
+        self.rbac_system.as_ref()
+    }
+
+    /// Update user permissions from RBAC system
+    pub async fn update_user_permissions(&mut self, user_id: &str) -> ApiResult<()> {
+        if let Some(rbac_system) = &self.rbac_system {
+            if let Some(user) = self.users.get_mut(user_id) {
+                // Get effective permissions from RBAC
+                let permissions = rbac_system.get_user_permissions(user_id).await?;
+                let dot_permissions = rbac_system.get_user_dot_permissions(user_id).await?;
+
+                // Update user permissions
+                user.permissions = permissions.iter().map(|p| p.key()).collect();
+
+                // Update dot permissions
+                user.dot_permissions.clear();
+                for dot_perm in dot_permissions {
+                    user.dot_permissions.insert(dot_perm.dot_id, dot_perm.operations);
+                }
+
+                // Notify RBAC system of user update
+                rbac_system.update_user_from_auth(user).await?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Assign role to user (delegates to RBAC system)
+    pub async fn assign_role_to_user(&self, user_id: &str, role_id: &str, assigned_by: &str) -> ApiResult<()> {
+        if let Some(rbac_system) = &self.rbac_system {
+            rbac_system.assign_role(user_id, role_id, assigned_by).await?;
+            // Note: In a mutable context, we would call update_user_permissions here
+        } else {
+            return Err(ApiError::InternalServerError {
+                message: "RBAC system not configured".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    /// Revoke role from user (delegates to RBAC system)
+    pub async fn revoke_role_from_user(&self, user_id: &str, role_id: &str, revoked_by: &str) -> ApiResult<()> {
+        if let Some(rbac_system) = &self.rbac_system {
+            rbac_system.revoke_role(user_id, role_id, revoked_by).await?;
+            // Note: In a mutable context, we would call update_user_permissions here
+        } else {
+            return Err(ApiError::InternalServerError {
+                message: "RBAC system not configured".to_string(),
+            });
+        }
+        Ok(())
     }
 }
 
