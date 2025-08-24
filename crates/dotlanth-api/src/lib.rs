@@ -34,6 +34,7 @@ pub mod rbac;
 pub mod router;
 pub mod security;
 pub mod server;
+pub mod user_management;
 pub mod versioning;
 pub mod vm;
 pub mod websocket;
