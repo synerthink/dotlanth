@@ -374,7 +374,13 @@ mod tests {
         let role_manager = Arc::new(RoleManager::new(audit_logger.clone()));
         let permission_checker = Arc::new(PermChecker::new(cache.clone()));
 
-        Arc::new(RBACSystem::new(role_manager, permission_checker, audit_logger, cache))
+        Arc::new(RBACSystem::new(
+            role_manager,
+            permission_checker,
+            audit_logger.clone(),
+            cache,
+            Arc::new(crate::rbac::dot_permissions::DotPermissionManager::new(audit_logger)),
+        ))
     }
 
     #[tokio::test]
