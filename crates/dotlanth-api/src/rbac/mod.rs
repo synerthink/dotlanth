@@ -26,6 +26,7 @@
 
 pub mod audit;
 pub mod cache;
+pub mod dot_permissions;
 pub mod manager;
 pub mod middleware;
 pub mod permissions;
@@ -34,6 +35,7 @@ pub mod system;
 
 pub use audit::*;
 pub use cache::*;
+pub use dot_permissions::*;
 pub use manager::*;
 pub use middleware::*;
 pub use permissions::*;
