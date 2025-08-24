@@ -183,6 +183,9 @@ pub fn create_persistent_collection_manager<P: AsRef<std::path::Path>>(path: P, 
     use super::storage::DocumentStore;
     use crate::state::db_interface::Database;
 
+    // Ensure the directory exists before creating the database
+    std::fs::create_dir_all(&path).map_err(|e| crate::document::DocumentError::InvalidDocumentId(format!("Failed to create database directory: {}", e)))?;
+
     let config = config.unwrap_or_default();
     let db = Arc::new(Database::new(path, config)?);
     let storage = Arc::new(DocumentStore::new(db));
