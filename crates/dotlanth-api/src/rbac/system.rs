@@ -20,6 +20,7 @@ use crate::auth::User;
 use crate::error::{ApiError, ApiResult};
 use crate::rbac::audit::AuditLogger;
 use crate::rbac::cache::PermissionCache;
+use crate::rbac::dot_permissions::{DotABI, DotPermissionManager};
 use crate::rbac::manager::RoleManager;
 use crate::rbac::permissions::{DotPermission, Permission, PermissionChecker, PermissionContext};
 use crate::rbac::roles::{Role, UserRoleAssignment};
@@ -42,16 +43,26 @@ pub struct RBACSystem {
 
     /// Cache for performance optimization
     cache: Arc<PermissionCache>,
+
+    /// Dot-level permission manager
+    dot_permission_manager: Arc<DotPermissionManager>,
 }
 
 impl RBACSystem {
     /// Create a new RBAC system
-    pub fn new(role_manager: Arc<RoleManager>, permission_checker: Arc<PermissionChecker>, audit_logger: Arc<AuditLogger>, cache: Arc<PermissionCache>) -> Self {
+    pub fn new(
+        role_manager: Arc<RoleManager>,
+        permission_checker: Arc<PermissionChecker>,
+        audit_logger: Arc<AuditLogger>,
+        cache: Arc<PermissionCache>,
+        dot_permission_manager: Arc<DotPermissionManager>,
+    ) -> Self {
         Self {
             role_manager,
             permission_checker,
             audit_logger,
             cache,
+            dot_permission_manager,
         }
     }
 
@@ -61,8 +72,9 @@ impl RBACSystem {
         let cache = Arc::new(PermissionCache::new());
         let role_manager = Arc::new(RoleManager::new(audit_logger.clone()));
         let permission_checker = Arc::new(PermissionChecker::new(cache.clone()));
+        let dot_permission_manager = Arc::new(DotPermissionManager::new(audit_logger.clone()));
 
-        let system = Self::new(role_manager, permission_checker, audit_logger, cache.clone());
+        let system = Self::new(role_manager, permission_checker, audit_logger, cache.clone(), dot_permission_manager);
 
         // Start background tasks
         let _cleanup_task = PermissionCache::start_cleanup_task(cache);
@@ -350,6 +362,83 @@ impl RBACSystem {
     /// Get role manager
     pub fn role_manager(&self) -> &Arc<RoleManager> {
         &self.role_manager
+    }
+
+    /// Get dot permission manager
+    pub fn dot_permission_manager(&self) -> &Arc<DotPermissionManager> {
+        &self.dot_permission_manager
+    }
+
+    /// Load dot permissions from ABI
+    pub async fn load_dot_permissions(&self, dot_id: &str, abi: &DotABI) -> ApiResult<()> {
+        self.dot_permission_manager.load_dot_permissions(dot_id, abi).await?;
+
+        // Invalidate related cache entries
+        self.cache.invalidate_dot(dot_id).await;
+
+        info!(
+            dot_id = %dot_id,
+            "Dot permissions loaded from ABI"
+        );
+
+        Ok(())
+    }
+
+    /// Check if a user can perform an operation on a dot using the dot permission system
+    pub async fn check_dot_operation(&self, user: &User, dot_id: &str, operation: &str) -> ApiResult<bool> {
+        let start_time = Instant::now();
+
+        let has_permission = self.dot_permission_manager.check_dot_operation(user, dot_id, operation)?;
+
+        let duration = start_time.elapsed();
+
+        // Log performance warning if check took too long
+        if duration > Duration::from_millis(5) {
+            warn!(
+                user_id = %user.id,
+                dot_id = %dot_id,
+                operation = %operation,
+                duration_ms = %duration.as_millis(),
+                "Slow dot operation check detected"
+            );
+        }
+
+        debug!(
+            user_id = %user.id,
+            dot_id = %dot_id,
+            operation = %operation,
+            has_permission = %has_permission,
+            duration_ms = %duration.as_millis(),
+            "Dot operation check completed"
+        );
+
+        Ok(has_permission)
+    }
+
+    /// Check if a user is the owner of a dot
+    pub async fn is_dot_owner(&self, user: &User, dot_id: &str) -> ApiResult<bool> {
+        self.dot_permission_manager.is_dot_owner(user, dot_id)
+    }
+
+    /// Set dot owner
+    pub async fn set_dot_owner(&self, dot_id: &str, owner_id: &str) -> ApiResult<()> {
+        self.dot_permission_manager.set_dot_owner(dot_id, owner_id);
+
+        // Invalidate cache for this dot
+        self.cache.invalidate_dot(dot_id).await;
+
+        info!(
+            dot_id = %dot_id,
+            owner_id = %owner_id,
+            "Dot ownership set"
+        );
+
+        Ok(())
+    }
+
+    /// Get user's permissions for a specific dot
+    pub async fn get_user_dot_operation_permissions(&self, user: &User, dot_id: &str) -> ApiResult<Vec<String>> {
+        self.dot_permission_manager.get_user_dot_permissions(user, dot_id)
     }
 
     /// Update user from authentication system
