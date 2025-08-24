@@ -179,13 +179,21 @@ impl FileStorage {
             std::fs::create_dir_all(parent).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
         }
 
+        // Create the database files if they don't exist
+        if !data_file.exists() {
+            std::fs::File::create(&data_file).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        }
+        if !index_file.exists() {
+            std::fs::File::create(&index_file).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        }
+
         let storage = Self {
             data_file: Arc::new(RwLock::new(data_file.clone())),
             index: Arc::new(RwLock::new(HashMap::new())),
         };
 
-        // Load existing index if it exists
-        if index_file.exists() {
+        // Load existing index if it exists and has content
+        if index_file.exists() && index_file.metadata().map(|m| m.len() > 0).unwrap_or(false) {
             storage.load_index(&index_file)?;
         }
 
@@ -263,6 +271,11 @@ impl StorageBackend for FileStorage {
         drop(self.data_file.read());
 
         // Append to data file
+        // Ensure parent directory exists
+        if let Some(parent) = data_file.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
+        }
+
         let mut file = OpenOptions::new().create(true).append(true).open(&data_file).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
 
         let offset = file.seek(SeekFrom::End(0)).map_err(|e| DbError::Storage(StorageError::Io(e)))?;
