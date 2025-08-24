@@ -285,7 +285,7 @@ impl DatabaseOpcodeExecutor {
         let buffer_manager = Arc::new(BufferManager::new(file_format, &storage_config));
 
         // Create database interface with proper path and config that uses the WAL
-        let db_path = std::env::temp_dir().join("dotvm_real_db");
+        let db_path = std::env::temp_dir().join("dotlanth/dotdb/default");
         std::fs::create_dir_all(&db_path).map_err(|e| DatabaseError::Storage(StorageError::NotFound(format!("Failed to create database directory: {}", e))))?;
 
         // Configure database to use the storage components we created
@@ -996,7 +996,7 @@ mod tests {
         let file_format = Arc::new(Mutex::new(FileFormat::new(storage_config.clone())));
         let buffer_manager = Arc::new(BufferManager::new(file_format, &storage_config));
 
-        let test_dir = std::env::temp_dir().join("dotvm_test_wal");
+        let test_dir = std::env::temp_dir().join("dotlanth/dotvm/test/wal");
         std::fs::create_dir_all(&test_dir).ok();
         let mut wal_config = WalConfig::default();
         wal_config.directory = test_dir;
