@@ -271,6 +271,18 @@ impl PermissionCache {
         debug!("Invalidated cache for role: {}", role_id);
     }
 
+    /// Invalidate all cache entries for a dot
+    pub async fn invalidate_dot(&self, dot_id: &str) {
+        // Remove permission checks that involve this dot
+        self.permission_cache.retain(|key, _| !key.contains(dot_id));
+
+        // Clear dot-specific user permissions since dot permissions may have changed
+        self.user_dot_permissions_cache.clear();
+
+        self.update_cache_size().await;
+        debug!("Invalidated cache for dot: {}", dot_id);
+    }
+
     /// Clear all cache entries
     pub async fn clear(&self) {
         self.permission_cache.clear();
