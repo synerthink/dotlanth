@@ -1,0 +1,10 @@
+[package]
+name = "dotlanth"
+version = "26.1.0-alpha.1"
+edition = "2021"
+license = "GPL-3.0-only"
+description = "A local-first operating system kernel"
+documentation = "https://github.com/synerthink/dotlanth#readme"
+repository = "https://github.com/synerthink/dotlanth"
+keywords = ["kernel", "os", "local-first"]
+categories = ["os"]
