@@ -1,0 +1,15 @@
+[package]
+name = "ingestion"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Connector traits, ingest runs, transforms"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+core = { path = "../core" }
+object_model = { path = "../object_model" }

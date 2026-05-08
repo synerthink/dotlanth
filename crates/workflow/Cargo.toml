@@ -1,0 +1,16 @@
+[package]
+name = "workflow"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Workflow instances, actions, assignments, approvals"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+core = { path = "../core" }
+object_model = { path = "../object_model" }
+auth = { path = "../auth" }

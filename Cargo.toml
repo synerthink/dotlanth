@@ -1,10 +1,26 @@
-[package]
-name = "dotlanth"
+[workspace]
+resolver = "3"
+members = [
+    "crates/app",
+    "crates/api",
+    "crates/auth",
+    "crates/core",
+    "crates/storage",
+    "crates/object_model",
+    "crates/ingestion",
+    "crates/workflow",
+    "crates/audit",
+    "crates/search",
+    "crates/observability",
+]
+
+[workspace.package]
 version = "26.1.0-alpha.1"
 edition = "2021"
+rust-version = "1.84"
 license = "GPL-3.0-only"
-description = "A local-first operating system kernel"
-documentation = "https://github.com/synerthink/dotlanth#readme"
 repository = "https://github.com/synerthink/dotlanth"
-keywords = ["kernel", "os", "local-first"]
-categories = ["os"]
+authors = ["Adem Onur Çelik <ademonurcelik@icloud.com>"]
+
+[workspace.dependencies]
+# Shared external dependencies will be added here later
